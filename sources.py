@@ -17,7 +17,7 @@ from .models import Document
 class DataSourceManager:
     """Manager class to fetch text data given query for list of sources"""
     def __init__(self):
-        self.sources: List[DataSource] = []
+        self.sources: List[BaseDataSource] = []
 
     def choose_source(self, source: str):
         pass
@@ -43,7 +43,7 @@ class DataSourceManager:
                 combined_results.extend(result)
             return combined_results
 
-class DataSource:
+class BaseDataSource:
     """Custom data source class interface"""
     def __init__(self):
         self.logger = get_logger()
@@ -86,12 +86,12 @@ class DataSource:
         pass
 
 
-class YFinanceData(DataSource):
+class YFinanceData(BaseDataSource):
     def fetch(self, query: str) -> List[str]:
         return
 
 
-class LexisNexisData(DataSource):
+class LexisNexisData(BaseDataSource):
     def __init__(self):
         super().__init__()
         self.source="LexisNexis"
@@ -132,27 +132,27 @@ class LexisNexisData(DataSource):
         return 
 
 
-class NYTimesData(DataSource):
+class NYTimesData(BaseDataSource):
     pass
 
 
-class GuardiansData(DataSource):
+class GuardiansData(BaseDataSource):
     pass
 
 
-class NewsAPIData(DataSource):
+class NewsAPIData(BaseDataSource):
     pass
 
 
-class ProQuestData(DataSource):
+class ProQuestData(BaseDataSource):
     pass
 
 
-class BingsNewsData(DataSource):
+class BingsNewsData(BaseDataSource):
     pass
 
 
-class GoogleSearchData(DataSource):
+class GoogleSearchData(BaseDataSource):
     """Wrapper that calls on Google Search JSON API"""
     def __init__(self, session: ClientSession = None):
         super().__init__()

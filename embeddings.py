@@ -4,13 +4,13 @@ from typing import List
 from openai import OpenAI, AsyncOpenAI
 
 
-class EmbeddingModel:
+class BaseEmbeddingModel:
     "Custom embedding model interface"
     def embed(self, text: List[str]) -> List[float]:
         pass
 
 
-class OpenAIEmbeddingModel(EmbeddingModel):
+class OpenAIEmbeddingModel(BaseEmbeddingModel):
     def __init__(self, model="text-embedding-3-small"):
         self.client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
         self.model = model
@@ -23,7 +23,7 @@ class OpenAIEmbeddingModel(EmbeddingModel):
 
         return [x.embedding for x in embeddings.data]
 
-class AsyncOpenAIEmbeddingModel(EmbeddingModel):
+class AsyncOpenAIEmbeddingModel(BaseEmbeddingModel):
     def __init__(self, model="text-embedding-3-small"):
         self.client = AsyncOpenAI(api_key = os.getenv("OPENAI_API_KEY"))
         self.model = model

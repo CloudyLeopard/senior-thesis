@@ -15,18 +15,18 @@ class VectorStorage:
 
 
 class MilvusVectorStorage:
-    """Milvus vector storage"""
-    def __init__(self, dimension=OPENAI_TEXT_EMBEDDING_SMALL_DIM):
+    """Custom Vector storage class for using Milvus"""
+    def __init__(self, client: MilvusClient, dimension=OPENAI_TEXT_EMBEDDING_SMALL_DIM):
         # # Use Zilliz (Cloud) Vectorstorage
         # self.client = MilvusClient(
         #     uri=os.getenv("ZILLIZ_URI"),
         #     token=os.getenv("ZILLIZ_TOKEN")
         # )
-
+        # self.client = MilvusClient(
+        #     uri = "http://localhost:19530"
+        # )
+        self.client = client
         self.dimension = dimension
-        self.client = MilvusClient(
-            uri = "http://localhost:19530"
-        )
         self.collection_name = "financial_context"
 
         # if collection does not exist, create schema

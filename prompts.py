@@ -3,3 +3,5 @@ RAG_PROMPT_STANDARD = '''You are an assistant for question-answering tasks. Use 
  \nQuestion: {query}
  \nContext: {context}
 '''
+
+RAG_SYSTEM_STANDARD = '''You are a helpful assistant that answers a query using the given query'''
