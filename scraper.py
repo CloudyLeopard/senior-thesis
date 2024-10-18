@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 import time
 
 from typing import List
-
 class AsyncWebScraper:
     """Scrapes list of websites using aiohttp, and fallsback to selenium if aiohttp fails"""
 

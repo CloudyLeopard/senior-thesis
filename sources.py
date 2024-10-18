@@ -11,9 +11,11 @@ from lexisnexisapi import webservices, credentials
 
 from .util import get_logger
 from .scraper import AsyncWebScraper
+from .models import Document
 
 
 class DataSourceManager:
+    """Manager class to fetch text data given query for list of sources"""
     def __init__(self):
         self.sources: List[DataSource] = []
 
@@ -42,11 +44,12 @@ class DataSourceManager:
             return combined_results
 
 class DataSource:
+    """Custom data source class interface"""
     def __init__(self):
         self.logger = get_logger()
         self.source = "unknown"
 
-    def fetch(self, query: str) -> List[str]:
+    def fetch(self, query: str) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
         
         Args:
@@ -64,7 +67,7 @@ class DataSource:
         """
         pass
 
-    def async_fetch(self, query: str, session: ClientSession) -> List[str]:
+    def async_fetch(self, query: str, session: ClientSession) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
         
         Args:
@@ -184,7 +187,15 @@ class GoogleSearchData(DataSource):
         scraper = AsyncWebScraper()
         scraped_data = await scraper.scrape_links(links)
 
-        return [{"link": link, "content": content} for link, content in zip(links, scraped_data)]
+        documents = []
+        for link, content in zip(links, scraped_data):
+            metadata = {
+                "url": link,
+                "source": self.source
+            }
+            documents.append(Document(text=content, metadata=metadata))
+        return documents
+            
 
     async def _request_google_search_api(
         self,
