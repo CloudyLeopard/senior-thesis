@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List, Dict
 import os
 from openai import OpenAI, AsyncOpenAI
@@ -5,8 +6,7 @@ from openai import OpenAI, AsyncOpenAI
 from .models import Document
 from .prompts import RAG_PROMPT_STANDARD, RAG_SYSTEM_STANDARD
 
-
-class BaseGenerator:
+class BaseLLM:
     """Custom generator interface"""
     def _synthesize_prompt(self, prompt: str, contexts: List[str]) -> List[Dict]:
         """merge contexts and prompt, returns messages for openai api call"""
@@ -20,7 +20,7 @@ class BaseGenerator:
         return messages
 
 
-class OpenAIGenerator(BaseGenerator):
+class OpenAILLM(BaseLLM):
     def __init__(self, model="gpt-4o-mini"):
         self.client = OpenAI(os.getenv("OPENAI_API_KEY"))
         self.model = model
@@ -42,7 +42,7 @@ class OpenAIGenerator(BaseGenerator):
         return completion[0].choices[0].message.content
 
 
-class AsyncOpenAIGenerator(BaseGenerator):
+class AsyncOpenAILLM(BaseLLM):
     def __init__(self, model="gpt-4o-mini", max_tokens=2000):
         self.client = AsyncOpenAI(os.getenv("OPENAI_API_KEY"))
         self.model = model

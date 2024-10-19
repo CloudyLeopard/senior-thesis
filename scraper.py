@@ -50,17 +50,15 @@ class AsyncWebScraper:
 
     def _scrape_with_selenium(self, url: str):
         """Fallback to Selenium to scrape the page."""
-        driver = self._create_selenium_driver() # only initialize selenium when needed
+        
         try:
-            driver.get(url)
+            self.driver.get(url)
             time.sleep(2)  # Give the page time to load
-            page_content = driver.page_source
+            page_content = self.driver.page_source
             return self._scrape_html(page_content)
         except Exception as e:
             print(f"Error occurred while scraping {url} with Selenium: {e}")
             return None
-        finally:
-            driver.quit()
 
     async def _scrape_link(self, session: ClientSession, url: str):
         """Try aiohttp, fallback to Selenium if aiohttp fails."""
@@ -72,12 +70,16 @@ class AsyncWebScraper:
 
     async def scrape_links(self, links: List[str]):
         """Scrape multiple links asynchronously, and returns list of strings. Returns None if neither works."""
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for link in links:
-                task = self._scrape_link(session, link)
-                tasks.append(task)
-            return await asyncio.gather(*tasks)
+        self.driver = self._create_selenium_driver() # init selenium driver
+        try:
+            async with aiohttp.ClientSession() as session:
+                tasks = []
+                for link in links:
+                    task = self._scrape_link(session, link)
+                    tasks.append(task)
+                return await asyncio.gather(*tasks)
+        finally:
+            self.driver.quit() # quit selenium driver
 
 # Example usage
 if __name__ == "__main__":

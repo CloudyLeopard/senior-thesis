@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import os
 import aiohttp
 from aiohttp import ClientSession
@@ -13,73 +14,36 @@ from .util import get_logger
 from .scraper import AsyncWebScraper
 from .models import Document
 
-
-class DataSourceManager:
-    """Manager class to fetch text data given query for list of sources"""
-    def __init__(self):
-        self.sources: List[BaseDataSource] = []
-
-    def choose_source(self, source: str):
-        pass
-
-    def add_source(self, source: str):
-        pass
-
-    def fetch_data(self, query: str) -> List[Dict[str, str]]:
-        pass
-
-    async def fetch_data_async(self, query: str) -> List[Dict[str, str]]:
-        async with ClientSession() as session:
-            tasks = []
-            for source in self.sources:
-                task = asyncio.create_task(source.async_fetch(query=query, session=session))
-                tasks.append(task)
-            fetched_results = await asyncio.gather(*tasks)
-
-            # flatten list of lists into single list
-            combined_results = []
-            # TODO: could separate where each source came from
-            for result in fetched_results:
-                combined_results.extend(result)
-            return combined_results
-
-class BaseDataSource:
+class BaseDataSource(ABC):
     """Custom data source class interface"""
-    def __init__(self):
-        self.logger = get_logger()
-        self.source = "unknown"
 
+    # TODO: separate async from regular data sources
+
+    @abstractmethod
     def fetch(self, query: str) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
-        
+
         Args:
             query: query to retrieve text from
-                    
-        Returns:
-            Dictionary of fetched results, with keys 'link' and 'content'.
-            example:
 
-            {'link': 'https://xxx.xxx.com',
-            'content': 'abcdefg'}
-        
+        Returns:
+            List of Documents
+
         Raises:
             ...
         """
         pass
 
-    def async_fetch(self, query: str, session: ClientSession) -> List[Document]:
+    @abstractmethod
+    async def async_fetch(self, query: str, session: ClientSession) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
-        
+
         Args:
             query: query to retrieve text from
-                    
-        Returns:
-            Dictionary of fetched results, with keys 'link' and 'content'.
-            example:
 
-            {'link': 'https://xxx.xxx.com',
-            'content': 'abcdefg'}
-        
+        Returns:
+            List of Documents
+
         Raises:
             ...
         """
@@ -93,43 +57,42 @@ class YFinanceData(BaseDataSource):
 
 class LexisNexisData(BaseDataSource):
     def __init__(self):
-        super().__init__()
-        self.source="LexisNexis"
+        self.source = "LexisNexis"
 
         # credentials stored at `credentials.cred_file_path()`
         self.token = webservices.token()
-    
+
     def fetch(self, query: str) -> List[Dict[str, str]]:
         """Fetch news articles from LexisNexis API."""
 
         # see https://dev.lexisnexis.com/dev-portal/documentation/News#/News%20API/get_News for documentation
-        search_string = query # TODO: adjust this
+        search_string = query  # TODO: adjust this
 
         # TODO: adjust parameter based on documentation
-        parameters ={
-            '$search':search_string,
-            '$expand':'Document', #A navigation property name which will be included with the current result set.
-            '$top':'3',  #Sets the maximum number of results to receive for this request.
-            #Filter with two conditions
-            '$filter': "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2023",
-            '$select': 'WordLength,People,Subject',
+        parameters = {
+            "$search": search_string,
+            "$expand": "Document",  # A navigation property name which will be included with the current result set.
+            "$top": "3",  # Sets the maximum number of results to receive for this request.
+            # Filter with two conditions
+            "$filter": "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2023",
+            "$select": "WordLength,People,Subject",
             # '$orderby': 'Date asc'
-           }
-        
+        }
+
         try:
-            data = webservices.call_api(access_token=self.token,endpoint='News',params=parameters)
-        except HTTPError as e:
-            self.logger.error(
-                "HTTP Error %d: %s", e.response.status_code, str(e)
+            data = webservices.call_api(
+                access_token=self.token, endpoint="News", params=parameters
             )
-            
+        except HTTPError as e:
+            self.logger.error("HTTP Error %d: %s", e.response.status_code, str(e))
+
             if e.response.status_code == 429:
                 raise PermissionError("Lexis Nexis query limit reached")
             else:
                 raise ValueError(f"Invalid response: HTTP {e.status}")
-        
+
         # TODO: parse data
-        return 
+        return
 
 
 class NYTimesData(BaseDataSource):
@@ -154,8 +117,10 @@ class BingsNewsData(BaseDataSource):
 
 class GoogleSearchData(BaseDataSource):
     """Wrapper that calls on Google Search JSON API"""
-    def __init__(self, session: ClientSession = None):
-        super().__init__()
+
+    def __init__(
+        self, session: ClientSession = None
+    ):
         self.source = "GoogleSearchAPI"
 
         self.api_key = os.getenv("GOOGLE_API_KEY")
@@ -174,7 +139,9 @@ class GoogleSearchData(BaseDataSource):
         # get list of website links from Google
         links = []
         for page in range(pages):
-            response_json = await self._request_google_search_api(search_query=query, start_page=page)
+            response_json = await self._request_google_search_api(
+                search_query=query, start_page=page
+            )
 
             num_results = int(response_json["searchInformation"]["totalResults"])
             raw_results = response_json["items"] if num_results != 0 else []
@@ -182,20 +149,18 @@ class GoogleSearchData(BaseDataSource):
             # list of websites, where each website is a "title" and a "link"
             for result in raw_results:
                 links.append(result["link"])
-        
+
         # scrape list of links
         scraper = AsyncWebScraper()
         scraped_data = await scraper.scrape_links(links)
 
+        # create List of Documents
         documents = []
         for link, content in zip(links, scraped_data):
-            metadata = {
-                "url": link,
-                "source": self.source
-            }
-            documents.append(Document(text=content, metadata=metadata))
+            metadata = {"url": link, "source": self.source}
+            document = Document(text=content, metadata=metadata)
+            documents.append(document)
         return documents
-            
 
     async def _request_google_search_api(
         self,
@@ -220,9 +185,7 @@ class GoogleSearchData(BaseDataSource):
                 response_json = await resp.json()
                 return response_json
         except aiohttp.ClientResponseError as e:
-            self.logger.error(
-                "HTTP Error %d: %s", e.status, str(e)
-            )
+            self.logger.error("HTTP Error %d: %s", e.status, str(e))
             if e.status == 429:
                 raise PermissionError("Google search query limit per day reached")
             else:
