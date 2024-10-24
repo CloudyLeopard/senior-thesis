@@ -1,15 +1,41 @@
 import pytest
 import pytest_asyncio
 from aiohttp import ClientSession
+import os
 
 from rag.models import Document
+from rag.vector_storages import MilvusVectorStorage
+from rag.document_storages import MongoDBStore
+from rag.embeddings import OpenAIEmbeddingModel, AsyncOpenAIEmbeddingModel
+
 
 @pytest_asyncio.fixture(scope="session")
 async def session():
     client = ClientSession()
     yield client
     await client.close()
-    
+
+@pytest.fixture(scope="module")
+def vector_storage():
+    uri = os.getenv("ZILLIZ_URI")
+    token = os.getenv("ZILLIZ_TOKEN")
+
+    vector_storage = MilvusVectorStorage(uri, token)
+    yield vector_storage
+    vector_storage.close()
+
+@pytest.fixture(scope="module")
+def document_storage():
+    uri = os.getenv("MONGODB_URI")
+    db_name = "test"
+    doc_storage = MongoDBStore(uri=uri, db_name=db_name)
+    yield doc_storage
+    doc_storage.close()
+
+@pytest.fixture(scope="session")
+def embedding_model():
+    return OpenAIEmbeddingModel()
+
 @pytest.fixture
 def texts():
     return [

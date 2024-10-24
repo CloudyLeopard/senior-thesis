@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pymilvus import MilvusClient, DataType
 import os
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from .models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 from .document_storages import MONGODB_OBJECTID_DIM
@@ -10,11 +10,11 @@ class BaseVectorStorage(ABC):
     """Custom VectorStorage Class Interface"""
 
     @abstractmethod
-    def index_documents(self, embeddings: List[float], documents: List[Document]):
+    def insert_documents(self, embeddings: List[List[float]], documents: List[Document]):
         pass
 
     @abstractmethod
-    def search_vector(self, vector: List[float], top_k: int):
+    def search_vectors(self, vectors: List[List[float]], top_k: int = 3) -> List[List[Dict]]:
         pass
 
 
@@ -63,11 +63,11 @@ class MilvusVectorStorage(BaseVectorStorage):
             collection_name=self.collection_name, schema=schema, index_params=index_params
         )
 
-    def exit_client(self):
+    def close(self):
         """exit milvus client. not necessary"""
         self.client.close()
 
-    def index_documents(self, embeddings: List[float], documents: List[Document]):
+    def insert_documents(self, embeddings: List[List[float]], documents: List[Document]):
         """Embed documents with embeddings, index and store into vector storage
         
         Args:
@@ -82,26 +82,32 @@ class MilvusVectorStorage(BaseVectorStorage):
                 "db_id": document.db_id
             })
             
-            # insert data into milvus database
+        # insert data into milvus database
         res = self.client.insert(collection_name=self.collection_name, data=data)
         return res["ids"] # returns id of inserted vector
     
-    def remove_document(self, ids: List):
-        # TODO
-        pass
+    def remove_documents(self, ids: List[Any]):
+        """delete document based on primary id in milvus. returns deleted count"""
+        res = self.client.delete(
+            collection_name=self.collection_name,
+            filter = f"id in [{','.join([str(id) for id in ids])}]"
+        )
+
+        return res["delete_count"]
     
-    def search_vector(self, vector: List[float], top_k: int = 3) -> List[Dict]:
+    def search_vectors(self, vectors: List[List[float]], top_k: int = 3) -> List[List[Dict]]:
         """return relevant results based on vector
         
         Args:
             vector(List[float]): vector to retrieve
             top_k(int): top k results to retrieve
         Returns:
-            List of dictionaries with fields text, id, and db_id
+            List of List of dictionaries with fields text, id, and db_id.
+            Outer list corresponds to the vectors. Inner list coresponds to the result and rank
             """
         retrieved_data = self.client.search(
             collection_name=self.collection_name,
-            data=vector,
+            data=vectors,
             limit=top_k,
             search_params={"metric_type": "IP", "params": {}},
             output_fields=["id", "text", "db_id"],
@@ -111,4 +117,4 @@ class MilvusVectorStorage(BaseVectorStorage):
 
         # NOTE: the retrieved data is really stored in retrieved_data[0]
         # return list of contexts
-        return retrieved_data[0]
+        return retrieved_data

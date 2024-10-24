@@ -6,12 +6,12 @@ import asyncio
 
 from rag.sources import BaseDataSource
 from rag.models import Document
-from .embeddings import OpenAIEmbeddingModel
-from .text_splitters import RecursiveTextSplitter
-from .vector_storages import MilvusVectorStorage
-from .retriever import SimpleRetriever
-from .generator import OpenAILLM
-from .document_storages import MongoDBStore
+from rag.embeddings import OpenAIEmbeddingModel
+from rag.text_splitters import RecursiveTextSplitter
+from rag.vector_storages import MilvusVectorStorage
+from rag.retriever import SimpleRetriever
+from rag.generator import OpenAILLM
+from rag.document_storages import MongoDBStore
 
 
 class DataSourceManager:

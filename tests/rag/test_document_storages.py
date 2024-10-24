@@ -4,12 +4,6 @@ import os
 from rag.document_storages import MongoDBStore
 from rag.models import Document
 
-@pytest.fixture(scope="class")
-def document_storage():
-    uri = os.getenv("MONGODB_URI")
-    db_name = "test"
-    return MongoDBStore(uri=uri, db_name=db_name)
-
 def test_document_storage(document_storage, documents):
     # test saving documents
     ids = [document_storage.save_document(doc) for doc in documents]

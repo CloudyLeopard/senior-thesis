@@ -17,7 +17,9 @@ testpaths=["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 filterwarnings = [
-    "ignore::DeprecationWarning:bs4.builder._lxml"
+    "ignore::DeprecationWarning:bs4.builder._lxml",
+    "ignore:pkg_resources is deprecated:DeprecationWarning:pymilvus.client",
+    "ignore:The '__version_info__' attribute is deprecated:DeprecationWarning:environs"
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

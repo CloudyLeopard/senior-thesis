@@ -34,7 +34,8 @@ class SimpleRetriever(BaseRetriever):
 
         embeddings = self.embedding_model.embed([prompt])
 
-        retrieved_data = self.vector_storage.search_vector(embeddings[0], top_k=top_k)
+        retrieved_data = self.vector_storage.search_vectors(embeddings, top_k=top_k)
+        retrieved_data = retrieved_data[0] # only one prompt, not a list of prompts
         documents = [
             self.document_storage.get_document(data["db_id"]) for data in retrieved_data
         ]

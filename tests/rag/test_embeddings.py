@@ -3,9 +3,9 @@ import pytest
 from rag.embeddings import OpenAIEmbeddingModel, AsyncOpenAIEmbeddingModel
 
 
-def test_openai_embedding(texts):
-    model = OpenAIEmbeddingModel()
-    embeddings = model.embed(texts)
+
+def test_openai_embedding(texts, embedding_model):
+    embeddings = embedding_model.embed(texts)
 
     assert len(embeddings) == len(texts)
     assert len(embeddings[0]) > 0
