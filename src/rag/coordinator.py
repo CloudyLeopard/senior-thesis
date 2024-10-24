@@ -4,8 +4,8 @@ from aiohttp import ClientSession
 import asyncio
 
 
-from .sources import BaseDataSource
-from .models import Document
+from rag.sources import BaseDataSource
+from rag.models import Document
 from .embeddings import OpenAIEmbeddingModel
 from .text_splitters import RecursiveTextSplitter
 from .vector_storages import MilvusVectorStorage

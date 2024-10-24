@@ -17,9 +17,9 @@ class BaseTextSplitter(ABC):
 class RecursiveTextSplitter(BaseTextSplitter):
     """langchain recursive character text splitter"""
 
-    def __init__(self):
+    def __init__(self, chunk_size=1024, chunk_overlap=32):
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1024, chunk_overlap=32
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
 
     def split_documents(self, documents: List[Document]) -> List[Document]:

@@ -3,7 +3,6 @@ from pymilvus import MilvusClient, DataType
 import os
 from typing import List, Dict
 
-from .embeddings import AsyncOpenAIEmbeddingModel, OpenAIEmbeddingModel
 from .models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 from .document_storages import MONGODB_OBJECTID_DIM
 
@@ -75,17 +74,23 @@ class MilvusVectorStorage(BaseVectorStorage):
             documents: List of Documents that will be indexed
             embeddings: List of embeddings that matches the documents
         """
+        data = []
         for document, embedding in zip(documents, embeddings):
-            data = {
+            data.append({
                 "text": document.text,
                 "vector": embedding,
                 "db_id": document.db_id
-            }
+            })
             
             # insert data into milvus database
-            self.client.insert(collection_name=self.collection_name, data=data)
+        res = self.client.insert(collection_name=self.collection_name, data=data)
+        return res["ids"] # returns id of inserted vector
     
-    def search_vector(self, vector: List[float], top_k: int = 3) -> List[str]:
+    def remove_document(self, ids: List):
+        # TODO
+        pass
+    
+    def search_vector(self, vector: List[float], top_k: int = 3) -> List[Dict]:
         """return relevant results based on vector
         
         Args:
@@ -105,7 +110,5 @@ class MilvusVectorStorage(BaseVectorStorage):
 
 
         # NOTE: the retrieved data is really stored in retrieved_data[0]
-        # TODO: return more than just list of text - return also metadata
         # return list of contexts
         return retrieved_data[0]
-

@@ -9,10 +9,8 @@ import asyncio
 
 from lexisnexisapi import webservices, credentials
 
-
-from .util import get_logger
-from .scraper import AsyncWebScraper
-from .models import Document
+from rag.scraper import WebScraper
+from rag.models import Document
 
 class BaseDataSource(ABC):
     """Custom data source class interface"""
@@ -118,28 +116,19 @@ class BingsNewsData(BaseDataSource):
 class GoogleSearchData(BaseDataSource):
     """Wrapper that calls on Google Search JSON API"""
 
-    def __init__(
-        self, session: ClientSession = None
-    ):
+    def __init__(self):
         self.source = "GoogleSearchAPI"
 
         self.api_key = os.getenv("GOOGLE_API_KEY")
         self.search_engine_id = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
         # TODO: error for if the above are not set
 
-        # load aiohttp client session for async request
-        self.session = session
 
-    def fetch(self, query: str, pages: 2) -> List[str]:
-        return
-
-    async def async_fetch(self, query: str, pages: 2) -> List[Dict[str, str]]:
-        """async fetch links from Google Search API and scrape links."""
-
-        # get list of website links from Google
+    def fetch(self, query: str, pages = 1) -> List[str]:
+         # get list of website links from Google
         links = []
         for page in range(pages):
-            response_json = await self._request_google_search_api(
+            response_json = self._request_google_search_api(
                 search_query=query, start_page=page
             )
 
@@ -151,8 +140,8 @@ class GoogleSearchData(BaseDataSource):
                 links.append(result["link"])
 
         # scrape list of links
-        scraper = AsyncWebScraper()
-        scraped_data = await scraper.scrape_links(links)
+        scraper = WebScraper()
+        scraped_data = scraper.scrape_links(links)
 
         # create List of Documents
         documents = []
@@ -161,10 +150,68 @@ class GoogleSearchData(BaseDataSource):
             document = Document(text=content, metadata=metadata)
             documents.append(document)
         return documents
+        
 
-    async def _request_google_search_api(
+    async def async_fetch(self, query: str, session: ClientSession, pages = 1) -> List[Document]:
+        """async fetch links from Google Search API and scrape links."""
+
+        # get list of website links from Google
+        links = []
+        for page in range(pages):
+            response_json = await self._async_request_google_search_api(
+                search_query=query, session=session, start_page=page
+            )
+
+            num_results = int(response_json["searchInformation"]["totalResults"])
+            raw_results = response_json["items"] if num_results != 0 else []
+
+            # list of websites, where each website is a "title" and a "link"
+            for result in raw_results:
+                links.append(result["link"])
+
+        # scrape list of links
+        scraper = WebScraper()
+        scraped_data = await scraper.async_scrape_links(session, links)
+
+        # create List of Documents
+        documents = []
+        for link, content in zip(links, scraped_data):
+            metadata = {"url": link, "source": self.source}
+            document = Document(text=content, metadata=metadata)
+            documents.append(document)
+        return documents
+    
+
+    def _request_google_search_api(self, search_query: str, or_terms: str = "", start_page: int = 0):
+        """request Google Custom Search API with requests"""
+
+        parameters = {
+            "key": self.api_key,
+            "cx": self.search_engine_id,
+            "q": search_query,
+            "orTerms": or_terms,
+            "start": start_page * 10 + 1,
+        }
+        try:
+            resp = requests.get("https://www.googleapis.com/customsearch/v1", params=parameters)
+            resp.raise_for_status()
+            response_json = resp.json()
+            return response_json
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                raise PermissionError("Google search query limit per day reached")
+            else:
+                raise ValueError(f"Invalid response: HTTP {e.response.status_code}")
+        except requests.exceptions.RequestException as e:
+            raise ConnectionError("A network or server error occurred") from e
+        except Exception as e:
+            raise RuntimeError("An unexpected error occurred") from e
+
+
+    async def _async_request_google_search_api(
         self,
         search_query: str,
+        session: ClientSession,
         or_terms: str = "",
         start_page: int = 0,
     ):
@@ -178,21 +225,30 @@ class GoogleSearchData(BaseDataSource):
             "start": start_page * 10 + 1,
         }
         try:
-            async with self.session.get(
+            async with session.get(
                 "https://www.googleapis.com/customsearch/v1", params=parameters
             ) as resp:
                 resp.raise_for_status()
                 response_json = await resp.json()
                 return response_json
         except aiohttp.ClientResponseError as e:
-            self.logger.error("HTTP Error %d: %s", e.status, str(e))
             if e.status == 429:
                 raise PermissionError("Google search query limit per day reached")
             else:
-                raise ValueError(f"Invalid response: HTTP {e.status}")
+                raise ValueError(f"Invalid response: HTTP {e}")
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
-            self.logger.error(f"Client or HTTP processing error: {str(e)}")
             raise ConnectionError("A network or server error occurred")
         except Exception as e:
-            self.logger.exception("Unexpected error occurred during the API request")
             raise RuntimeError("An unexpected error occurred") from e
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        source = GoogleSearchData(session)
+        return await source.async_fetch("Donald Trump")
+
+if __name__ == "__main__":
+    results = asyncio.run(main())
+    for result in results:
+        print(result)
+        print()
+    

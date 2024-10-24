@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from .vector_storages import BaseVectorStorage
-from .document_storages import BaseDocumentStore
-from .embeddings import BaseEmbeddingModel, BaseAsyncEmbeddingModel
-from .models import Document
+from rag.vector_storages import BaseVectorStorage
+from rag.document_storages import BaseDocumentStore
+from rag.embeddings import BaseEmbeddingModel, BaseAsyncEmbeddingModel
+from rag.models import Document
 
 
 class BaseRetriever(ABC):
