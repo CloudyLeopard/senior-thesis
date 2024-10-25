@@ -44,7 +44,7 @@ class MilvusVectorStorage(BaseVectorStorage):
         schema = MilvusClient.create_schema(auto_id=True, enable_dynamic_field=True)
         schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
         schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=OPENAI_TEXT_EMBEDDING_SMALL_DIM)
-        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=2048)
+        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=2048) # stores chunked text
         schema.add_field(field_name="db_id", datatype=DataType.VARCHAR, max_length=MONGODB_OBJECTID_DIM) # mongo db id length = 24 byte
 
         # create index
@@ -92,8 +92,8 @@ class MilvusVectorStorage(BaseVectorStorage):
             collection_name=self.collection_name,
             filter = f"id in [{','.join([str(id) for id in ids])}]"
         )
-
-        return res["delete_count"]
+        print(res)
+        return res
     
     def search_vectors(self, vectors: List[List[float]], top_k: int = 3) -> List[List[Dict]]:
         """return relevant results based on vector

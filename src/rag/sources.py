@@ -5,7 +5,7 @@ from aiohttp import ClientSession
 import requests
 from requests.exceptions import HTTPError
 from typing import List, Dict
-import asyncio
+import pathlib
 
 from lexisnexisapi import webservices, credentials
 
@@ -241,14 +241,27 @@ class GoogleSearchData(BaseDataSource):
         except Exception as e:
             raise RuntimeError("An unexpected error occurred") from e
 
-async def main():
-    async with aiohttp.ClientSession() as session:
-        source = GoogleSearchData(session)
-        return await source.async_fetch("Donald Trump")
+class DirectoryData(BaseDataSource):
+    def fetch(self, path: str):
+        """given path to directory, fetch all .txt files within that directory"""
+        dir = pathlib.Path(path)
+        if (not dir.is_dir()):
+            raise ValueError("Invalid path - must be a directory")
+        
+        documents = []
+        for txt_file in dir.glob("*.txt"):
+            txt = txt_file.read_text()
+            name = txt_file.name
 
-if __name__ == "__main__":
-    results = asyncio.run(main())
-    for result in results:
-        print(result)
-        print()
+            doc = Document(text=txt, metadata = {
+                "name": name,
+                "sources": "/".join(dir.parts[-2:-1])
+            })
+            documents.append(doc)
+        
+        return documents
     
+    async def async_fetch(self, path: str):
+        """N/A. Calls on sync. fetch function"""
+        return self.fetch(self, path)
+                

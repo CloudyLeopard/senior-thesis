@@ -5,22 +5,14 @@ from rag.document_storages import MongoDBStore
 from rag.models import Document
 
 def test_document_storage(document_storage, documents):
-    # test saving documents
-    ids = [document_storage.save_document(doc) for doc in documents]
-    
-    assert len(ids) == len(documents), "Insert document error"
-    assert all(ids), "Insert document error"
 
+    # NOTE: "inserting" and "removing" document is assumed correct. It's used in conftest
     # test fetching documents
-    for i in range(len(ids)):
-        fetched_res = document_storage.get_document(ids[i])
-        assert isinstance(fetched_res, Document), "Get document error"
-        assert fetched_res.text == documents[i].text, "Get document error"
-        assert fetched_res.metadata == documents[i].metadata, "Get document error"
-
-    # test removing documents
-    for id in ids:
-        res = document_storage.remove_document(id)
-        assert res, "Remove document error" # this should be true
-
+    for doc in documents:
+        regex = f"^{doc.text[:20]}"
+        fetched_res = document_storage.search_document(regex)
+        assert len(fetched_res) > 0
+        assert isinstance(fetched_res[0], Document), "Get document error"
+        assert fetched_res[0].text == doc.text, "Get document error"
+        assert fetched_res[0].metadata == doc.metadata, "Get document error"
     

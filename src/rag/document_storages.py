@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pymongo import MongoClient
 from bson import ObjectId
+from typing import List
 
 from .models import Document
 
@@ -43,6 +44,14 @@ class MongoDBStore(BaseDocumentStore):
         if result:  # if found, parse into Document class
             result = Document(text=result["text"], metadata=result["metadata"])
         return result
+    
+    def search_document(self, regex: str) -> List[Document] | None:
+        cursor = self.collection.find({"text": {"$regex":regex}})
+        documents = []        
+        for result in cursor:
+            documents.append(Document(text=result["text"], metadata=result["metadata"]))
+        return documents
+
 
     def remove_document(self, document_id: str) -> bool:
         result = self.collection.delete_one({"_id": ObjectId(document_id)})

@@ -36,9 +36,12 @@ class SimpleRetriever(BaseRetriever):
 
         retrieved_data = self.vector_storage.search_vectors(embeddings, top_k=top_k)
         retrieved_data = retrieved_data[0] # only one prompt, not a list of prompts
-        documents = [
-            self.document_storage.get_document(data["db_id"]) for data in retrieved_data
-        ]
+
+        documents = []
+        for data in retrieved_data:
+            db_document = self.document_storage.get_document(data["entity"]["db_id"]) # get extra data from mongodb database
+            db_document.text = data["entity"]["text"] # set text field to chunked text, not entire text
+            documents.append(db_document)
 
         return documents
 

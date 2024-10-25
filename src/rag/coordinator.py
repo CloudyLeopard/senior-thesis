@@ -71,12 +71,6 @@ class DataSourceManager:
 
 class RAGCoordinator:
     def __init__(self):
-
-        # # Use Zilliz (Cloud) Vectorstorage
-        # milvus_client = MilvusClient(
-        #     uri=os.getenv("ZILLIZ_URI"),
-        #     token=os.getenv("ZILLIZ_TOKEN")
-        # )
         embedding_model = OpenAIEmbeddingModel()
         vector_storage = MilvusVectorStorage(uri="http://localhost:19530")
 
