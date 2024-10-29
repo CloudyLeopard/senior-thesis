@@ -9,7 +9,7 @@ from rag.models import Document
 from rag.embeddings import OpenAIEmbeddingModel
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import MilvusVectorStorage
-from rag.retriever import SimpleRetriever
+from rag.retrievers import SimpleRetriever
 from rag.generator import OpenAILLM
 from rag.document_storages import MongoDBStore
 

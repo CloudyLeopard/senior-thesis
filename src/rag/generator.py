@@ -3,14 +3,14 @@ from typing import List, Dict
 import os
 from openai import OpenAI, AsyncOpenAI
 
-from .models import Document
-from .prompts import RAG_PROMPT_STANDARD, RAG_SYSTEM_STANDARD
+from rag.models import Document
+from rag.prompts import RAG_PROMPT_STANDARD, RAG_SYSTEM_STANDARD
 
 class BaseLLM:
     """Custom generator interface"""
-    def _synthesize_prompt(self, prompt: str, contexts: List[str]) -> List[Dict]:
+    def _synthesize_prompt(self, query: str, contexts: List[str]) -> List[Dict]:
         """merge contexts and prompt, returns messages for openai api call"""
-        prompt = RAG_PROMPT_STANDARD.format(query=prompt, context="\n\n".join(contexts))
+        prompt = RAG_PROMPT_STANDARD.format(query=query, context="\n\n".join(contexts))
 
         # format into openai accepted format
         messages = [
@@ -26,12 +26,12 @@ class OpenAILLM(BaseLLM):
         self.model = model
     
     def generate(
-        self, prompt: str, contexts: List[Document], max_tokens=2000
+        self, query: str, contexts: List[Document], max_tokens=2000
     ) -> str:
         """returns openai response based on given prompt and contexts"""
 
         # NOTE: currently, does not use Document's metadata
-        messages = self._synthesize_prompt(prompt=prompt, contexts=[document.text for document in contexts])
+        messages = self._synthesize_prompt(query=query, contexts=[document.text for document in contexts])
 
         completion = self.client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens
@@ -48,12 +48,12 @@ class AsyncOpenAILLM(BaseLLM):
         self.model = model
 
     async def async_generate(
-        self, prompt: str, contexts: List[Document], max_tokens=2000
+        self, query: str, contexts: List[Document], max_tokens=2000
     ) -> str:
         """returns openai response based on given prompt and contexts"""
 
         # NOTE: currently, does not use Document's metadata
-        messages = self._synthesize_prompt(prompt=prompt, contexts=[document.text for document in contexts])
+        messages = self._synthesize_prompt(query=query, contexts=[document.text for document in contexts])
 
         completion = await self.client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens

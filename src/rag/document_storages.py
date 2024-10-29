@@ -15,7 +15,7 @@ class BaseDocumentStore(ABC):
         ...
 
     @abstractmethod
-    def get_document(self, document_id: str):
+    def get_document(self, document_id: str) -> Document | None:
         """given id, fetch Document from database"""
         ...
 
