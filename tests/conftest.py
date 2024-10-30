@@ -2,7 +2,6 @@ import pytest
 import pytest_asyncio
 from aiohttp import ClientSession
 import os
-import time
 
 from rag.sources import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter

@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from typing import List
 
-from .models import Document
+from rag.models import Document
 
 MONGODB_OBJECTID_DIM = 24
 
