@@ -1,6 +1,6 @@
 import pytest
 
-from rag.retrievers import *
+from rag.retrievers import SimpleRetriever
 from rag.models import Document
 
 @pytest.fixture(

@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 
-from rag.sources import *
+from rag.sources import GoogleSearchData, DirectoryData
 from rag.models import Document
 
 @pytest.fixture(params=[
