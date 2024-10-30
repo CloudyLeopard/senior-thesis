@@ -16,10 +16,11 @@ dependencies = [
     "requests",
     "selenium>=4.25.0", 
     "beautifulsoup4",
+    "lxml>=5.3.0",
     "lexisnexisapi", 
     "langchain_text_splitters>=0.3.0",
     "pymongo==4.10.0",
-    "bson==0.5.10"
+    "bson==0.5.10",
 ]
 
 [project.urls]
@@ -34,8 +35,15 @@ path = "src/rag/__about__.py"
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
     "pytest_asyncio",
+    "pytest-dotenv", # for loading .env in testing environment
+    "pytest-retry" # for retrying failed tests
 ]
 extra-args = ["-vv"]
+
+[tool.pytest]
+env_files = [
+    ".env"
+]
 
 [tool.pytest.ini_options]
 addopts = [

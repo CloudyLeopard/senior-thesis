@@ -19,19 +19,20 @@ class BaseVectorStorage(ABC):
 
     @abstractmethod
     def insert_documents(
-        self, embeddings: List[List[float]], documents: List[Document]
+        self, documents: List[Document]
     ) -> List[int]:
-        """insert documents, return list of ids"""
+        """insert documents, embed them, return list of ids"""
         pass
 
     @abstractmethod
-    def search_vectors(
-        self, vectors: List[List[float]], top_k: int = 3
-    ) -> List[List[Document]]:
+    def similarity_search(self, query: str, top_k: int):
+        """given query, return top_k relevant results"""
         pass
 
     @abstractmethod
-    def remove_documents(self, ids: List[Any]):
+    def similarity_search_by_vector(
+        self, vector: List[float], top_k: int = 3
+    ) -> List[Document]:
         pass
 
 
@@ -51,10 +52,11 @@ class MilvusVectorStorage(BaseVectorStorage):
         self.collection_name = collection_name
 
         # if collection does not exist, create schema
+        self.client.drop_collection(self.collection_name) # dev mode, reset every time
         if not self.client.has_collection(self.collection_name):
-            self._create_schema()
+            self._create_schema_and_collection()
 
-    def _create_schema(self):
+    def _create_schema_and_collection(self):
         # create fields
         schema = MilvusClient.create_schema(auto_id=True, enable_dynamic_field=True)
         schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
@@ -106,20 +108,20 @@ class MilvusVectorStorage(BaseVectorStorage):
         self.client.close()
 
     def insert_documents(
-        self, embeddings: List[List[float]], documents: List[Document]
-    ):
+        self, documents: List[Document]
+    ) -> List[int]:
         """Embed documents with embeddings, index and store into vector storage
 
         Args:
             documents: List of Documents that will be indexed
-            embeddings: List of embeddings that matches the documents
         """
         data = []
-        for document, embedding in zip(documents, embeddings):
+        for document in documents:
             # required fields
             entry = {
                 "text": document.text,
-                "vector": embedding,
+                "vector": self.embedding_model.embed([document.text])[0],
+                "uuid": str(document.uuid)
             }
 
             # optional field
@@ -131,13 +133,13 @@ class MilvusVectorStorage(BaseVectorStorage):
         res = self.client.insert(collection_name=self.collection_name, data=data)
         return res["ids"]  # returns id of inserted vector
 
-    def remove_documents(self, ids: List[Any]):
+    def remove_documents(self, ids: List[Any]) -> int:
         """delete document based on primary id in milvus. returns deleted count"""
         res = self.client.delete(
             collection_name=self.collection_name,
             filter=f"id in [{','.join([str(id) for id in ids])}]",
         )
-        return res
+        return res["delete_count"]
 
     def _search_vector_storage (self, vectors: List[List[float]], top_k: int):
         """Search milvus and get top_k relevant results given list of vectors.
@@ -180,13 +182,17 @@ class MilvusVectorStorage(BaseVectorStorage):
         top_documents = []
         for result in top_results:
             entity = result["entity"]
+            text = entity.pop("text")
+            uuid = entity.pop("uuid")
+            db_id = entity.pop("db_id")
+
             doc = Document(
-                text=entity.pop("text"),
-                uuid=UUID(entity.pop("uuid")),
-                db_id=entity.pop("db_id")
+                text=text,
+                uuid=UUID(uuid),
+                metadata=entity, # whatever is left is part of metadata
+                db_id=db_id
             )
-            # whatever is left is part of metadata
-            doc["metadata"] = entity
+            
             top_documents.append(doc)
         
         return top_documents

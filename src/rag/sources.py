@@ -151,7 +151,11 @@ class GoogleSearchData(BaseDataSource):
         # create List of Documents
         documents = []
         for link, content in zip(links, scraped_data):
-            metadata = {"url": link, "datasource": self.source}
+            metadata = {
+                "url": link, 
+                "datasource": self.source,
+                "query": query
+            }
             document = Document(text=content, metadata=metadata)
             documents.append(document)
         return documents
@@ -181,7 +185,11 @@ class GoogleSearchData(BaseDataSource):
         # create List of Documents
         documents = []
         for link, content in zip(links, scraped_data):
-            metadata = {"url": link, "source": self.source}
+            metadata = {
+                "url": link, 
+                "datasource": self.source,
+                "query": query
+            }
             document = Document(text=content, metadata=metadata)
             documents.append(document)
         return documents

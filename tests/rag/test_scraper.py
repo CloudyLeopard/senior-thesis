@@ -20,12 +20,12 @@ async def test_scrape(scraper, session):
     data = await scraper.async_scrape_links(session, urls)
 
     assert len(urls) == len(data)
-    assert any(data) # text is not empty
+    assert all(data) # text is not empty
 
     # test nonasync version
     data = scraper.scrape_links(urls)
     assert len(urls) == len(data)
-    assert any(data)
+    assert all(data)
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_scrape_aiohttp(scraper, session):
