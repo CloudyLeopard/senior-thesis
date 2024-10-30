@@ -5,12 +5,17 @@ import os
 from typing import List, Dict, Any
 
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
-from rag.document_storages import BaseDocumentStore, MONGODB_OBJECTID_DIM
+
+from rag.embeddings import BaseEmbeddingModel
+from rag.document_storages import MONGODB_OBJECTID_DIM
 
 
 class BaseVectorStorage(ABC):
     """Custom VectorStorage Class Interface. A vectorstorage is required to have a
     'text' field and a 'vector' field."""
+
+    def __init__(self, embedding_model: BaseEmbeddingModel):
+        self.embedding_model = embedding_model
 
     @abstractmethod
     def insert_documents(
@@ -33,7 +38,7 @@ class BaseVectorStorage(ABC):
 class MilvusVectorStorage(BaseVectorStorage):
     """Custom Vector storage class for using Milvus"""
 
-    def __init__(self, uri: str, token="", collection_name="financial_context"):
+    def __init__(self, embedding_model: BaseEmbeddingModel, uri: str, token="", collection_name="financial_context"):
         """init Milvus Vectorstorage Client
 
         Args:
@@ -41,6 +46,7 @@ class MilvusVectorStorage(BaseVectorStorage):
             token(str): token to access zilliz
             collection_name(str): name of collection
         """
+        self.embedding_model = embedding_model
         self.client = MilvusClient(uri=uri, token=token)
         self.collection_name = collection_name
 
@@ -133,41 +139,57 @@ class MilvusVectorStorage(BaseVectorStorage):
         )
         return res
 
-    def search_vectors(
-        self, vectors: List[List[float]], top_k: int = 3
-    ) -> List[List[Document]]:
-        """return relevant results based on vector
+    def _search_vector_storage (self, vectors: List[List[float]], top_k: int):
+        """Search milvus and get top_k relevant results given list of vectors.
+        Returns List[List[Dict]]"""
 
-        Args:
-            vector(List[float]): vector to retrieve
-            top_k(int): top k results to retrieve
-        Returns:
-            List of List of (incomplete) Documents. Each Document does not contain the metadata
-            Outer list corresponds to the vectors. Inner list coresponds to the result and rank
-        """
+        # output_fields determines which metadata to extract
         retrieved_data = self.client.search(
             collection_name=self.collection_name,
             data=vectors,
             limit=top_k,
             search_params={"metric_type": "IP", "params": {}},
-            output_fields=["id", "text", "db_id"],
+            output_fields=["id", "text", "uuid", "db_id", "datasource"],
             # filter=f'source == "{source}"' # filter by metadata
         )
 
-        # reformat milvus result into Documents, instead of dictionaries
-        # the Documents are incomplete - they do not have the "metadata", which
-        # is stored in Document Storage
-        retrieved_documents = [
-            [
-                Document(
-                    text=data["entity"]["text"],
-                    metadata={},
-                    uuid=UUID(data["entity"]["uuid"]),
-                    db_id=data["entity"]["db_id"],
-                )
-                for data in contexts
-            ]
-            for contexts in retrieved_data
-        ]
+        return retrieved_data
 
-        return retrieved_documents
+    def similarity_search(self, query: str, top_k=3):
+        """given query, return top_k relevant results"""
+        embedding = self.embedding_model.embed([query])[0]
+
+        return self.similarity_search_by_vector(embedding, top_k)
+
+    def similarity_search_by_vector(
+        self, vector: List[float], top_k: int = 3
+    ) -> List[Document]:
+        """return top_k relevant results based on vector
+
+        Args:
+            vector(List[float]): vector to retrieve
+            top_k(int): top k results to retrieve
+        Returns:
+            return list of most relevant document with metadata stored in
+            vector storage. Not connected to document storage.
+        """
+        
+        retrieved_data = self._search_vector_storage(vectors=[vector], top_k=top_k)
+        top_results = retrieved_data[0]
+
+        top_documents = []
+        for result in top_results:
+            entity = result["entity"]
+            doc = Document(
+                text=entity.pop("text"),
+                uuid=UUID(entity.pop("uuid")),
+                db_id=entity.pop("db_id")
+            )
+            # whatever is left is part of metadata
+            doc["metadata"] = entity
+            top_documents.append(doc)
+        
+        return top_documents
+
+
+
