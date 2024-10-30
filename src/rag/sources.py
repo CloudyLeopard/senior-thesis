@@ -47,6 +47,11 @@ class BaseDataSource(ABC):
         """
         pass
 
+    def process_document(document: Document):
+        # TODO: later on, perhaps use LLM on scraped text data
+        # to extract information that can be used later. Example: category
+        pass
+
 
 class YFinanceData(BaseDataSource):
     def fetch(self, query: str) -> List[str]:
@@ -146,7 +151,7 @@ class GoogleSearchData(BaseDataSource):
         # create List of Documents
         documents = []
         for link, content in zip(links, scraped_data):
-            metadata = {"url": link, "source": self.source}
+            metadata = {"url": link, "datasource": self.source}
             document = Document(text=content, metadata=metadata)
             documents.append(document)
         return documents
@@ -242,6 +247,9 @@ class GoogleSearchData(BaseDataSource):
             raise RuntimeError("An unexpected error occurred") from e
 
 class DirectoryData(BaseDataSource):
+    def __init__(self):
+        self.source = "Local Directory"
+
     def fetch(self, path: str):
         """given path to directory, fetch all .txt files within that directory"""
         dir = pathlib.Path(path)
@@ -255,7 +263,8 @@ class DirectoryData(BaseDataSource):
 
             doc = Document(text=txt, metadata = {
                 "name": name,
-                "sources": "/".join(dir.parts[-2:-1])
+                "path": txt_file.absolute(),
+                "datasource": self.source
             })
             documents.append(doc)
         

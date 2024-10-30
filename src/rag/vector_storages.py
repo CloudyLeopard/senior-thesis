@@ -8,7 +8,8 @@ from rag.document_storages import BaseDocumentStore, MONGODB_OBJECTID_DIM
 
 
 class BaseVectorStorage(ABC):
-    """Custom VectorStorage Class Interface"""
+    """Custom VectorStorage Class Interface. A vectorstorage is required to have a
+    'text' field and a 'vector' field."""
 
     @abstractmethod
     def insert_documents(
@@ -64,6 +65,12 @@ class MilvusVectorStorage(BaseVectorStorage):
             max_length=MONGODB_OBJECTID_DIM,
         )  # mongo db id length = 24 byte
 
+        schema.add_field(
+            field_name="datasource",
+            datatype=DataType.VARCHAR,
+            max_length=128
+        )
+
         # create index
         index_params = self.client.prepare_index_params()
         index_params.add_index(
@@ -97,9 +104,16 @@ class MilvusVectorStorage(BaseVectorStorage):
         """
         data = []
         for document, embedding in zip(documents, embeddings):
-            data.append(
-                {"text": document.text, "vector": embedding, "db_id": document.db_id}
-            )
+            # required fields
+            entry = {
+                "text": document.text,
+                "vector": embedding,
+            }
+            
+            # optional field
+            entry["db_id"] = document.db_id
+            entry["datasource"] = document.metadata.get("datasource", "")
+            data.append(entry)
 
         # insert data into milvus database
         res = self.client.insert(collection_name=self.collection_name, data=data)
