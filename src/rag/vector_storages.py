@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pymilvus import MilvusClient, DataType
+from uuid import UUID
 import os
 from typing import List, Dict, Any
 
@@ -59,6 +60,7 @@ class MilvusVectorStorage(BaseVectorStorage):
         schema.add_field(
             field_name="text", datatype=DataType.VARCHAR, max_length=2048
         )  # stores chunked text
+
         schema.add_field(
             field_name="db_id",
             datatype=DataType.VARCHAR,
@@ -66,9 +68,13 @@ class MilvusVectorStorage(BaseVectorStorage):
         )  # mongo db id length = 24 byte
 
         schema.add_field(
-            field_name="datasource",
+            field_name="uuid",
             datatype=DataType.VARCHAR,
-            max_length=128
+            max_length=128,  # uuid is 128 bit
+        )  # stores uuid
+
+        schema.add_field(
+            field_name="datasource", datatype=DataType.VARCHAR, max_length=128
         )
 
         # create index
@@ -109,7 +115,7 @@ class MilvusVectorStorage(BaseVectorStorage):
                 "text": document.text,
                 "vector": embedding,
             }
-            
+
             # optional field
             entry["db_id"] = document.db_id
             entry["datasource"] = document.metadata.get("datasource", "")
@@ -156,6 +162,7 @@ class MilvusVectorStorage(BaseVectorStorage):
                 Document(
                     text=data["entity"]["text"],
                     metadata={},
+                    uuid=UUID(data["entity"]["uuid"]),
                     db_id=data["entity"]["db_id"],
                 )
                 for data in contexts
