@@ -1,0 +1,49 @@
+Apple Unveils New iPhones With Built-In Artificial Intelligence
+The company also showcased a new Apple Watch and AirPods that can reduce noise at concerts or near construction sites.
+
+The new iPhone 16 Pro is displayed on a metal stand, with a circular light fixture over it.
+The iPhone 16 comes in four models that are designed to run the company’s generative artificial intelligence system, called Apple Intelligence. Credit...Justin Sullivan/Getty Images
+Tripp Mickle
+By Tripp Mickle
+Reporting from San Francisco
+
+Sept. 9, 2024
+The iPhone has grown predictable. Over the past seven years, it has generally looked the same, with incremental improvements to its cameras, processors and battery life.
+
+But on Monday, Apple tried to turn the page on that predictability by introducing its first artificially intelligent iPhone.
+
+The iPhone 16, which was unveiled in a prerecorded video at the company’s futuristic Silicon Valley campus, comes in four different models that are designed to run the company’s generative artificial intelligence system, called Apple Intelligence. The company said that the phones will be able to sort messages, offer writing suggestions and use a more capable Siri virtual assistant.
+
+In addition to announcing those changes to the iPhone, the company unveiled the Apple Watch Series 10, which has rounder corners and a larger, brighter display that is nearly 10 percent thinner. It also introduced a new AirPods Pro, capable of automatically reducing noise at concerts or near construction sites, and acting as professional-grade hearing aids.
+
+The Apple Watch Series 10 has rounder corners and a larger, brighter display that is nearly 10 percent thinner.Credit...Peter Dasilva/EPA, via Shutterstock
+Image
+
+Apple also updated its AirPods Max product line.Credit...Justin Sullivan/Getty Images
+The new phones arrive at a pivotal time for Apple and the broader tech industry. Apple’s business has sputtered in recent years as iPhone users have held on to their phones for longer. It has made a major bet by realigning its engineering teams to work on artificial intelligence in hopes that the technology, which can answer questions, create images and write software code, will persuade people to buy new devices.
+
+The tech industry is hoping that Apple can help make A.I. mainstream. Microsoft, Google and Samsung have all added generative A.I. features to products but have yet to see those capabilities widely adopted. But Apple has shown in the past that it can wait to embrace an emerging technology and popularize it, as it did with digital music players, smartphones and smartwatches.
+
+“The question is: How good is Apple Intelligence?” said Bob O’Donnell, chief analyst at TECHnalysis Research, a market research firm. “We’ve seen incredible demos from Microsoft, Google and OpenAI, but when you start to work with these services, a lot are parlor tricks. Helping normal people do something useful every day would make people go, ‘I need a new iPhone.’”
+
+The iPhone 16 is debuting with fewer capabilities than the company marketed in June, when it announced its Apple Intelligence system. Starting next month, the phones will summarize notifications, offer writing recommendations and allow people to more quickly find photos by describing an image to Siri. The A.I. also makes it possible to use the camera to identify specific types of flowers, plants or dog breeds.
+
+Other capabilities will arrive over time, the company said, including Siri’s ability to field some requests related to personal information on the phone, like pulling details from a text message about a family member’s flight and checking airline information for real-time arrival details.
+
+Requests unrelated to personal information will be routed to ChatGPT, which will be available on iPhones after Apple cut a deal with OpenAI in the spring.
+
+The iPhone’s limited feature set is emblematic of how Apple is taking a cautious approach to generative A.I. By contrast, last month Google revealed a Pixel phone that includes a conversational virtual assistant, the ability to edit people into photographs and the opportunity to use the company’s generative A.I. chatbot, Gemini, to answer complex questions. Google has also had A.I. misfires, including a chatbot’s telling users to eat rocks.
+
+Apple released four versions of the iPhone 16, all of which come with a new camera button. The entry-level models, the iPhone 16 and 16 Plus, start at $799 and feature a faster processor, a more powerful camera and an “Action button” that can be programmed to automatically retrieve capabilities like the phone’s flashlight. The higher-end models, the iPhone 16 Pro and Pro Max, start at $999 and feature a slightly larger display, a larger battery and the ability to capture studio-quality audio. They will be available in stores on Sept. 20.
+
+To power Apple Intelligence, both phones come with similar processors. The base iPhone 16 model features the A18 chip, while the iPhone 16 Pro features an A18 Pro chip. The upgrade makes for a smaller difference in the capabilities of the lower- and higher-priced phones than in recent years.
+
+Wall Street is enthusiastic about the artificially intelligent phones, with analysts predicting the features could help Apple sell a record 240 million iPhones next year, a 12 percent increase from this year.
+
+The generative A.I. era also presents new challenges for Apple. During most of the iPhone’s 17 years, the company developed a single software system that it updated throughout the world. But many countries want the computing systems and data supporting A.I. to be located within their border. The artificial intelligence systems are also expected to be sensitive to the cultural and language differences of the people using them.
+
+As a result, Apple may have to create more customized software for the countries that sell iPhones, analyst say.
+
+The company said Apple Intelligence would become available next month in the United States in a preliminary software update. Apple will expand the software’s distribution to Britain, Canada, Australia, New Zealand and South Africa later this year. It said the capabilities wouldn’t be available in Chinese, Japanese or Spanish until next year.
+
+“Regions are becoming more Balkanized,” said Patrick Moorhead, the founder of Moor Insights & Strategy, a tech research firm. “It is slowing down the pace of output for Apple, as each region becomes more bespoke.”

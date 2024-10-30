@@ -1,0 +1,34 @@
+Apple and Nvidia in Talks to Invest in OpenAI
+Led by the investment firm Thrive Capital, the new deal would value the artificial intelligence start-up at over $100 billion.
+
+The exterior of an office building.
+A $100 billion valuation would be about a $20 billion increase from OpenAI’s valuation eight months ago.Credit...Jason Henry for The New York Times
+Cade MetzMichael J. de la MercedTripp Mickle
+By Cade MetzMichael J. de la Merced and Tripp Mickle
+Cade Metz and Tripp Mickle reported from San Francisco, and Michael J. de la Merced from London.
+
+Apple and the chipmaker Nvidia are in talks to invest in OpenAI as part of a new deal that would value the San Francisco artificial intelligence start-up at $100 billion, according to three people familiar with the discussions, who spoke on the condition of anonymity.
+
+The deal would be led by Thrive Capital and might also include Microsoft. Thrive would put about $1 billion into OpenAI, the people said.
+
+A $100 billion valuation would be about a $20 billion increase from OpenAI’s valuation eight months ago.
+
+Nvidia and Apple declined to comment.
+
+OpenAI started the A.I. boom with the release of the online chatbot ChatGPT in late 2022. In the months that followed, investors pumped tens of billions of dollars into the start-up and other companies that were developing similar technologies.
+
+In recent months, investors’ interest has cooled as several prominent start-ups essentially disappeared into tech giants like Google, Amazon and Microsoft. But OpenAI has remained an independent operation intent on building and selling its own technologies and products.
+
+Since 2019, Microsoft and others have invested over $13 billion in the start-up, which needs billions of dollars in raw computing power to build its A.I. technologies. Nvidia, which supplies much of that computing power in the form of specialized computer chips suited to the development of A.I., has experienced dramatic growth over the last 18 months. On Wednesday, Nvidia reported that its sales and profit had more than doubled during the three months that ended in July.
+
+Early this year, Thrive led a deal that valued OpenAI at more than $80 billion. With that deal, the start-up did not issue new shares. The company allowed its employees to sell their existing shares.
+
+The new deal would allow other existing shareholders to sell their shares as well.
+
+Nvidia’s involvement in the talks was reported earlier by Bloomberg. Apple’s involvement was reported earlier by The Wall Street Journal. (The New York Times sued OpenAI and Microsoft for copyright infringement last year, saying that the companies used news articles to train their models without permission.)
+
+While Google, Microsoft, Meta and OpenAI have been at the forefront of A.I. development for years, Apple has lagged behind. It recently announced that it would soon allow customers to use OpenAI’s chatbot on the iPhone.
+
+In June, Apple unveiled its plan to add generative A.I. to devices. The technology, which it calls Apple Intelligence, will improve its Siri virtual assistant, automatically prioritize messages and offer writing tools that proofread or suggest sentences for emails, notes or text.
+
+The company is expected to provide more details on the technology on Sept. 9 when it hosts an event to unveil its newest iPhones at its headquarters in Cupertino, Calif.
