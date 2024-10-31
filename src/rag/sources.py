@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import os
-from unittest.mock import Base
+import httpx
 import aiohttp
 from aiohttp import ClientSession
 import requests
@@ -20,7 +20,7 @@ class BaseDataSource(ABC):
         self.document_store = document_store
         
     @abstractmethod
-    def fetch(self, query: str) -> List[Document]:
+    def fetch(self) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
 
         Args:
@@ -35,7 +35,7 @@ class BaseDataSource(ABC):
         pass
 
     @abstractmethod
-    async def async_fetch(self, query: str, session: ClientSession) -> List[Document]:
+    async def async_fetch(self) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
 
         Args:
@@ -128,26 +128,53 @@ class GoogleSearchData(BaseDataSource):
         super().__init__(document_store)
         self.source = "GoogleSearchAPI"
 
-        self.api_key = os.getenv("GOOGLE_API_KEY")
-        self.search_engine_id = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
-        # TODO: error for if the above are not set
+        self.parameters = {
+            "key": os.getenv("GOOGLE_API_KEY"),
+            "cx": os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+        }
+        # TODO: error for if API key or search engine ID is not set
 
+        self.document_store = document_store
 
-    def fetch(self, query: str, pages = 1) -> List[str]:
-         # get list of website links from Google
+    
+    def fetch(self, query: str, or_terms: str = None, pages = 1) -> List[Document]:
+        """Fetch links from Google Search API, scrape them, and return as a list of Documents.
+        If document store is set, save documents to document store
+
+        Args:
+            query (str): The main search query to fetch relevant links.
+            or_terms (str, optional): Additional search terms to include in the query.
+            pages (int, optional): The number of pages of search results to fetch.
+
+        Returns:
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
+
+        Raises:
+            HTTPError: If the request to the Google Search API fails.
+            PermissionError: If the Google Search API query limit is reached.
+        """
+        # get list of links from Google Search API
         links = []
-        for page in range(pages):
-            response_json = self._request_google_search_api(
-                search_query=query, start_page=page
-            )
+        with httpx.Client(timeout=10.0) as client:
+            params = self.parameters
+            params["q"] = query
+            params["orTerms"] = or_terms
 
-            num_results = int(response_json["searchInformation"]["totalResults"])
-            raw_results = response_json["items"] if num_results != 0 else []
+            for page in range(pages):
+                params["start"] = page * 10 + 1
 
-            # list of websites, where each website is a "title" and a "link"
-            for result in raw_results:
-                links.append(result["link"])
+                # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
+                response = client.get("https://www.googleapis.com/customsearch/v1", params=params)
+                response.raise_for_status()
+                response_json = response.json()
 
+                num_results = int(response_json["searchInformation"]["totalResults"])
+                raw_results = response_json["items"] if num_results != 0 else []
+
+                # list of websites, where each website is a "title" and a "link"
+                links.extend([result["link"] for result in raw_results])
+        
         # scrape list of links
         scraper = WebScraper()
         scraped_data = scraper.scrape_links(links)
@@ -167,28 +194,49 @@ class GoogleSearchData(BaseDataSource):
         if self.document_store:
             self.document_store.save_documents(documents)
         return documents
-        
+    
+    async def async_fetch(self, query: str, or_terms: str = None, pages = 1) -> List[Document]:
+        """
+        Async version of fetch. Fetches links from Google Search API, scrapes them, and returns as a list of Documents.
+        If document store is set, save documents to document store.
 
-    async def async_fetch(self, query: str, session: ClientSession, pages = 1) -> List[Document]:
-        """async fetch links from Google Search API and scrape links."""
+        Args:
+            query (str): The main search query to fetch relevant links.
+            or_terms (str, optional): Additional search terms to include in the query.
+            pages (int, optional): The number of pages of search results to fetch.
 
-        # get list of website links from Google
+        Returns:
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
+
+        Raises:
+            HTTPError: If the request to the Google Search API fails.
+            PermissionError: If the Google Search API query limit is reached.
+        """
+        # get list of links from Google Search API
         links = []
-        for page in range(pages):
-            response_json = await self._async_request_google_search_api(
-                search_query=query, session=session, start_page=page
-            )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            params = self.parameters
+            params["q"] = query
+            params["orTerms"] = or_terms
 
-            num_results = int(response_json["searchInformation"]["totalResults"])
-            raw_results = response_json["items"] if num_results != 0 else []
+            for page in range(pages):
+                params["start"] = page * 10 + 1
 
-            # list of websites, where each website is a "title" and a "link"
-            for result in raw_results:
-                links.append(result["link"])
+                # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
+                response = await client.get("https://www.googleapis.com/customsearch/v1", params=params)
+                response.raise_for_status()
+                response_json = response.json()
 
+                num_results = int(response_json["searchInformation"]["totalResults"])
+                raw_results = response_json["items"] if num_results != 0 else []
+
+                # list of websites, where each website is a "title" and a "link"
+                links.extend([result["link"] for result in raw_results])
+        
         # scrape list of links
         scraper = WebScraper()
-        scraped_data = await scraper.async_scrape_links(session, links)
+        scraped_data = await scraper.async_scrape_links(links)
 
         # create List of Documents
         documents = []
@@ -200,68 +248,13 @@ class GoogleSearchData(BaseDataSource):
             }
             document = Document(text=content, metadata=metadata)
             documents.append(document)
+        
+        # if document store is set, save documents to document store
+        if self.document_store:
+            self.document_store.save_documents(documents)
         return documents
-    
-
-    def _request_google_search_api(self, search_query: str, or_terms: str = "", start_page: int = 0):
-        """request Google Custom Search API with requests"""
-
-        parameters = {
-            "key": self.api_key,
-            "cx": self.search_engine_id,
-            "q": search_query,
-            "orTerms": or_terms,
-            "start": start_page * 10 + 1,
-        }
-        try:
-            resp = requests.get("https://www.googleapis.com/customsearch/v1", params=parameters)
-            resp.raise_for_status()
-            response_json = resp.json()
-            return response_json
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 429:
-                raise PermissionError("Google search query limit per day reached")
-            else:
-                raise ValueError(f"Invalid response: HTTP {e.response.status_code}")
-        except requests.exceptions.RequestException as e:
-            raise ConnectionError("A network or server error occurred") from e
-        except Exception as e:
-            raise RuntimeError("An unexpected error occurred") from e
-
-
-    async def _async_request_google_search_api(
-        self,
-        search_query: str,
-        session: ClientSession,
-        or_terms: str = "",
-        start_page: int = 0,
-    ):
-        """request Google Custom Search API with aiohttp"""
-
-        parameters = {
-            "key": self.api_key,
-            "cx": self.search_engine_id,
-            "q": search_query,
-            "orTerms": or_terms,
-            "start": start_page * 10 + 1,
-        }
-        try:
-            async with session.get(
-                "https://www.googleapis.com/customsearch/v1", params=parameters
-            ) as resp:
-                resp.raise_for_status()
-                response_json = await resp.json()
-                return response_json
-        except aiohttp.ClientResponseError as e:
-            if e.status == 429:
-                raise PermissionError("Google search query limit per day reached")
-            else:
-                raise ValueError(f"Invalid response: HTTP {e}")
-        except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
-            raise ConnectionError("A network or server error occurred")
-        except Exception as e:
-            raise RuntimeError("An unexpected error occurred") from e
-
+        
+        
 class DirectoryData(BaseDataSource):
     def __init__(self):
         self.source = "Local Directory"

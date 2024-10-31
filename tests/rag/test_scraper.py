@@ -1,5 +1,4 @@
 import pytest
-from aiohttp import ClientSession
 
 from rag.scraper import WebScraper
 
@@ -9,7 +8,7 @@ def scraper():
     return WebScraper()
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_scrape(scraper, session):
+async def test_scrape(scraper):
     """test overall scraper"""
     urls = [
         "https://en.wikipedia.org/wiki/Cleveland_Guardians",
@@ -17,7 +16,7 @@ async def test_scrape(scraper, session):
     ]
 
     # test async version
-    data = await scraper.async_scrape_links(session, urls)
+    data = await scraper.async_scrape_links(urls)
 
     assert len(urls) == len(data)
     assert all(data) # text is not empty
@@ -27,15 +26,6 @@ async def test_scrape(scraper, session):
     assert len(urls) == len(data)
     assert all(data)
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_scrape_aiohttp(scraper, session):
-    """test scraping with aiohttp"""
-
-    url = "https://en.wikipedia.org/wiki/Retrieval-augmented_generation"
-
-    data = await scraper._scrape_with_aiohttp(session, url)
-    assert data
-
 def test_scrape_selenium(scraper):
     """test scraping with selenium"""
 
@@ -44,13 +34,4 @@ def test_scrape_selenium(scraper):
     driver = scraper._create_selenium_driver()
     data = scraper._scrape_with_selenium(driver, url)
     driver.quit()
-    assert data
-
-
-def test_scrape_requests(scraper):
-    """test scraping with selenium"""
-
-    url = "https://en.wikipedia.org/wiki/Vector_database"
-
-    data = scraper._scrape_with_requests(url)
     assert data

@@ -52,7 +52,7 @@ async def test_fetch_async(source, session, query):
 
 def test_fetch_directory():
     source = DirectoryData()
-    documents = source.fetch("tests/rag/data")
+    documents = source.fetch("tests/rag/data/1")
 
     assert len(documents) > 0
     for document in documents:
