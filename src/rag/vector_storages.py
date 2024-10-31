@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
-import os
-from typing import List, Dict, Any
+from typing import List, Any
 
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
-
 from rag.embeddings import BaseEmbeddingModel
 from rag.document_storages import MONGODB_OBJECTID_DIM
 
@@ -34,6 +32,10 @@ class BaseVectorStorage(ABC):
         self, vector: List[float], top_k: int = 3
     ) -> List[Document]:
         pass
+
+    def as_retriever(self):
+        from rag.retrievers import SimpleRetriever
+        return SimpleRetriever(vector_database=self)
 
 
 class MilvusVectorStorage(BaseVectorStorage):
