@@ -1,132 +1,244 @@
 from typing import List, Dict
+import re
+from abc import ABC, abstractmethod
 from rag.models import Document
 
-RAG_PROMPT_STANDARD = '''You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.\
+
+RAG_PROMPT_STANDARD = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.\
  If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.\
  \nQuestion: {query}
  \nContext: {context}
-'''
+"""
 
-RAG_SYSTEM_STANDARD = '''You are a helpful assistant that answers a query using the given query'''
+RAG_SYSTEM_STANDARD = (
+    """You are a helpful assistant that answers a query using the given query"""
+)
 
-class PromptFormatter:
-    def __init__(self, system_prompt: str=None):
+
+class BasePromptFormatter(ABC):
+    @abstractmethod
+    def __init__(self, system_prompt: str = None):
+        pass
+
+    @abstractmethod
+    def format_messages(self, user_prompt: str):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+
+class SimplePromptFormatter(BasePromptFormatter):
+    def __init__(self, system_prompt: str = None):
         """
-        Initializes the PromptFormatter with an optional system prompt.
+        Initializes the SimplePromptFormatter with an optional system prompt.
+
         Args:
             system_prompt: Optional initial system message for LLM context.
         """
         self.system_prompt = system_prompt
-        self.messages = []  # Stores the formatted messages list
 
-        # Initialize with the system prompt if provided
-        if self.system_prompt:
-            self.messages.append({"role": "system", "content": self.system_prompt})
-
-    def add_documents(self, docs: List[Document], method="concatenate", use_metadata=False, metadata_fields=None):
+    def format_messages(self, user_prompt: str):
         """
-        Adds documents to the messages using a specified combination method.
+        Formats the user prompt into a list of messages accepted by the LLM.
+
+        Args:
+            user_prompt: The user's input question or prompt.
+
+        Returns:
+            A list of dictionaries where each dictionary contains a 'role' and a 'content' key.
+        """
+        return [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+    def reset(self, new_system_prompt: str = None):
+        """
+        Resets the prompt formatter with an optional new system prompt.
+
+        Args:
+            new_system_prompt: The new system prompt.
+        """
+        self.system_prompt = new_system_prompt
+
+
+class RAGPromptFormatter(BasePromptFormatter):
+    def __init__(
+        self,
+        system_prompt: str = None,
+        prompt_template="default",
+        documents: List[Document] = [],
+    ):
+        # initialize with documents
+        """
+        Initializes the RAGPromptFormatter with optional system prompt, prompt template, and documents.
+
+        Args:
+            system_prompt: Optional initial system message for LLM context.
+            prompt_template: Template for formatting the user prompt. Must contain 'query' and 'context' fields if 
+                            not set to one of the acceptable choices: "default", .
+            documents: List of Document objects to be used in the prompt formatting.
+        
+        Raises:
+            ValueError: If a custom prompt template does not contain both 'query' and 'context' fields.
+        """
+        self.documents = documents
+
+        # initialize system prompt
+        if system_prompt:
+            self.system_prompt = system_prompt
+        else:
+            self.system_prompt = RAG_SYSTEM_STANDARD
+
+        # initialize prompt template for formatting user prompt
+        if prompt_template == "default":
+            self.prompt_template = RAG_PROMPT_STANDARD
+        else:
+            pattern = r"\{query\}.*\{context\}|\{context\}.*\{query\}"
+            if not re.search(pattern, prompt_template):
+                raise ValueError(
+                    "Custom prompt template is not valid. Must have 'query' and 'context' fields"
+                )
+            self.prompt_template = prompt_template
+
+    def add_documents(self, docs: List[Document]):
+        """
+        Adds documents to the messages.
         Args:
             docs: List of Document objects.
-            method: The method to combine documents ('concatenate', 'summary', 'bullet_points').
-            use_metadata: Whether to include metadata in the messages.
-            metadata_fields: List of metadata fields to include if use_metadata is True.
         """
         if not docs:
             raise ValueError("No documents provided to add.")
-        
+
+        self.documents.extend(docs)
+
+    def format_messages(
+        self,
+        user_prompt: str,
+        method="concatenate",
+        use_metadata=False,
+        metadata_fields=None,
+    ):
+        """
+        Formats the user prompt and documents into a list of messages for LLM processing.
+
+        Args:
+            user_prompt: The user's input question or prompt.
+            method: The method to combine documents, options are "concatenate", "summary", or "bullet_points".
+            use_metadata: If True, includes specified metadata in the document content.
+            metadata_fields: List of specific metadata fields to include.
+
+        Returns:
+            A list of dictionaries where each dictionary contains a 'role' and a 'content' key,
+            representing the system and user messages formatted for the LLM.
+
+        Raises:
+            ValueError: If no documents are added to the prompt formatter or an unknown combination method is specified.
+        """
+        if not self.documents:
+            raise ValueError("No documents added to the prompt formatter.")
+
+        # Add system message
+        messages = [{"role": "system", "content": self.system_prompt}]
+
+        # Combine documents
         if method == "concatenate":
-            self._add_concatenated_docs(docs, use_metadata, metadata_fields)
+            context = self._combine_concatenate(
+                self.documents, use_metadata, metadata_fields
+            )
         elif method == "summary":
-            self._add_summarized_docs(docs, use_metadata, metadata_fields)
+            context = self._combine_summary(
+                self.documents, use_metadata, metadata_fields
+            )
         elif method == "bullet_points":
-            self._add_bulleted_docs(docs, use_metadata, metadata_fields)
+            context = self._combine_bullet_points(
+                self.documents, use_metadata, metadata_fields
+            )
         else:
             raise ValueError(f"Unknown combination method '{method}'.")
 
-    def add_user_prompt(self, prompt: str):
-        """
-        Adds a user prompt to the messages list.
-        Args:
-            prompt: The user's input question or prompt.
-        """
-        if not prompt:
-            raise ValueError("User prompt cannot be empty.")
-        self.messages.append({"role": "user", "content": prompt})
+        # Format RAG prompt
+        prompt = self.prompt_template.format(query=user_prompt, context=context)
 
-    def get_messages(self):
-        """
-        Retrieves the current list of formatted messages.
-        Returns:
-            A list of message dictionaries formatted for the LLM.
-        """
+        # Add user message
+        user_message = {"role": "user", "content": prompt}
+        messages.append(user_message)
+
         return self.messages
 
-    def reset(self, new_system_prompt: str=None):
+    def clear_documents(self):
         """
-        Clears the message history, allowing a fresh start for a new conversation.
-        Args:
-            new_system_prompt: Optional new system message to start the conversation.
+        Clears the documents.
         """
-        self.messages = []
-        if new_system_prompt:
-            self.system_prompt = new_system_prompt
-            self.messages.append({"role": "system", "content": self.system_prompt})
+        self.documents = []
+
 
     ### Private methods for different combination strategies ###
 
-    def _add_concatenated_docs(self, docs: List[Document], use_metadata, metadata_fields):
+    def _combine_concatenate(self, docs: List[Document], use_metadata, metadata_fields):
         """
         Concatenates document contents and adds them as a single assistant message.
         Args:
             docs: List of Document objects.
             use_metadata: If True, include specified metadata in each document's content.
             metadata_fields: Specific metadata fields to include (e.g., ['title']).
+        Returns:
+            Combined content of documents as a single string.
         """
         combined_content = ""
         for doc in docs:
             content = doc.text
-            if use_metadata and hasattr(doc, 'metadata'):
+            if use_metadata and hasattr(doc, "metadata"):
                 metadata = self._extract_metadata(doc, metadata_fields)
                 content = f"{metadata}\n{content}"
             combined_content += content + "\n\n"
+        return combined_content.strip()
 
-        self.messages.append({"role": "assistant", "content": combined_content.strip()})
-
-    def _add_summarized_docs(self, docs: List[Document], use_metadata, metadata_fields):
+    def _combine_summary(self, docs: List[Document], use_metadata, metadata_fields):
         """
         Adds a summary of each document as an individual assistant message.
         Args:
             docs: List of Document objects.
             use_metadata: If True, include specified metadata in each summary.
             metadata_fields: Specific metadata fields to include in the summary.
+        Returns:
+            Combined summaries of documents as a single string.
         """
+        summary_content = ""
         for doc in docs:
-            content = self._summarize(doc.text)  # Replace with actual summarization if available
-            if use_metadata and hasattr(doc, 'metadata'):
+            content = self._summarize(
+                doc.text
+            )  # Replace with actual summarization if available
+            if use_metadata and hasattr(doc, "metadata"):
                 metadata = self._extract_metadata(doc, metadata_fields)
                 content = f"{metadata}\n{content}"
-            self.messages.append({"role": "assistant", "content": content})
+            summary_content += content + "\n\n"
+        return summary_content.strip()
 
-    def _add_bulleted_docs(self, docs: List[Document], use_metadata, metadata_fields):
+    def _combine_bullet_points(
+        self, docs: List[Document], use_metadata, metadata_fields
+    ):
         """
         Formats each document content as a bulleted list in a single assistant message.
         Args:
             docs: List of Document objects.
             use_metadata: If True, include specified metadata in each bullet point.
             metadata_fields: Specific metadata fields to include in each bullet point.
+        Returns:
+            Bulleted list of documents as a single string.
         """
         bulleted_content = ""
         for doc in docs:
             content = f"- {doc.text}"
-            if use_metadata and hasattr(doc, 'metadata'):
+            if use_metadata and hasattr(doc, "metadata"):
                 metadata = self._extract_metadata(doc, metadata_fields)
                 content = f"- {metadata}: {doc.text}"
             bulleted_content += content + "\n"
+        return bulleted_content.strip()
 
-        self.messages.append({"role": "assistant", "content": bulleted_content.strip()})
-
-    def _extract_metadata(self, doc, fields):
+    def _extract_metadata(self, doc: Document, fields: List[str]):
         """
         Helper method to extract specified metadata fields from a document.
         Args:
@@ -139,7 +251,7 @@ class PromptFormatter:
             return ""
         return ", ".join(f"{field}: {doc.metadata.get(field, '')}" for field in fields)
 
-    def _summarize(self, content):
+    def _summarize(self, content: str):
         """
         Placeholder summarization method. Replace with a more sophisticated summarization if needed.
         Args:

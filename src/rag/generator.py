@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Dict
 import os
 from openai import OpenAI, AsyncOpenAI
@@ -6,7 +6,7 @@ from openai import OpenAI, AsyncOpenAI
 from rag.models import Document
 from rag.prompts import RAG_PROMPT_STANDARD, RAG_SYSTEM_STANDARD
 
-class BaseLLM:
+class BaseLLM(ABC):
     """Custom generator interface"""
     def _synthesize_prompt(self, query: str, contexts: List[Document]) -> List[Dict]:
         """merge contexts and prompt, returns messages for openai api call"""
