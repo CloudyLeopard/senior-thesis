@@ -42,7 +42,26 @@ class MongoDBStore(BaseDocumentStore):
             "uuid": document.uuid
         }
         result = self.collection.insert_one(data)
+
+        # set db_id in passed document
+        document.set_db_id(str(result.inserted_id))
         return str(result.inserted_id)
+    
+    def save_documents(self, documents: List[Document]) -> List[str]:
+        data = []
+        for document in documents:
+            data.append({
+                "text": document.text,
+                "metadata": document.metadata,
+                "uuid": document.uuid
+            })
+        result = self.collection.insert_many(data)
+
+        # set db_id in passed document
+        for i in range(len(documents)):
+            documents[i].set_db_id(str(result.inserted_ids[i]))
+
+        return [str(doc_id) for doc_id in result.inserted_ids]
 
     def get_document(self, db_id: str) -> Document | None:
         result = self.collection.find_one({"_id": ObjectId(db_id)})

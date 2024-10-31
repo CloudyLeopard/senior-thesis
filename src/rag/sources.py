@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import os
+from unittest.mock import Base
 import aiohttp
 from aiohttp import ClientSession
 import requests
@@ -10,13 +11,14 @@ import pathlib
 from lexisnexisapi import webservices, credentials
 
 from rag.scraper import WebScraper
+from rag.document_storages import BaseDocumentStore
 from rag.models import Document
 
 class BaseDataSource(ABC):
     """Custom data source class interface"""
-
-    # TODO: separate async from regular data sources
-
+    def __init__(self, document_store: BaseDocumentStore = None):
+        self.document_store = document_store
+        
     @abstractmethod
     def fetch(self, query: str) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
@@ -59,7 +61,8 @@ class YFinanceData(BaseDataSource):
 
 
 class LexisNexisData(BaseDataSource):
-    def __init__(self):
+    def __init__(self, document_store: BaseDocumentStore = None):
+        super().__init__(document_store)
         self.source = "LexisNexis"
 
         # credentials stored at `credentials.cred_file_path()`
@@ -121,7 +124,8 @@ class BingsNewsData(BaseDataSource):
 class GoogleSearchData(BaseDataSource):
     """Wrapper that calls on Google Search JSON API"""
 
-    def __init__(self):
+    def __init__(self, document_store: BaseDocumentStore = None):
+        super().__init__(document_store)
         self.source = "GoogleSearchAPI"
 
         self.api_key = os.getenv("GOOGLE_API_KEY")
@@ -158,6 +162,10 @@ class GoogleSearchData(BaseDataSource):
             }
             document = Document(text=content, metadata=metadata)
             documents.append(document)
+        
+        # if document store is set, save documents to document store
+        if self.document_store:
+            self.document_store.save_documents(documents)
         return documents
         
 

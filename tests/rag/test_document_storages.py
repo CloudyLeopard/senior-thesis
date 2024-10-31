@@ -4,16 +4,18 @@ import os
 from rag.document_storages import MongoDBStore
 from rag.models import Document
 
+# TODO: loop through document storages using pytest parametrize
 def test_document_storage(document_storage, documents):
     # insert documents
-    ids = [document_storage.save_document(doc) for doc in documents]
+    ids = document_storage.save_documents(documents)
     assert len(ids) == len(documents)
-
+    
     # test getting documents
     for i in range(len(ids)):
         res = document_storage.get_document(id[i])
         assert res.text == documents[i].text
         assert res.metadata == documents[i].metadata
+        assert res.db_id == documents[i].db_id
 
     # test fetching documents
     for doc in documents:

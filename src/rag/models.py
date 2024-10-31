@@ -11,7 +11,7 @@ class Document:
         self.metadata: Dict[Any, Any] = metadata
         self.db_id: str = db_id # init db_id as none
 
-    def set_id(self, id: str):
+    def set_db_id(self, id: str):
         self.db_id = id
     
     def __str__(self):
