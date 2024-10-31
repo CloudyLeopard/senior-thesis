@@ -14,10 +14,16 @@ class BaseDocumentStore(ABC):
     def save_document(self, document: Document) -> str:
         """save Document into database, return id"""
         ...
+    
+    @abstractmethod
+    def save_documents(self, document: List[Document]) -> List[str]:
+        """save Documents into database, return list of ids"""
+        ...
+
 
     @abstractmethod
-    def get_document(self, document_id: str) -> Document | None:
-        """given id, fetch Document from database"""
+    def get_document(self, db_id: str) -> Document | None:
+        """given database id, fetch Document from database"""
         ...
 
 
