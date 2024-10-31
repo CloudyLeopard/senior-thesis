@@ -279,7 +279,7 @@ class DirectoryData(BaseDataSource):
 
             doc = Document(text=txt, metadata = {
                 "name": name,
-                "path": txt_file.absolute(),
+                "path": txt_file.as_posix(),
                 "datasource": self.source
             })
             documents.append(doc)

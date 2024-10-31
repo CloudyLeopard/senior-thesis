@@ -27,7 +27,7 @@ class MongoDBStore(BaseDocumentStore):
         uri,
         db_name="financeContextDB",
     ):
-        self.client = MongoClient(uri)
+        self.client = MongoClient(uri, uuidRepresentation='standard') # to use uuid
         self.db = self.client[db_name]
         self.collection = self.db["documents"]
 
@@ -69,7 +69,7 @@ class MongoDBStore(BaseDocumentStore):
             return Document(
                 text=result["text"],
                 metadata=result["metadata"],
-                id=result["uuid"],
+                uuid=result["uuid"],
                 db_id=str(result["_id"])
             )
         else:
@@ -82,7 +82,7 @@ class MongoDBStore(BaseDocumentStore):
             return Document(
                 text=result["text"],
                 metadata=result["metadata"],
-                id=result["uuid"],
+                uuid=result["uuid"],
                 db_id=str(result["_id"])
             )
         else:

@@ -41,12 +41,12 @@ def document_storage(documents2):
     db_name = "test"
     doc_storage = MongoDBStore(uri=uri, db_name=db_name)
 
-    ids = [document_storage.save_document(doc) for doc in documents2]
+    ids = doc_storage.save_documents(documents2)
 
     yield doc_storage
     
     for id in ids:
-        res = document_storage.remove_document(id)
+        res = doc_storage.remove_document(id)
 
     doc_storage.close()
 
