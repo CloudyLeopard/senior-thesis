@@ -14,9 +14,10 @@ class BaseLLM(ABC):
         pass
 
 class OpenAILLM(BaseLLM):
-    def __init__(self, model="gpt-4o-mini"):
-        self.sync_client = OpenAI(os.getenv("OPENAI_API_KEY"))
-        self.async_client = AsyncOpenAI(os.getenv("OPENAI_API_KEY"))
+    def __init__(self, model="gpt-4o-mini", api_key:str = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.sync_client = OpenAI(self.api_key)
+        self.async_client = AsyncOpenAI(self.api_key)
         self.model = model
     
     def generate(

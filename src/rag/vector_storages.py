@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
 from typing import List, Any
+import os
 
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 from rag.embeddings import BaseEmbeddingModel
@@ -41,16 +42,23 @@ class BaseVectorStorage(ABC):
 class MilvusVectorStorage(BaseVectorStorage):
     """Custom Vector storage class for using Milvus"""
 
-    def __init__(self, embedding_model: BaseEmbeddingModel, uri: str, token="", collection_name="financial_context"):
-        """init Milvus Vectorstorage Client
+    def __init__(self, embedding_model: BaseEmbeddingModel, collection_name="financial_context", uri: str="", token: str="", ):
+        """
+        Initialize Milvus Vector Storage.
 
         Args:
-            uri(str): MilvusClient uri
-            token(str): token to access zilliz
-            collection_name(str): name of collection
+        - embedding_model (BaseEmbeddingModel): The embedding model to use for vectorizing text.
+        - collection_name (str): The name of the Milvus collection to store the documents in. Defaults to "financial_context".
+        - uri (str): The uri of the Milvus server. Defaults to the value of the ZILLIZ_URI environment variable.
+        - token (str): The token to use for authentication. Defaults to the value of the ZILLIZ_TOKEN environment variable.
+
+        If the collection does not exist, it is created with the appropriate schema.
         """
         self.embedding_model = embedding_model
-        self.client = MilvusClient(uri=uri, token=token)
+        self.client = MilvusClient(
+            uri=uri or os.getenv("ZILLIZ_URI"),
+            token=token or os.getenv("ZILLIZ_TOKEN"),
+        )
         self.collection_name = collection_name
 
         # if collection does not exist, create schema

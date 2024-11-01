@@ -14,8 +14,9 @@ class BaseEmbeddingModel(ABC):
         pass
 
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
-    def __init__(self, model="text-embedding-3-small"):
-        self.client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
+    def __init__(self, model="text-embedding-3-small", api_key:str = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=api_key)
         self.model = model
 
     # TODO: work on "retry" when encountered error

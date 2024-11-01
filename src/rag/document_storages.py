@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from typing import List
 from uuid import UUID
+import os
 
 from rag.models import Document
 
@@ -30,10 +31,14 @@ class BaseDocumentStore(ABC):
 class MongoDBStore(BaseDocumentStore):
     def __init__(
         self,
-        uri,
         db_name="financeContextDB",
+        uri=None,
     ):
-        self.client = MongoClient(uri, uuidRepresentation='standard') # to use uuid
+        #TODO: throw error if uri is not set
+        self.client = MongoClient(
+            uri = uri or os.getenv("MONGODB_URI"),
+            uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
+        ) 
         self.db = self.client[db_name]
         self.collection = self.db["documents"]
 

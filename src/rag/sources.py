@@ -59,11 +59,21 @@ class YFinanceData(BaseDataSource):
 
 class LexisNexisData(BaseDataSource):
     def __init__(self, document_store: BaseDocumentStore = None):
+        """
+        Initialize LexisNexisData with optional document_store.
+
+        Args:
+            document_store: Optional BaseDocumentStore for storing retrieved documents.
+
+        Note:
+            The credentials must be set in the file located at
+            credentials.cred_file_path(). If not set, a warning will be
+            raised.
+        """
         super().__init__(document_store)
         self.source = "LexisNexis"
 
-        # credentials stored at `credentials.cred_file_path()`
-        # TODO: if not set, warn user where to set credentials
+        # TODO: if credentials not set, warn user where to set credentials
         self.token = webservices.token()
 
     def fetch(self, query: str, num_results = 10) -> List[Document]:
@@ -153,18 +163,15 @@ class BingsNewsData(BaseDataSource):
 class GoogleSearchData(BaseDataSource):
     """Wrapper that calls on Google Search JSON API"""
 
-    def __init__(self, document_store: BaseDocumentStore = None):
-        super().__init__(document_store)
+    def __init__(self, document_store: BaseDocumentStore = None, api_key: str = None, search_engine_id: str = None):
+        super().__init__(document_store) # init document store
         self.source = "GoogleSearchAPI"
 
         self.parameters = {
-            "key": os.getenv("GOOGLE_API_KEY"),
-            "cx": os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+            "key": api_key or os.getenv("GOOGLE_API_KEY"),
+            "cx": search_engine_id or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
         }
         # TODO: error for if API key or search engine ID is not set
-
-        self.document_store = document_store
-
     
     def fetch(self, query: str, or_terms: str = None, pages = 1) -> List[Document]:
         """Fetch links from Google Search API, scrape them, and return as a list of Documents.
