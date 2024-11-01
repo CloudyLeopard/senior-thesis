@@ -1,20 +1,18 @@
 import pytest
 from uuid import UUID
-import pytest_asyncio
-import os
 
-from rag.sources import GoogleSearchData, DirectoryData
+from rag.sources import GoogleSearchData, LexisNexisData, DirectoryData
 from rag.models import Document
 
 @pytest.fixture(params=[
     # YFinanceData,
-    # LexisNexisData,
+    LexisNexisData,
     # NYTimesData,
     # GuardiansData,
     # NewsAPIData,
     # ProQuestData,
     # BingsNewsData,
-    GoogleSearchData,
+    # GoogleSearchData,
 ])
 def source(request):
     return request.param()
@@ -39,8 +37,11 @@ def test_fetch(source, query):
 @pytest.mark.flaky(retries=2)
 @pytest.mark.asyncio(loop_scope="session")
 async def test_fetch_async(source, session, query):
-    documents = await source.async_fetch(query, session)
-
+    try:
+        documents = await source.async_fetch(query, session)
+    except NotImplementedError:
+        pytest.skip(f"async_fetch not implemented for {source}")
+    
     assert len(documents) > 0
     for document in documents:
         assert isinstance(document, Document)

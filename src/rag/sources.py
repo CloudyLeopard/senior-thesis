@@ -1,14 +1,11 @@
 from abc import ABC, abstractmethod
 import os
 import httpx
-import aiohttp
-from aiohttp import ClientSession
-import requests
 from requests.exceptions import HTTPError
 from typing import List, Dict
 import pathlib
 
-from lexisnexisapi import webservices, credentials
+from lexisnexisapi import webservices
 
 from rag.scraper import WebScraper
 from rag.document_storages import BaseDocumentStore
@@ -66,9 +63,10 @@ class LexisNexisData(BaseDataSource):
         self.source = "LexisNexis"
 
         # credentials stored at `credentials.cred_file_path()`
+        # TODO: if not set, warn user where to set credentials
         self.token = webservices.token()
 
-    def fetch(self, query: str) -> List[Dict[str, str]]:
+    def fetch(self, query: str, num_results = 10) -> List[Document]:
         """Fetch news articles from LexisNexis API."""
 
         # see https://dev.lexisnexis.com/dev-portal/documentation/News#/News%20API/get_News for documentation
@@ -77,12 +75,11 @@ class LexisNexisData(BaseDataSource):
         # TODO: adjust parameter based on documentation
         parameters = {
             "$search": search_string,
-            "$expand": "Document",  # A navigation property name which will be included with the current result set.
-            "$top": "3",  # Sets the maximum number of results to receive for this request.
+            "$expand": "Document",  # "Document" to get html data
+            "$top": f"{num_results}",  # Sets the maximum number of results to receive for this request.
             # Filter with two conditions
-            "$filter": "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2023",
-            "$select": "WordLength,People,Subject",
-            # '$orderby': 'Date asc'
+            "$filter": "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2024",
+            "$select": "ResultId, Title, Source",
         }
 
         try:
@@ -93,12 +90,44 @@ class LexisNexisData(BaseDataSource):
             self.logger.error("HTTP Error %d: %s", e.response.status_code, str(e))
 
             if e.response.status_code == 429:
-                raise PermissionError("Lexis Nexis query limit reached")
+                raise RuntimeError("HTTP Error 429: Lexis Nexis query limit reached")
             else:
-                raise ValueError(f"Invalid response: HTTP {e.status}")
+                raise ValueError(f"Invalid response: HTTP {e}")
 
         # TODO: parse data
-        return
+
+        documents = []
+        for result in data["value"]:
+            html = result["Document"]["Content"]
+            try:
+                text = WebScraper._scrape_html(html)
+            except Exception:
+                text = html # fallback to html if scraping fails
+
+            document = Document(
+                text=text,
+                metadata={
+                    # required metadata
+                    "query": query,
+                    "datasource": self.source,
+                    # lexisnexis unique metadata
+                    "title": result["Title"],
+                    "source": result["Source"]["Name"],
+                    "lexisResultId": result["ResultId"],
+                    "citation": result["Document"].get("Citation", "")
+                },
+            )
+
+            documents.append(document)
+
+            # if document store is set, save document to document store
+            if self.document_store:
+                self.document_store.save_document(document)
+        
+        return documents
+    
+    async def async_fetch(self, query: str, num_results = 10) -> List[Document]:
+        raise NotImplementedError
 
 
 class NYTimesData(BaseDataSource):
@@ -162,6 +191,9 @@ class GoogleSearchData(BaseDataSource):
             params["orTerms"] = or_terms
 
             for page in range(pages):
+                # not doing asyncio cuz pages is usually really small (< 50)
+
+                # 10 results per page
                 params["start"] = page * 10 + 1
 
                 # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
