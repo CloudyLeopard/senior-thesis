@@ -12,7 +12,7 @@ from rag.models import Document
     # NewsAPIData,
     # ProQuestData,
     # BingsNewsData,
-    # GoogleSearchData,
+    GoogleSearchData,
 ])
 def source(request):
     return request.param()
