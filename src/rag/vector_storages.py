@@ -24,7 +24,7 @@ class BaseVectorStorage(ABC):
         pass
 
     @abstractmethod
-    def similarity_search(self, query: str, top_k: int):
+    def similarity_search(self, query: str, top_k: int) -> List[Document]:
         """given query, return top_k relevant results"""
         pass
 

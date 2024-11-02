@@ -5,6 +5,8 @@ from uuid import uuid4, UUID
 OPENAI_TEXT_EMBEDDING_SMALL_DIM = 1536
 
 class Document:
+
+    # TODO: move away from db_id
     def __init__(self, text: str, metadata: Dict[Any, Any], uuid: UUID=None, db_id=""):
         self.uuid: UUID = uuid if uuid else uuid4() # generate new for new documents
         self.text: str = text

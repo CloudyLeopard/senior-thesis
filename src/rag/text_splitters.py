@@ -27,8 +27,9 @@ class RecursiveTextSplitter(BaseTextSplitter):
         new_documents = []
         for document in documents:
             chunks = self.text_splitter.split_text(document.text)
+            # need to make sure all chunks have the same metadata, uuid, and db_id as the original document
             chunk_documents = [
-                Document(text=chunk, metadata=document.metadata, db_id=document.db_id)
+                Document(text=chunk, metadata=document.metadata, uuid=document.uuid, db_id=document.db_id)
                 for chunk in chunks
             ]
             new_documents.extend(chunk_documents)

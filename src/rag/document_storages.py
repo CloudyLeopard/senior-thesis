@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import pprint
 from pymongo import MongoClient
 from bson import ObjectId
 from typing import List
@@ -27,6 +28,11 @@ class BaseDocumentStore(ABC):
     @abstractmethod
     def get_document(self, db_id: str) -> Document | None:
         """given database id, fetch Document from database"""
+        ...
+
+    @abstractmethod
+    def get_document_by_uuid(self, uuid: UUID) -> Document | None:
+        """given uuid, fetch Document from database"""
         ...
 
 
@@ -104,7 +110,8 @@ class MongoDBStore(BaseDocumentStore):
         return result
     
     def get_document_by_uuid(self, uuid: UUID) -> Document | None:
-        result = self.collection.findone({"uuid": uuid})
+        result = self.collection.find_one({"uuid": uuid})
+
         if result:  # if found, parse into Document class
             return Document(
                 text=result["text"],
