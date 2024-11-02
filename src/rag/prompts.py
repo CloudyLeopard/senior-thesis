@@ -30,7 +30,7 @@ class BasePromptFormatter(ABC):
 
 
 class SimplePromptFormatter(BasePromptFormatter):
-    def __init__(self, system_prompt: str = None):
+    def __init__(self, system_prompt: str = "You are a helpful assistant."):
         """
         Initializes the SimplePromptFormatter with an optional system prompt.
 
@@ -166,13 +166,19 @@ class RAGPromptFormatter(BasePromptFormatter):
         user_message = {"role": "user", "content": prompt}
         messages.append(user_message)
 
-        return self.messages
+        return messages
 
-    def clear_documents(self):
+    def reset(self, system_prompt: str = None):
         """
-        Clears the documents.
+        Resets the prompt formatter with an optional new system prompt.
+        
+        Args:
+            system_prompt: The new system prompt. If None, the default system prompt will be used.
         """
         self.documents = []
+
+        if system_prompt:
+            self.system_prompt = system_prompt
 
 
     ### Private methods for different combination strategies ###
