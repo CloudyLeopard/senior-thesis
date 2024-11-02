@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
+import pprint
 from pymongo import MongoClient
 from bson import ObjectId
 from typing import List
 from uuid import UUID
+import os
+
+import urllib
 
 from rag.models import Document
 
@@ -26,14 +30,37 @@ class BaseDocumentStore(ABC):
         """given database id, fetch Document from database"""
         ...
 
+    @abstractmethod
+    def get_document_by_uuid(self, uuid: UUID) -> Document | None:
+        """given uuid, fetch Document from database"""
+        ...
+
 
 class MongoDBStore(BaseDocumentStore):
     def __init__(
         self,
-        uri,
         db_name="financeContextDB",
+        uri=None,
     ):
-        self.client = MongoClient(uri, uuidRepresentation='standard') # to use uuid
+        """
+        Initialize MongoDBStore with optional uri and db_name.
+
+        Args:
+            db_name (str, optional): The name of the MongoDB database to use. Defaults to "financeContextDB".
+            uri (str, optional): The uri of the MongoDB server. Defaults to the value of the MONGODB_URI environment variable.
+
+        Note:
+            The MONGODB_URI environment variable must be set if the uri is not provided.
+        """
+        # set uri (if not provided)
+        uri = uri or os.getenv("MONGODB_URI")
+        if not uri:
+            raise ValueError("uri must be set")
+        
+        self.client = MongoClient(
+            uri,
+            uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
+        ) 
         self.db = self.client[db_name]
         self.collection = self.db["documents"]
 
@@ -83,7 +110,8 @@ class MongoDBStore(BaseDocumentStore):
         return result
     
     def get_document_by_uuid(self, uuid: UUID) -> Document | None:
-        result = self.collection.findone({"uuid": uuid})
+        result = self.collection.find_one({"uuid": uuid})
+
         if result:  # if found, parse into Document class
             return Document(
                 text=result["text"],

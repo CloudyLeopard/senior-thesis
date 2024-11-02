@@ -1,14 +1,13 @@
 import pytest
 import pytest_asyncio
 from aiohttp import ClientSession
-from dotenv import load_dotenv
 import os
 
 from rag.sources import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import MilvusVectorStorage
 from rag.document_storages import MongoDBStore
-from rag.embeddings import OpenAIEmbeddingModel, AsyncOpenAIEmbeddingModel
+from rag.embeddings import OpenAIEmbeddingModel
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -57,7 +56,7 @@ def vector_storage(embedding_model, text_splitter, documents2):
     token = os.getenv("ZILLIZ_TOKEN")
 
     # uri = "tests/rag/milvus_test.db" # this doesn't work for some reason
-    vector_storage = MilvusVectorStorage(embedding_model, uri, token)
+    vector_storage = MilvusVectorStorage(embedding_model, uri=uri, token=token)
 
     chunked_documents = text_splitter.split_documents(documents2)
     ids = vector_storage.insert_documents(chunked_documents)

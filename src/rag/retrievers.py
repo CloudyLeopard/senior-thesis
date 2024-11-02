@@ -51,11 +51,15 @@ class DocumentRetriever(BaseRetriever):
         retrieved_documents = self.vector_storage.similarity_search(prompt, top_k)
         for document in retrieved_documents:
             # retrieve corresponding data in document storage
-            db_document = self.document_store.get_document(document.db_id)
+            db_document = self.document_store.get_document_by_uuid(document.uuid)
 
             # if document exists in document storage, set metadata
             # this should always be true
             if db_document:
                 document.metadata = db_document.metadata
+                document.db_id = db_document.db_id
+            else:
+                print("No DB_ID found")
+        
 
         return retrieved_documents
