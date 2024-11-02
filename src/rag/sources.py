@@ -76,7 +76,7 @@ class LexisNexisData(BaseDataSource):
         # TODO: if credentials not set, warn user where to set credentials
         self.token = webservices.token()
 
-    def fetch(self, query: str, num_results = 10) -> List[Document]:
+    def fetch(self, query: str, num_results = 5) -> List[Document]:
         """Fetch news articles from LexisNexis API."""
 
         # see https://dev.lexisnexis.com/dev-portal/documentation/News#/News%20API/get_News for documentation
@@ -103,8 +103,6 @@ class LexisNexisData(BaseDataSource):
                 raise RuntimeError("HTTP Error 429: Lexis Nexis query limit reached")
             else:
                 raise ValueError(f"Invalid response: HTTP {e}")
-
-        # TODO: parse data
 
         documents = []
         for result in data["value"]:
