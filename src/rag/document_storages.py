@@ -5,6 +5,8 @@ from typing import List
 from uuid import UUID
 import os
 
+import urllib
+
 from rag.models import Document
 
 MONGODB_OBJECTID_DIM = 24
@@ -34,9 +36,23 @@ class MongoDBStore(BaseDocumentStore):
         db_name="financeContextDB",
         uri=None,
     ):
-        #TODO: throw error if uri is not set
+        """
+        Initialize MongoDBStore with optional uri and db_name.
+
+        Args:
+            db_name (str, optional): The name of the MongoDB database to use. Defaults to "financeContextDB".
+            uri (str, optional): The uri of the MongoDB server. Defaults to the value of the MONGODB_URI environment variable.
+
+        Note:
+            The MONGODB_URI environment variable must be set if the uri is not provided.
+        """
+        # set uri (if not provided)
+        uri = uri or os.getenv("MONGODB_URI")
+        if not uri:
+            raise ValueError("uri must be set")
+        
         self.client = MongoClient(
-            uri = uri or os.getenv("MONGODB_URI"),
+            uri,
             uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
         ) 
         self.db = self.client[db_name]

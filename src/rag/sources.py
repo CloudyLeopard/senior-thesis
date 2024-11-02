@@ -97,7 +97,7 @@ class LexisNexisData(BaseDataSource):
                 access_token=self.token, endpoint="News", params=parameters
             )
         except HTTPError as e:
-            self.logger.error("HTTP Error %d: %s", e.response.status_code, str(e))
+            # self.logger.error("HTTP Error %d: %s", e.response.status_code, str(e))
 
             if e.response.status_code == 429:
                 raise RuntimeError("HTTP Error 429: Lexis Nexis query limit reached")
