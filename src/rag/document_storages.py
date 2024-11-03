@@ -5,6 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
 
 
 from rag.models import Document
@@ -149,18 +150,15 @@ class AsyncMongoDBStore(BaseDocumentStore):
         Initialize instance variables but don't create connections.
         Async initialization is handled by create().
         """
-        # set uri (if not provided)
         self.uri = uri or os.getenv("MONGODB_URI")
         if not self.uri:
             raise ValueError("uri must be set")
         
         self.db_name = db_name
-        self.client = AsyncIOMotorClient(
-            self.uri,
-            uuidRepresentation='standard'
-        )
-        self.db = self.client[self.db_name]
-        self.collection = self.db["documents"]
+        # Don't create the client in __init__
+        self.client = None
+        self.db = None
+        self.collection = None
 
     @classmethod
     async def create(
@@ -183,8 +181,18 @@ class AsyncMongoDBStore(BaseDocumentStore):
         Usage:
             store = await AsyncMongoDBStore.create(reset_db=True)
         """
-        # Create instance
         self = cls(db_name, uri)
+        
+        # Create client with the current event loop
+        self.client = AsyncIOMotorClient(
+            self.uri,
+            uuidRepresentation='standard',
+        )
+        # the magic line that fixes the "attached to a different event loop" error
+        self.client.get_io_loop = asyncio.get_event_loop 
+
+        self.db = self.client[self.db_name]
+        self.collection = self.db["documents"]
 
         # Perform async initialization if needed
         if reset_db:
