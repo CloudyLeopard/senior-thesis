@@ -23,11 +23,13 @@ def documents():
     documents = source.fetch("tests/rag/data/1")
     return documents
 
+
 @pytest.fixture(scope="session")
 def documents2():
     source = DirectoryData()
     documents = source.fetch("tests/rag/data/2")
     return documents
+
 
 @pytest.fixture
 def query():
@@ -43,7 +45,7 @@ def document_storage(documents2):
     ids = doc_storage.save_documents(documents2)
 
     yield doc_storage
-    
+
     for id in ids:
         res = doc_storage.remove_document(id)
 
@@ -56,7 +58,13 @@ def vector_storage(embedding_model, text_splitter, documents2):
     token = os.getenv("ZILLIZ_TOKEN")
 
     # uri = "tests/rag/milvus_test.db" # this doesn't work for some reason
-    vector_storage = MilvusVectorStorage(embedding_model, uri=uri, token=token)
+    vector_storage = MilvusVectorStorage(
+        embedding_model,
+        collection_name="test",
+        uri=uri,
+        token=token,
+        reset_collection=True,
+    )
 
     chunked_documents = text_splitter.split_documents(documents2)
     ids = vector_storage.insert_documents(chunked_documents)

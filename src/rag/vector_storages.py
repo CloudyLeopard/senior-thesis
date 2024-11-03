@@ -42,7 +42,7 @@ class BaseVectorStorage(ABC):
 class MilvusVectorStorage(BaseVectorStorage):
     """Custom Vector storage class for using Milvus"""
 
-    def __init__(self, embedding_model: BaseEmbeddingModel, collection_name="financial_context", uri: str="", token: str="", ):
+    def __init__(self, embedding_model: BaseEmbeddingModel, collection_name="financial_context", uri: str="", token: str="", reset_collection: bool=False):
         """
         Initialize Milvus Vector Storage.
 
@@ -62,7 +62,8 @@ class MilvusVectorStorage(BaseVectorStorage):
         self.collection_name = collection_name
 
         # if collection does not exist, create schema
-        self.client.drop_collection(self.collection_name) # dev mode, reset every time
+        if reset_collection:
+            self.client.drop_collection(self.collection_name) # dev mode, reset every time
         if not self.client.has_collection(self.collection_name):
             self._create_schema_and_collection()
 
