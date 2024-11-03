@@ -1,0 +1,112 @@
+
+from rag.sources import GoogleSearchData, LexisNexisData
+from rag.text_splitters import RecursiveTextSplitter
+from rag.embeddings import OpenAIEmbeddingModel
+from rag.document_storages import MongoDBStore
+from rag.vector_storages import MilvusVectorStorage
+from rag.retrievers import DocumentRetriever
+from rag.prompts import RAGPromptFormatter
+from rag.generator import OpenAILLM
+import argparse
+
+# TODO: scripts for async versions (much faster)
+def rag_load_data(query: str, verbose: bool = False):
+    """given query, scrape relevant news articles, store in document store and vector store"""
+
+    # loading in all the api key thru environment variables
+    text_splitter = RecursiveTextSplitter()
+    document_store = MongoDBStore()
+    vector_store = MilvusVectorStorage(embedding_model=OpenAIEmbeddingModel())
+
+    if verbose:
+        print("Initialized document store (MongoDB) and vector store (Milvus)")
+
+    total_documents = []
+
+    # scrape news articles
+    # Google
+    google_data = GoogleSearchData(document_store=document_store)
+    if verbose:
+        print("Attempting to load news articles from google")
+    try:
+        documents = google_data.fetch(query) # returns list of Documents
+        chunked_documents = text_splitter.split_documents(documents) # split documents into chunks
+        vector_store.insert_documents(chunked_documents) # insert documents into vector store
+        total_documents.extend(documents)
+        if verbose:
+            print("Finished loading news articles from google")
+    except Exception:
+        print("Could not load news articles from google")
+
+    # Lexis Nexis
+    lexis_data = LexisNexisData(document_store=document_store)
+    if verbose:
+        print("Attempting to load Lexis Nexis data")
+    try:
+        documents = lexis_data.fetch(query)
+        chunked_documents = text_splitter.split_documents(documents)
+        vector_store.insert_documents(chunked_documents)
+        total_documents.extend(documents)
+        if verbose:
+            print("Finished loading Lexis Nexis data")
+    except Exception:
+        print("Could not load Lexis Nexis data")
+    
+    # close connections
+    document_store.close()
+    vector_store.close()
+
+    print("Number of documents found and loaded: ", len(total_documents))
+
+def rag_query(query: str, verbose: bool = False):
+    """given query, retrieve relevant documents and generate response"""
+
+    # loading in all the api key thru environment variables
+    vector_store = MilvusVectorStorage(embedding_model=OpenAIEmbeddingModel())
+    document_store = MongoDBStore()
+    retriever = DocumentRetriever(vector_storage=vector_store, document_store=document_store)
+    print("Initialized retriever using vector store (Milvus) and document store (MongoDB)")
+
+    prompt_formatter = RAGPromptFormatter()
+    llm = OpenAILLM()
+
+    documents = retriever.retrieve(prompt=query, top_k=3)
+    prompt_formatter.add_documents(documents)
+    messages = prompt_formatter.format_messages(user_prompt=query)
+
+    print("Generating response...")
+    response = llm.generate(messages)
+
+    # close connections
+    document_store.close()
+    vector_store.close()
+    
+    print("Query: ", query)
+
+    if verbose:
+        print("-- Messages --")
+        for message in messages:
+            print(message["role"], ": ", message["content"])
+        print("-- End Messages --")
+    print("Response: ", response)
+
+
+def main_load():
+    parser = argparse.ArgumentParser(description="Load data for RAG.")
+    parser.add_argument("query", type=str, help="The query for sources to retrieve data for.")
+    parser.add_argument("query", type=str, help="The query string.")
+    args = parser.parse_args()
+    
+    rag_load_data(args.query, verbose=args.v)
+
+def main_query():
+    parser = argparse.ArgumentParser(description="Query data for RAG.")
+    parser.add_argument('-v', action='store_true', help="Verbose mode, show input into llm.")
+    parser.add_argument("query", type=str, help="The query string.")
+    args = parser.parse_args()
+    
+    rag_query(args.query, verbose=args.v)
+
+if __name__ == "__main__":
+    # main_load()
+    main_query()

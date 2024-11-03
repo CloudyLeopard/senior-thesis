@@ -19,9 +19,14 @@ dependencies = [
     "lxml>=5.3.0",
     "lexisnexisapi", 
     "langchain_text_splitters>=0.3.0",
-    "pymongo>=4.10.1",
+    "pymongo>=4.1, <5",
     "bson==0.5.10",
+    "motor>=3.6.0",
 ]
+
+[project.scripts]
+rag-load = "rag.scripts:main_load"
+rag-query = "rag.scripts:main_query"
 
 [project.urls]
 Repo = "https://github.com/CloudyLeopard/senior-thesis"
