@@ -13,10 +13,16 @@ class BaseEmbeddingModel(ABC):
         """embeds a list of strings, and returns a list of embeddings"""
         pass
 
+    @abstractmethod
+    def async_embed(self, text: List[str]) -> List[List[float]]:
+        """embeds a list of strings asynchronously, and returns a list of embeddings"""
+        pass
+
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
     def __init__(self, model="text-embedding-3-small", api_key:str = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.client = OpenAI(api_key=api_key)
+        self.sync_client = OpenAI(api_key=api_key)
+        self.async_client = AsyncOpenAI(api_key=api_key)
         self.model = model
 
     # TODO: work on "retry" when encountered error
@@ -27,20 +33,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
         return [x.embedding for x in embeddings.data]
 
-# ----- ASYNC ------
-class BaseAsyncEmbeddingModel(ABC):
-    "Custom embedding model interface"
-
-    @abstractmethod
-    async def embed(self, text: List[str]) -> List[List[float]]:
-        """embeds a list of strings, and returns a list of embeddings"""
-        pass
-class AsyncOpenAIEmbeddingModel(BaseAsyncEmbeddingModel):
-    def __init__(self, model="text-embedding-3-small"):
-        self.client = AsyncOpenAI(api_key = os.getenv("OPENAI_API_KEY"))
-        self.model = model
-
-    async def embed(self, text: List[str]) -> List[List[float]]:
+    async def async_embed(self, text: List[str]) -> List[List[float]]:
         embeddings = await self.client.embeddings.create(
             input=text, model=self.model
         )

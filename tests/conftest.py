@@ -6,7 +6,7 @@ import os
 from rag.sources import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import MilvusVectorStorage
-from rag.document_storages import MongoDBStore
+from rag.document_storages import MongoDBStore, AsyncMongoDBStore
 from rag.embeddings import OpenAIEmbeddingModel
 
 
@@ -47,6 +47,18 @@ def document_storage(documents2):
     yield doc_storage
 
     doc_storage.close()
+
+@pytest_asyncio.fixture(scope="module")
+async def async_document_storage(documents2):
+    uri = os.getenv("MONGODB_URI")
+    db_name = "test_motor"
+    doc_storage = await AsyncMongoDBStore.create(uri=uri, db_name=db_name, reset_db=True)
+
+    ids = await doc_storage.save_documents(documents2)
+
+    yield doc_storage
+
+    await doc_storage.close()
 
 
 @pytest.fixture(scope="module")

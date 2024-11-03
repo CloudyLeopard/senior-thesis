@@ -29,9 +29,15 @@ class BaseVectorStorage(ABC):
         pass
 
     @abstractmethod
-    def similarity_search_by_vector(
-        self, vector: List[float], top_k: int = 3
-    ) -> List[Document]:
+    async def async_insert_documents(
+        self, documents: List[Document]
+    ) -> List[int]:
+        """insert documents, embed them, return list of ids"""
+        pass
+
+    @abstractmethod
+    async def async_similarity_search(self, query: str, top_k: int) -> List[Document]:
+        """given query, asynchronously return top_k relevant results"""
         pass
 
     def as_retriever(self):
@@ -208,6 +214,13 @@ class MilvusVectorStorage(BaseVectorStorage):
             top_documents.append(doc)
         
         return top_documents
-
-
-
+    
+    async def async_similarity_search(self, query: str, top_k=3):
+        """Milvus does not support async search, so this falls back to
+        synchronous similarity_search"""
+        return self.similarity_search(query, top_k)
+    
+    async def async_insert_documents(self, documents):
+        """Milvus does not support async insert, so this falls back to
+        synchronous insert_documents"""
+        return self.insert_documents(documents)
