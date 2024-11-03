@@ -42,7 +42,7 @@ def document_storage(documents2):
     db_name = "test"
     doc_storage = MongoDBStore(uri=uri, db_name=db_name, reset_db=True)
 
-    ids = doc_storage.save_documents(documents2)
+    doc_storage.save_documents(documents2)
 
     yield doc_storage
 
@@ -54,7 +54,7 @@ async def async_document_storage(documents2):
     db_name = "test_motor"
     doc_storage = await AsyncMongoDBStore.create(uri=uri, db_name=db_name, reset_db=True)
 
-    ids = await doc_storage.save_documents(documents2)
+    await doc_storage.save_documents(documents2)
 
     yield doc_storage
 
@@ -76,7 +76,7 @@ def vector_storage(embedding_model, text_splitter, documents2):
     )
 
     chunked_documents = text_splitter.split_documents(documents2)
-    ids = vector_storage.insert_documents(chunked_documents)
+    vector_storage.insert_documents(chunked_documents)
 
     yield vector_storage
 
