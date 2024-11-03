@@ -51,6 +51,7 @@ class MilvusVectorStorage(BaseVectorStorage):
         - collection_name (str): The name of the Milvus collection to store the documents in. Defaults to "financial_context".
         - uri (str): The uri of the Milvus server. Defaults to the value of the ZILLIZ_URI environment variable.
         - token (str): The token to use for authentication. Defaults to the value of the ZILLIZ_TOKEN environment variable.
+        - reset_collection (bool): Whether to reset the collection before inserting documents. Defaults to False.
 
         If the collection does not exist, it is created with the appropriate schema.
         """

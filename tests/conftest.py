@@ -40,14 +40,11 @@ def query():
 def document_storage(documents2):
     uri = os.getenv("MONGODB_URI")
     db_name = "test"
-    doc_storage = MongoDBStore(uri=uri, db_name=db_name)
+    doc_storage = MongoDBStore(uri=uri, db_name=db_name, reset_db=True)
 
     ids = doc_storage.save_documents(documents2)
 
     yield doc_storage
-
-    for id in ids:
-        res = doc_storage.remove_document(id)
 
     doc_storage.close()
 
@@ -70,8 +67,6 @@ def vector_storage(embedding_model, text_splitter, documents2):
     ids = vector_storage.insert_documents(chunked_documents)
 
     yield vector_storage
-
-    vector_storage.remove_documents(ids)
 
     vector_storage.close()
 

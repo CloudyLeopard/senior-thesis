@@ -41,6 +41,7 @@ class MongoDBStore(BaseDocumentStore):
         self,
         db_name="financeContextDB",
         uri=None,
+        reset_db: bool = False
     ):
         """
         Initialize MongoDBStore with optional uri and db_name.
@@ -48,7 +49,7 @@ class MongoDBStore(BaseDocumentStore):
         Args:
             db_name (str, optional): The name of the MongoDB database to use. Defaults to "financeContextDB".
             uri (str, optional): The uri of the MongoDB server. Defaults to the value of the MONGODB_URI environment variable.
-
+            reset_db (bool, optional): Whether to reset the database before inserting documents. Defaults to False.
         Note:
             The MONGODB_URI environment variable must be set if the uri is not provided.
         """
@@ -62,6 +63,11 @@ class MongoDBStore(BaseDocumentStore):
             uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
         ) 
         self.db = self.client[db_name]
+
+        if reset_db:
+            self.db.drop_collection("documents")
+            self.db.create_collection("documents")
+
         self.collection = self.db["documents"]
 
     def close(self):

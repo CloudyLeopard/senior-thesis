@@ -77,9 +77,22 @@ class LexisNexisData(BaseDataSource):
         self.token = webservices.token()
 
     def fetch(self, query: str, num_results = 5) -> List[Document]:
-        """Fetch news articles from LexisNexis API."""
+        """
+        Fetch documents from Lexis Nexis based on query
+        
+        see https://dev.lexisnexis.com/dev-portal/documentation/News#/News%20API/get_News for documentation
 
-        # see https://dev.lexisnexis.com/dev-portal/documentation/News#/News%20API/get_News for documentation
+        Args:
+            query: query to retrieve text from
+            num_results: number of results to retrieve (default: 5)
+
+        Returns:
+            List of Document objects with text and metadata
+
+        Raises:
+            ValueError: if response is invalid
+            RuntimeError: if Lexis Nexis query limit is reached
+        """
         search_string = query  # TODO: adjust this
 
         # TODO: adjust parameter based on documentation
