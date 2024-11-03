@@ -14,20 +14,30 @@ class BaseLLM(ABC):
         pass
 
 class OpenAILLM(BaseLLM):
-    def __init__(self, model="gpt-4o-mini", api_key:str = None):
+    def __init__(self, model="gpt-4o-mini", api_key:str = None, keep_history: bool = False):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.sync_client = OpenAI(self.api_key)
         self.async_client = AsyncOpenAI(self.api_key)
         self.model = model
+        self.keep_history = keep_history
+        self.messages = []
     
     def generate(
         self, messages: List[Dict], max_tokens=2000
     ) -> str:
         """returns openai response based on given messages"""
 
+        # if we want to keep history, add messages to history
+        if self.keep_history:
+            self.messages.extend(messages)
+            messages = self.messages
+
         completion = self.sync_client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens
         )
+
+        if self.keep_history:
+            self.messages.append(completion.choices[0].message)
 
         # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
@@ -40,9 +50,16 @@ class OpenAILLM(BaseLLM):
     ) -> str:
         """returns openai response based on given messages"""
 
+        if self.keep_history:
+            self.messages.extend(messages)
+            messages = self.messages
+
         completion = await self.async_client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens
         )
+
+        if self.keep_history:
+            self.messages.append(completion.choices[0].message)
 
         # TODO: add logger to track openai response, token usage here
 
