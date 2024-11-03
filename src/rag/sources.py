@@ -86,7 +86,7 @@ class LexisNexisData(BaseDataSource):
         parameters = {
             "$search": search_string,
             "$expand": "Document",  # "Document" to get html data
-            "$top": f"{num_results}",  # Sets the maximum number of results to receive for this request.
+            "$top": str(num_results),  # Sets the maximum number of results to receive for this request.
             # Filter with two conditions
             "$filter": "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2024",
             "$select": "ResultId, Title, Source",
