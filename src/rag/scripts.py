@@ -91,22 +91,25 @@ def rag_query(query: str, verbose: bool = False):
     print("Response: ", response)
 
 
-def main_load():
+def main():
     parser = argparse.ArgumentParser(description="Load data for RAG.")
+    # make load and query mutually exclusive (user can't do both at once)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--load', action='store_true', help="Load data for RAG. WARNING: must have either --load or --query")
+    group.add_argument('--query', action='store_true', help="Query data for RAG. WARNING: must have either --load or --query")
+    # optional verbose mode
+    parser.add_argument('-v', action='store_true', help="Verbose mode.")
+    # required query string
     parser.add_argument("query", type=str, help="The query for sources to retrieve data for.")
-    parser.add_argument("query", type=str, help="The query string.")
     args = parser.parse_args()
     
-    rag_load_data(args.query, verbose=args.v)
-
-def main_query():
-    parser = argparse.ArgumentParser(description="Query data for RAG.")
-    parser.add_argument('-v', action='store_true', help="Verbose mode, show input into llm.")
-    parser.add_argument("query", type=str, help="The query string.")
-    args = parser.parse_args()
-    
-    rag_query(args.query, verbose=args.v)
+    if args.load:
+        rag_load_data(args.query, verbose=args.v)
+    elif args.query:
+        rag_query(args.query, verbose=args.v)
+    else:
+        print("Must have either --load or --query")
 
 if __name__ == "__main__":
     # main_load()
-    main_query()
+    main()
