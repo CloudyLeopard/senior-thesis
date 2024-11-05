@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import os
 import httpx
 from requests.exceptions import HTTPError
-from typing import List, Dict
+from typing import List
 import pathlib
 from bs4 import BeautifulSoup
 
