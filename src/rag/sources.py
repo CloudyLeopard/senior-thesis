@@ -4,6 +4,7 @@ import httpx
 from requests.exceptions import HTTPError
 from typing import List, Dict
 import pathlib
+from bs4 import BeautifulSoup
 
 from lexisnexisapi import webservices
 
@@ -20,14 +21,13 @@ class BaseDataSource(ABC):
     def fetch(self) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
 
-        Args:
-            query: query to retrieve text from
-
         Returns:
-            List of Documents
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
 
         Raises:
-            ...
+            HTTPError: If the request to the data source API fails.
+
         """
         pass
 
@@ -35,14 +35,12 @@ class BaseDataSource(ABC):
     async def async_fetch(self) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
 
-        Args:
-            query: query to retrieve text from
-
         Returns:
-            List of Documents
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
 
         Raises:
-            ...
+            HTTPError: If the request to the data source API fails.
         """
         pass
 
@@ -329,6 +327,65 @@ class WikipediaData(BaseDataSource):
     async def async_fetch(self, query: str) -> List[Document]:
         """N/A. Calls on sync. fetch function"""
         return self.fetch(self, query)
+
+class FinancialTimesData(BaseDataSource):
+    def __init__(self):
+        self.source = "Financial Times"
+
+    def fetch(self, query: str, sort="relevance", pages=1) -> List[Document]:
+        """Fetch links from Financial Times, scrapes them, and returns as a list of Documents.
+        If document store is set, save documents to document store.
+
+        Args:
+            query (str): The main search query to fetch relevant links.
+
+        Returns:
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
+
+        Raises:
+            HTTPError: If the request to the Financial Times API fails.
+        """
+
+        with httpx.Client(timeout=10.0) as client:
+            # Search FT using query and scrape list of articles
+            url = "https://www.ft.com/search"
+            links = []
+
+            for page in range(1, pages+1):
+                params = {
+                    "q": query,
+                    "sort": sort, # date or relevance
+                    "page": page,
+                    "isFirstView": "false"
+                }
+                response = client.get(url, params=params)
+                response.raise_for_status() # TODO: error handling
+                soup = BeautifulSoup(response.text, "html.parser")
+                
+                # get all search items links
+                # NOTE: 1 page = 25 search results
+                search_divs = soup.find_all('div', class_='search-item')
+                for div in search_divs:
+                    a_tag = div.find('a', class_='js-teaser-heading-link')
+                    if a_tag:
+                        links.append(a_tag.get('href'))
+
+    async def async_fetch(self, query: str) -> List[Document]:
+        """Async version of fetch. Fetches links from Financial Times, scrapes them, and returns as a list of Documents.
+        If document store is set, save documents to document store.
+
+        Args:
+            query (str): The main search query to fetch relevant links.
+
+        Returns:
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
+
+        Raises:
+            HTTPError: If the request to the Financial Times API fails.
+        """
+        raise NotImplementedError
 
 class DirectoryData(BaseDataSource):
     def __init__(self):
