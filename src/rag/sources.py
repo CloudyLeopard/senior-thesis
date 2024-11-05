@@ -303,8 +303,33 @@ class GoogleSearchData(BaseDataSource):
         if self.document_store:
             self.document_store.save_documents(documents)
         return documents
-        
-        
+
+
+class WikipediaData(BaseDataSource):
+    def __init__(self):
+        self.source = "Wikipedia"
+
+    def fetch(self, query: str) -> List[Document]:
+        """Fetches links from Wikipedia, scrapes them, and returns as a list of Documents.
+        If document store is set, save documents to document store.
+
+        Args:
+            query (str): The main search query to fetch relevant links.
+
+        Returns:
+            List[Document]: A list of Document objects containing the text and metadata 
+                            of the scraped links.
+
+        Raises:
+            HTTPError: If the request to the Wikipedia API fails.
+        """
+        # https://pypi.org/project/Wikipedia-API/#description
+        raise NotImplementedError
+    
+    async def async_fetch(self, query: str) -> List[Document]:
+        """N/A. Calls on sync. fetch function"""
+        return self.fetch(self, query)
+
 class DirectoryData(BaseDataSource):
     def __init__(self):
         self.source = "Local Directory"
