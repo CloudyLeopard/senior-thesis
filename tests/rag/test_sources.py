@@ -34,7 +34,7 @@ def test_fetch(source, query):
     
 
 @pytest.mark.slow
-@pytest.mark.flaky(retries=2)
+# @pytest.mark.flaky(retries=2)
 @pytest.mark.asyncio(loop_scope="session")
 async def test_fetch_async(source, session, query):
     try:

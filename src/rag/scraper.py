@@ -4,7 +4,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
 
-from typing import List
+from typing import List, Dict
 
 # TODO: timeout error
 
@@ -15,12 +15,28 @@ class WebScraper:
         self.headless = headless
     
     @staticmethod
-    def _scrape_html(html: str) -> str:
-        """scrape with bs4, get all p tags content"""
+    def _scrape_html(html: str) -> Dict[str, str]:
+        """Scrape html and return a dict with different information scraped from the site"""
+
+        # parse html
         soup = BeautifulSoup(html, "lxml")
+
+        # scrape title
+        
+        title = soup.title.get_text(" ", strip=True) if soup.title else ""
+
+        # scrape article content
         text = "\n".join([p.get_text(" ", strip=True) for p in soup.find_all("p")])
 
-        return text
+        # ...
+
+        # putting all the scraped information into a dict
+        scraped_data = {
+            "title": title,
+            "content": text
+        }
+
+        return scraped_data
     
     def _create_selenium_driver(self):
         """Create and configure the Selenium WebDriver."""
@@ -38,6 +54,7 @@ class WebScraper:
         return driver
 
     def _scrape_with_selenium(self, driver, url: str):
+        print(url)
         """Fallback to Selenium to scrape the page."""
         
         try:
@@ -50,10 +67,14 @@ class WebScraper:
             return None
     
     
-    async def async_scrape_links(self, links: List[str]) -> List[str]:
-        async def _scrape_link(client: httpx.AsyncClient, driver, url: str) -> str:
+    async def async_scrape_links(self, links: List[str]) -> List[Dict[str, str]] | None:
+        """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
+        async def _scrape_link(client: httpx.AsyncClient, driver, url: str) -> Dict[str, str]:
             """internal helper function for scraping a single link"""
             r = await client.get(url)
+            if (r.headers.get("Content-Type") == "application/pdf"):
+                # if the link is a pdf, return None
+                return None
             try:
                 r.raise_for_status()
                 html = r.text
@@ -74,12 +95,15 @@ class WebScraper:
             
 
     
-    def scrape_links(self, links: List[str]) -> List[str]:
-        """Scrape multiple links and return a list of strings. Returns None if neither method works."""
+    def scrape_links(self, links: List[str]) -> List[Dict[str, str]]:
+        """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
         
-        def _scrape_link(client: httpx.Client, driver, url: str) -> str:
+        def _scrape_link(client: httpx.Client, driver, url: str) -> Dict[str, str]:
             """Try requests, fallback to Selenium if requests fail."""
             r = client.get(url)
+            if (r.headers.get("Content-Type") == "application/pdf"):
+                # if the link is a pdf, return None
+                return None
             try:
                 r.raise_for_status()
                 html = r.text

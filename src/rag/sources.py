@@ -119,7 +119,8 @@ class LexisNexisData(BaseDataSource):
         for result in data["value"]:
             html = result["Document"]["Content"]
             try:
-                text = WebScraper._scrape_html(html)
+                data = WebScraper._scrape_html(html)
+                text = data["content"]
             except Exception:
                 text = html # fallback to html if scraping fails
 
@@ -229,13 +230,18 @@ class GoogleSearchData(BaseDataSource):
 
         # create List of Documents
         documents = []
-        for link, content in zip(links, scraped_data):
+        for link, data in zip(links, scraped_data):
+            if data is None:
+                # if scraping fails, skip
+                continue
+
             metadata = {
                 "url": link, 
+                "title": data["title"],
                 "datasource": self.source,
                 "query": query
             }
-            document = Document(text=content, metadata=metadata)
+            document = Document(text=data["content"], metadata=metadata)
             documents.append(document)
         
         # if document store is set, save documents to document store
@@ -288,13 +294,18 @@ class GoogleSearchData(BaseDataSource):
 
         # create List of Documents
         documents = []
-        for link, content in zip(links, scraped_data):
+        for link, data in zip(links, scraped_data):
+            if data is None:
+                # if scraping fails, skip
+                continue
+            
             metadata = {
                 "url": link, 
+                "title": data["title"],
                 "datasource": self.source,
                 "query": query
             }
-            document = Document(text=content, metadata=metadata)
+            document = Document(text=data["content"], metadata=metadata)
             documents.append(document)
         
         # if document store is set, save documents to document store
