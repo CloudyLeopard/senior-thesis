@@ -97,7 +97,6 @@ class WebScraper:
         url: str,
         driver: webdriver = None,
         headers: Dict[str, str] = None,
-        *args,
         **kwargs,
     ) -> Dict[str, str] | None:
         """Async function for scraping a single link"""
@@ -115,7 +114,7 @@ class WebScraper:
                 return None
 
             html = r.text
-            return self.html_parser(html, *args, **kwargs)
+            return self.html_parser(html, **kwargs)
         except httpx.HTTPError as exc:
             if driver:
                 print(f"Error while requesting {exc.request.url!r}.")
@@ -123,7 +122,7 @@ class WebScraper:
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
-                return self.html_parser(html, *args, **kwargs)
+                return self.html_parser(html, **kwargs)
             else:
                 print(f"Error while requesting {exc.request.url!r}.")
                 print(f"No Selenium driver provided. Skipping {url}.")
@@ -162,7 +161,6 @@ class WebScraper:
         url: str,
         driver: webdriver = None,
         headers: Dict[str, str] = None,
-        *args,
         **kwargs,
     ):
         """Try requests, fallback to Selenium if requests fail."""
@@ -179,7 +177,7 @@ class WebScraper:
                 return None
 
             html = r.text
-            return self.html_parser(html, *args, **kwargs)
+            return self.html_parser(html, **kwargs)
         except httpx.HTTPError as exc:
             if driver:
                 print(f"Error while requesting {exc.request.url!r}.")
@@ -187,7 +185,7 @@ class WebScraper:
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
-                return self.html_parser(html, *args, **kwargs)
+                return self.html_parser(html, **kwargs)
             else:
                 print(f"Error while requesting {exc.request.url!r}.")
                 print(f"No Selenium driver provided. Skipping {url}.")
