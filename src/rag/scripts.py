@@ -1,5 +1,5 @@
 
-from rag.sources import GoogleSearchData, LexisNexisData
+from rag.sources import GoogleSearchData, LexisNexisData, FinancialTimesData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.embeddings import OpenAIEmbeddingModel
 from rag.document_storages import MongoDBStore
@@ -30,8 +30,6 @@ def rag_load_data(query: str, verbose: bool = False):
         print("Attempting to load news articles from google")
     try:
         documents = google_data.fetch(query) # returns list of Documents
-        chunked_documents = text_splitter.split_documents(documents) # split documents into chunks
-        vector_store.insert_documents(chunked_documents) # insert documents into vector store
         total_documents.extend(documents)
         if verbose:
             print("Finished loading news articles from google")
@@ -44,14 +42,32 @@ def rag_load_data(query: str, verbose: bool = False):
         print("Attempting to load Lexis Nexis data")
     try:
         documents = lexis_data.fetch(query)
-        chunked_documents = text_splitter.split_documents(documents)
-        vector_store.insert_documents(chunked_documents)
         total_documents.extend(documents)
         if verbose:
             print("Finished loading Lexis Nexis data")
     except Exception:
         print("Could not load Lexis Nexis data")
     
+    # Financial Times
+    ft_data = FinancialTimesData(document_store=document_store)
+    if verbose:
+        print("Attempting to load Financial Times data")
+    try:
+        documents = ft_data.fetch(query)
+        total_documents.extend(documents)
+        if verbose:
+            print("Finished loading Financial Times data")
+    except Exception:
+        print("Could not load Financial Times data")
+
+    if verbose:
+        print("Attempting to insert documents into vector store")
+
+    chunked_documents = text_splitter.split_documents(total_documents) # split documents into chunks
+    vector_store.insert_documents(chunked_documents) # insert documents into vector store
+    if verbose:
+        print("Finished inserting documents into vector store")
+
     # close connections
     document_store.close()
     vector_store.close()
