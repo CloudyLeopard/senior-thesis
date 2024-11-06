@@ -27,14 +27,14 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
     # TODO: work on "retry" when encountered error
     def embed(self, text: List[str]) -> List[List[float]]:
-        embeddings = self.client.embeddings.create(
+        embeddings = self.sync_client.embeddings.create(
             input=text, model=self.model
         )
 
         return [x.embedding for x in embeddings.data]
 
     async def async_embed(self, text: List[str]) -> List[List[float]]:
-        embeddings = await self.client.embeddings.create(
+        embeddings = await self.async_client.embeddings.create(
             input=text, model=self.model
         )
 
