@@ -361,7 +361,8 @@ class FinancialTimesData(BaseDataSource):
                 links.append(a_tag.get('href'))
         
         return links
-
+    
+    # TODO: this still doesn't work (something si wrong)
     @staticmethod
     def _ft_blog_html_parser(html: str, post_id: str) -> Dict[str, str]:
         """FT has 'blogs', which are a different format than FT's 'articles'.
