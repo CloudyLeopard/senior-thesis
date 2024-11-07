@@ -118,14 +118,14 @@ class WebScraper:
         except httpx.HTTPError as exc:
             if driver:
                 print(f"Error while requesting {exc.request.url!r}.")
-                print(f"Falling back to Selenium for {url}")
+                print("Falling back to Selenium")
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
                 return self.html_parser(html, **kwargs)
             else:
                 print(f"Error while requesting {exc.request.url!r}.")
-                print(f"No Selenium driver provided. Skipping {url}.")
+                print("No Selenium driver provided. Skipping.")
                 return None
         finally:
             if self.async_client is None:
@@ -181,14 +181,14 @@ class WebScraper:
         except httpx.HTTPError as exc:
             if driver:
                 print(f"Error while requesting {exc.request.url!r}.")
-                print(f"Falling back to Selenium for {url}")
+                print("Falling back to Selenium")
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
                 return self.html_parser(html, **kwargs)
             else:
                 print(f"Error while requesting {exc.request.url!r}.")
-                print(f"No Selenium driver provided. Skipping {url}.")
+                print("No Selenium driver provided. Skipping.")
                 return None
         finally:
             if self.sync_client is None:
