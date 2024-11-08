@@ -14,8 +14,8 @@ import json
     # NewsAPIData,
     # ProQuestData,
     # BingsNewsData,
-    # "google",
-    # "financial times"
+    "google",
+    "financial times"
 ])
 def source(request):
     name = request.param

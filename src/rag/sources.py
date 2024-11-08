@@ -362,7 +362,6 @@ class FinancialTimesData(BaseDataSource):
         
         return links
     
-    # TODO: this still doesn't work (something si wrong)
     @staticmethod
     def _ft_blog_html_parser(html: str, post_id: str) -> Dict[str, str]:
         """FT has 'blogs', which are a different format than FT's 'articles'.
@@ -375,6 +374,10 @@ class FinancialTimesData(BaseDataSource):
         """
         soup = BeautifulSoup(html, "lxml")
         post_id_element = soup.find(id=post_id)
+        if not post_id_element:
+            # if cannot find post_id in website, return None
+            return None
+        
         title = post_id_element.find('h2').get_text()
         content = "\n".join([p.text.strip() for p in post_id_element.find_all('p')])
         posted_time = post_id_element.find('time').get('datetime')
@@ -580,4 +583,20 @@ class DirectoryData(BaseDataSource):
     async def async_fetch(self, path: str):
         """N/A. Calls on sync. fetch function"""
         return self.fetch(self, path)
-                
+
+if __name__ == "__main__":
+    # import json
+    # with open(".ft-headers.json", "r")  as f:
+    #     headers = json.load(f)
+    # ft_source = FinancialTimesData(headers=headers)
+    # documents = ft_source.fetch("uk inflation")
+    # for doc in documents:
+    #     print (doc)
+    #     print('-'*20)
+
+    lexis_source = LexisNexisData()
+    documents = lexis_source.fetch("uk inflation")
+    for doc in documents:
+        print (doc)
+        print('-'*20)
+
