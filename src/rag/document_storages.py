@@ -6,9 +6,11 @@ from uuid import UUID
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
-
+import logging
 
 from rag.models import Document
+
+logger = logging.getLogger(__name__)
 
 MONGODB_OBJECTID_DIM = 24
 
@@ -56,19 +58,23 @@ class MongoDBStore(BaseDocumentStore):
         # set uri (if not provided)
         uri = uri or os.getenv("MONGODB_URI")
         if not uri:
-            raise ValueError("uri must be set")
+            logger.error("MongoDB URI not set.")
+            raise ValueError("MongoDBuri must be set")
         
+        logger.debug("Connecting to MongoDB at %s", uri)
         self.client = MongoClient(
             uri,
             uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
         ) 
         self.db = self.client[db_name]
+        collection_name="documents"
 
         if reset_db:
-            self.db.drop_collection("documents")
-            self.db.create_collection("documents")
+            logger.info("Dropping and creating collection %s in database %s", collection_name, db_name)
+            self.db.drop_collection(collection_name)
+            self.db.create_collection(collection_name)
 
-        self.collection = self.db["documents"]
+        self.collection = self.db[collection_name]
 
     def close(self):
         self.client.close()
@@ -84,6 +90,7 @@ class MongoDBStore(BaseDocumentStore):
 
         # set db_id in passed document
         document.set_db_id(str(result.inserted_id))
+        logger.info("Saved document with uuid %s, db id %s", document.uuid, document.db_id)
         return str(result.inserted_id)
     
     def save_documents(self, documents: List[Document]) -> List[str]:
@@ -94,12 +101,14 @@ class MongoDBStore(BaseDocumentStore):
                 "metadata": document.metadata,
                 "uuid": document.uuid
             })
+        logger.debug("Attempting to insert %d documents", len(documents))
         result = self.collection.insert_many(data)
 
         # set db_id in passed document
         for i in range(len(documents)):
             documents[i].set_db_id(str(result.inserted_ids[i]))
-
+        
+        logger.info("Saved %d documents", len(documents))
         return [str(doc_id) for doc_id in result.inserted_ids]
 
     def get_document(self, db_id: str) -> Document | None:
@@ -137,7 +146,9 @@ class MongoDBStore(BaseDocumentStore):
 
 
     def remove_document(self, db_id: str) -> bool:
+        logger.debug("Attempting to remove document with id %s", db_id)
         result = self.collection.delete_one({"_id": ObjectId(db_id)})
+        logger.info("Removed document with id %s", db_id)
         return result.acknowledged
 
 class AsyncMongoDBStore(BaseDocumentStore):
@@ -184,6 +195,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
         self = cls(db_name, uri)
         
         # Create client with the current event loop
+        logger.debug("Connecting to Async MongoDB (Motor) at %s", self.uri)
         self.client = AsyncIOMotorClient(
             self.uri,
             uuidRepresentation='standard',
@@ -192,12 +204,15 @@ class AsyncMongoDBStore(BaseDocumentStore):
         self.client.get_io_loop = asyncio.get_event_loop 
 
         self.db = self.client[self.db_name]
-        self.collection = self.db["documents"]
+        collection_name="documents"
+
+        self.collection = self.db[collection_name]
 
         # Perform async initialization if needed
         if reset_db:
-            await self.db.drop_collection("documents")
-            await self.db.create_collection("documents")
+            logger.info("Dropping and creating collection %s in database %s", collection_name, db_name)
+            await self.db.drop_collection(collection_name)
+            await self.db.create_collection(collection_name)
 
         return self
 
@@ -215,6 +230,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
         Returns:
             str: The database ID of the saved document
         """
+        logger.debug("Saving document with uuid %s", document.uuid)
         data = {
             "text": document.text,
             "metadata": document.metadata,
@@ -224,6 +240,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
 
         # set db_id in passed document
         document.set_db_id(str(result.inserted_id))
+        logger.info("Saved document with uuid %s and db_id %s", document.uuid, document.db_id)
         return str(result.inserted_id)
     
     async def save_documents(self, documents: List[Document]) -> List[str]:
@@ -236,6 +253,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
         Returns:
             List[str]: List of database IDs for the saved documents
         """
+        logger.debug("Saving %d documents", len(documents))
         data = [
             {
                 "text": doc.text,
@@ -251,6 +269,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
         for doc, doc_id in zip(documents, result.inserted_ids):
             doc.set_db_id(str(doc_id))
 
+        logger.info("Saved %d documents", len(documents))
         return [str(doc_id) for doc_id in result.inserted_ids]
 
     async def get_document(self, db_id: str) -> Optional[Document]:
@@ -324,13 +343,17 @@ class AsyncMongoDBStore(BaseDocumentStore):
         Returns:
             bool: True if document was removed, False otherwise
         """
+        logger.debug("Removing document with db_id %s", db_id)
         result = await self.collection.delete_one({"_id": ObjectId(db_id)})
+        logger.info("Removed document with db_id %s", db_id)
         return result.acknowledged
 
     async def __aenter__(self) -> "AsyncMongoDBStore":
         """Support for async context manager."""
+        raise NotImplementedError
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Ensure proper cleanup when used as context manager."""
+        raise NotImplementedError
         await self.close()
