@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 from typing import List, Dict
 import os
 from openai import OpenAI, AsyncOpenAI
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 class BaseLLM(ABC):
     """Custom generator interface"""
@@ -41,7 +45,10 @@ class OpenAILLM(BaseLLM):
 
         # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
-        # usage = completion.usage
+        total_tokens = completion.usage.total_tokens
+
+        logger.info("Total tokens used: %d", total_tokens)
+        logger.info("Completion: %s", completion.choices[0].message.content)
 
         return completion.choices[0].message.content
 
@@ -62,6 +69,10 @@ class OpenAILLM(BaseLLM):
             self.messages.append(completion.choices[0].message)
 
         # TODO: add logger to track openai response, token usage here
+        total_tokens = completion.usage.total_tokens
+
+        logger.info("Total tokens used: %d", total_tokens)
+        logger.info("Completion: %s", completion.choices[0].message.content)
 
         return completion.choices[0].message.content
 
