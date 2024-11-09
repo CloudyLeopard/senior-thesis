@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import List
-
+import logging
 
 from rag.document_storages import BaseDocumentStore
 from rag.vector_storages import BaseVectorStorage
 from rag.models import Document
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRetriever(ABC):
@@ -80,9 +82,9 @@ class DocumentRetriever(BaseRetriever):
                 document.metadata = db_document.metadata
                 document.db_id = db_document.db_id
             else:
-                print("No DB_ID found")
+                logger.warning("No record of document %s found in document storage", document.uuid)
         
-
+        logger.info("Retrieved %d documents", len(retrieved_documents))
         return retrieved_documents
 
     async def async_retrieve(self, prompt: str, top_k=3) -> List[Document]:

@@ -3,11 +3,12 @@ import httpx
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
-
 from typing import List, Dict
+import logging
 
 # TODO: timeout error
 
+logger = logging.getLogger(__name__)
 
 class WebScraper:
     """Scrapes list of websites using aiohttp or requests, and fallsback to selenium if aiohttp fails"""
@@ -80,16 +81,16 @@ class WebScraper:
         return driver
 
     def _scrape_with_selenium(self, driver, url: str):
-        print(url)
         """Fallback to Selenium to scrape the page."""
-
+        logging.debug("Attempting to scrape %s with Selenium", url)
         try:
             driver.get(url)
             time.sleep(2)  # Give the page time to load
             page_content = driver.page_source
+            logging.info("Successfully scraped %s with Selenium", url)
             return page_content
         except Exception as e:
-            print(f"Error occurred while scraping {url} with Selenium: {e}")
+            logging.error("Error occurred while scraping %s with Selenium: %s", url, str(e))
             return None
 
     async def async_scrape_link(
@@ -100,9 +101,11 @@ class WebScraper:
         **kwargs,
     ) -> Dict[str, str] | None:
         """Async function for scraping a single link"""
+        logger.debug("Async scraping %s", url)
 
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
+            logging.debug("Inititalized async client")
         else:
             client = self.async_client
 
@@ -111,25 +114,26 @@ class WebScraper:
             r.raise_for_status()
             if r.headers.get("Content-Type") == "application/pdf":
                 # if the link is a pdf, return None
+                logger.warning("Url %s is a pdf. Skipping.", url)
                 return None
 
             html = r.text
+            logger.info("Successfully async scraped %s", url)
             return self.html_parser(html, **kwargs)
         except httpx.HTTPError as exc:
+            logger.warning("Error while requesting %s using async httpx", exc.request.url)
             if driver:
-                print(f"Error while requesting {exc.request.url!r}.")
-                print("Falling back to Selenium")
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
                 return self.html_parser(html, **kwargs)
             else:
-                print(f"Error while requesting {exc.request.url!r}.")
-                print("No Selenium driver provided. Skipping.")
+                logger.warning("No Selenium driver provided. Skipping.")
                 return None
         finally:
             if self.async_client is None:
                 await client.aclose()
+                logging.debug("Closed async client")
 
     async def async_scrape_links(
         self, links: List[str], headers: Dict[str, str] = None
@@ -141,6 +145,9 @@ class WebScraper:
             Additional arguments to pass to the html_parser function
         """
 
+        logger.debug("Async scraping %d links", len(links))
+
+        logger.debug("Creating Selenium driver")
         driver = self._create_selenium_driver()
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
@@ -155,6 +162,7 @@ class WebScraper:
             if self.async_client is None:
                 await client.aclose()
             driver.quit()
+            logger.debug("Closed Selenium driver")
 
     def scrape_link(
         self,
@@ -164,6 +172,8 @@ class WebScraper:
         **kwargs,
     ):
         """Try requests, fallback to Selenium if requests fail."""
+        logger.debug("Scraping %s", url)
+
         if self.sync_client is None:
             client = httpx.Client(headers=headers)
         else:
@@ -174,21 +184,21 @@ class WebScraper:
             r.raise_for_status()
             if r.headers.get("Content-Type") == "application/pdf":
                 # if the link is a pdf, return None
+                logger.warning("Url %s is a pdf. Skipping.", url)
                 return None
 
             html = r.text
+            logger.info("Successfully scraped %s", url)
             return self.html_parser(html, **kwargs)
         except httpx.HTTPError as exc:
+            logger.warning("Error while requesting %s", exc.request.url)
             if driver:
-                print(f"Error while requesting {exc.request.url!r}.")
-                print("Falling back to Selenium")
                 html = self._scrape_with_selenium(driver, url)
                 if html is None:
                     return None
                 return self.html_parser(html, **kwargs)
             else:
-                print(f"Error while requesting {exc.request.url!r}.")
-                print("No Selenium driver provided. Skipping.")
+                logger.warning("No Selenium driver provided. Skipping.")
                 return None
         finally:
             if self.sync_client is None:
@@ -198,12 +208,14 @@ class WebScraper:
         self, links: List[str], headers: Dict[str, str] = None
     ) -> List[Dict[str, str]]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
+        logger.debug("Scraping %d links", len(links))
 
         if self.sync_client is None:
             client = httpx.Client(headers=headers)
         else:
             client = self.sync_client
 
+        logger.debug("Creating Selenium driver")
         driver = self._create_selenium_driver()
         try:
             return [self.scrape_link(url=link, driver=driver) for link in links]
@@ -211,6 +223,7 @@ class WebScraper:
             if self.sync_client is None:
                 client.close()
             driver.quit()
+            logger.debug("Closed Selenium driver")
 
 
 # Example usage
