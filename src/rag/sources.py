@@ -1,16 +1,20 @@
 from abc import ABC, abstractmethod
 import os
 import httpx
+import requests
 from typing import List, Dict
 import pathlib
 from bs4 import BeautifulSoup
 import asyncio
+import logging
 
-from lexisnexisapi import webservices
+from lexisnexisapi import webservices, credentials
 
 from rag.scraper import WebScraper
 from rag.document_storages import BaseDocumentStore
 from rag.models import Document
+
+logger = logging.getLogger(__name__)
 
 class BaseDataSource(ABC):
     """Custom data source class interface"""
@@ -72,6 +76,11 @@ class LexisNexisData(BaseDataSource):
         self.source = "LexisNexis"
 
         # TODO: if credentials not set, warn user where to set credentials
+        cred = credentials.get_Credentials()
+        if (not cred.get("WSAPI_CLIENT_ID")) or (not cred.get("WSAPI_SECRET")):
+            logger.error(
+                "LexisNexis credentials not set. Please set them in %s", credentials.cred_file_path())
+            raise ValueError("LexisNexis credentials not set")
         self.token = webservices.token()
 
     def fetch(self, query: str, num_results = 5) -> List[Document]:
@@ -104,18 +113,21 @@ class LexisNexisData(BaseDataSource):
         }
 
         try:
+            logger.debug("Fetching documents from Lexis Nexis API")
             data = webservices.call_api(
                 access_token=self.token, endpoint="News", params=parameters
             )
-        except httpx.HTTPStatusError as e:
-            # self.logger.error("HTTP Error %d: %s", e.response.status_code, str(e))
+        except requests.exceptions.HTTPError as e:
+            msg = e.response.reason
             if e.response.status_code == 429:
-                e.msg = "HTTP Error 429: Lexis Nexis query limit reached"
+                msg = "Lexis Nexis query limit reached"
+            logger.error("Lexis Nexis HTTP Error %d: %s", e.response.status_code, msg)
             raise e
-        except httpx.RequestError as e:
-            print(f"An error occurred while requesting {e.request.url!r}.")
+        except requests.exceptions.RequestException as e:
+            logger.error("Lexis Nexis Failed to fetch documents: %s", e)
             raise e
         
+        logger.debug("Converting data to Document objects")
         documents = []
         for result in data["value"]:
             html = result["Document"]["Content"]
@@ -141,10 +153,12 @@ class LexisNexisData(BaseDataSource):
 
             documents.append(document)
 
-            # if document store is set, save document to document store
-            if self.document_store:
-                self.document_store.save_document(document)
+        # if document store is set, save document to document store
+        if self.document_store:
+            logger.debug("Saving documents to document store")
+            self.document_store.save_documents(documents)
         
+        logger.debug("Successfully fetched %d documents from Lexis Nexis API", len(documents))
         return documents
     
     async def async_fetch(self, query: str, num_results = 10) -> List[Document]:
@@ -182,7 +196,12 @@ class GoogleSearchData(BaseDataSource):
             "key": api_key or os.getenv("GOOGLE_API_KEY"),
             "cx": search_engine_id or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
         }
-        # TODO: error for if API key or search engine ID is not set
+
+        if not self.parameters["key"] or not self.parameters["cx"]:
+            logger.error("Google Search API key and search engine ID must be set")
+            raise ValueError("Google Search API key and search engine ID must be set")
+
+        logger.debug("Google Search API key and search engine ID set")
     
     def fetch(self, query: str, or_terms: str = None, pages = 1) -> List[Document]:
         """Fetch links from Google Search API, scrape them, and return as a list of Documents.
@@ -214,22 +233,38 @@ class GoogleSearchData(BaseDataSource):
                 # 10 results per page
                 params["start"] = page * 10 + 1
 
-                # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
-                response = client.get("https://www.googleapis.com/customsearch/v1", params=params)
-                response.raise_for_status()
-                response_json = response.json()
+                try:
+                    logger.debug("Fetching links from Google Search API (page %d)", page)
+                    response = client.get("https://www.googleapis.com/customsearch/v1", params=params)
+                    response.raise_for_status()
+                    response_json = response.json()
+                except httpx.HTTPStatusError as e:
+                    msg = e.response.text
+                    if e.response.status_code == 429:
+                        msg = "Google Search API query limit reached"
+                    logger.error("Google Search API HTTP Error %d: %s", e.response.status_code, msg)
+                    raise e
+                except httpx.RequestError as e:
+                    logger.error("Google Search API Failed to fetch links: %s", e)
+                    raise e
 
                 num_results = int(response_json["searchInformation"]["totalResults"])
                 raw_results = response_json["items"] if num_results != 0 else []
 
+                logger.debug("Found %d results", num_results)
+
                 # list of websites, where each website is a "title" and a "link"
                 links.extend([result["link"] for result in raw_results])
         
-        # scrape list of links
-        scraper = WebScraper()
-        scraped_data = scraper.scrape_links(links)
+            # scrape list of links
+            logger.debug("Initialize WebScraper")
+            scraper = WebScraper(sync_client=client)
+
+            logger.debug("Scraping links")
+            scraped_data = scraper.scrape_links(links)
 
         # create List of Documents
+        logger.debug("Converting data to Document objects")
         documents = []
         for link, data in zip(links, scraped_data):
             if data is None:
@@ -247,7 +282,10 @@ class GoogleSearchData(BaseDataSource):
         
         # if document store is set, save documents to document store
         if self.document_store:
+            logger.debug("Saving documents to document store")
             self.document_store.save_documents(documents)
+        
+        logger.debug("Successfully fetched %d documents from Google Search API", len(documents))
         return documents
     
     async def async_fetch(self, query: str, or_terms: str = None, pages = 1) -> List[Document]:
@@ -279,21 +317,39 @@ class GoogleSearchData(BaseDataSource):
                 params["start"] = page * 10 + 1
 
                 # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
-                response = await client.get("https://www.googleapis.com/customsearch/v1", params=params)
-                response.raise_for_status()
-                response_json = response.json()
+                
+                try:
+                    logger.debug("Async fetching links from Google Search API (page %d)", page)
+                    response = await client.get("https://www.googleapis.com/customsearch/v1", params=params)
+                    response.raise_for_status()
+                    response_json = response.json()
+                except httpx.HTTPStatusError as e:
+                    msg = e.response.text
+                    if e.response.status_code == 429:
+                        msg = "Google Search API query limit reached"
+                    logger.error("Google Search API HTTP Error %d: %s", e.response.status_code, msg)
+                    raise e
+                except httpx.RequestError as e:
+                    logger.error("Google Search API Failed to fetch links: %s", e)
+                    raise e
 
                 num_results = int(response_json["searchInformation"]["totalResults"])
                 raw_results = response_json["items"] if num_results != 0 else []
 
+                logger.debug("Found %d results", num_results)
+
                 # list of websites, where each website is a "title" and a "link"
                 links.extend([result["link"] for result in raw_results])
         
-        # scrape list of links
-        scraper = WebScraper()
-        scraped_data = await scraper.async_scrape_links(links)
+            # scrape list of links
+            logger.debug("Initialize Async WebScraper")
+            scraper = WebScraper(async_client=client)
+
+            logger.debug("Async scraping links")
+            scraped_data = await scraper.async_scrape_links(links)
 
         # create List of Documents
+        logger.debug("Converting data to Document objects")
         documents = []
         for link, data in zip(links, scraped_data):
             if data is None:
@@ -311,7 +367,10 @@ class GoogleSearchData(BaseDataSource):
         
         # if document store is set, save documents to document store
         if self.document_store:
+            logger.debug("Saving documents to document store")
             self.document_store.save_documents(documents)
+        
+        logger.debug("Successfully async fetched %d documents from Google Search API", len(documents))
         return documents
 
 
@@ -417,10 +476,20 @@ class FinancialTimesData(BaseDataSource):
                     "page": page,
                     "isFirstView": "false"
                 }
-                response = client.get(url, params=params)
-                response.raise_for_status() # TODO: error handling
-                html = response.text
-                links.extend(self._parse_search_page(html))
+
+                # parse search page
+                logger.debug("Scraping Financial Times for query: %s (sort: %s, page: %d)", query, sort, page)
+                try:
+                    response = client.get(url, params=params)
+                    response.raise_for_status() # TODO: error handling
+                    html = response.text
+                    links.extend(self._parse_search_page(html))
+                except httpx.HTTPStatusError as e:
+                    logger.error("Financial Times HTTP Error %d: %s", e.response.status_code, e)
+                    raise e
+                except httpx.RequestError as e:
+                    logger.error("Error fetching Financial Times search page: %s", e)
+                    raise e
             
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
@@ -438,7 +507,10 @@ class FinancialTimesData(BaseDataSource):
             # so i am scraping the link individually, rather than scraping the whole list
 
             # scrape articles
+            logger.debug("Initialize WebScraper")
             scraper = WebScraper(sync_client=client)
+
+            logger.debug("Scraping %d Financial Times articles", len(links))
             articles_data = scraper.scrape_links(article_links)
 
             # scrape blogs
@@ -449,6 +521,7 @@ class FinancialTimesData(BaseDataSource):
                 blog_data.append(scraper.scrape_link(url=link, post_id=post_id))
 
         # combine articles and blogs
+        logger.debug("Converting data to Document Objects")
         documents = []
         for link, article in zip(article_links + blog_links, articles_data + blog_data):
             documents.append(
@@ -466,8 +539,10 @@ class FinancialTimesData(BaseDataSource):
         
         # if document store is set, save documents to document store
         if self.document_store:
+            logger.debug("Saving %d documents to document store", len(documents))
             self.document_store.save_documents(documents)
 
+        logger.debug("Successfully fetched %d documents from Financial Times", len(documents))
         return documents
 
 
@@ -500,10 +575,20 @@ class FinancialTimesData(BaseDataSource):
                     "page": page,
                     "isFirstView": "false"
                 }
-                response = await client.get(url, params=params)
-                response.raise_for_status() # TODO: error handling
-                html = response.text
-                links.extend(self._parse_search_page(html))
+
+                # parse search page
+                logger.debug("Async scraping Financial Times for query: %s (sort: %s, page: %d)", query, sort, page)
+                try:
+                    response = await client.get(url, params=params)
+                    response.raise_for_status() # TODO: error handling
+                    html = response.text
+                    links.extend(self._parse_search_page(html))
+                except httpx.HTTPStatusError as e:
+                    logger.error("Financial Times HTTP Error %d: %s", e.response.status_code, e)
+                    raise e
+                except httpx.RequestError as e:
+                    logger.error("Error fetching Financial Times search page: %s", e)
+                    raise e
             
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
@@ -518,7 +603,10 @@ class FinancialTimesData(BaseDataSource):
                     blog_links.append(f"https://www.ft.com{link}")
 
             # scrape articles
+            logger.debug("Initialize Async WebScraper")
             scraper = WebScraper(async_client=client)
+
+            logger.debug("Async scraping %d Financial Times articles", len(links))
             articles_data = await scraper.async_scrape_links(article_links)
 
             # scrape blogs
@@ -535,6 +623,7 @@ class FinancialTimesData(BaseDataSource):
             await client.aclose()
 
         # combine articles and blogs
+        logger.debug("Converting data to Document Objects")
         documents = []
         for link, article in zip(article_links + blog_links, articles_data + blog_data):
             documents.append(
@@ -552,8 +641,10 @@ class FinancialTimesData(BaseDataSource):
         
         # if document store is set, save documents to document store
         if self.document_store:
+            logger.debug("Saving %d documents to document store", len(documents))
             self.document_store.save_documents(documents)
 
+        logger.debug("Successfully async fetched %d documents from Financial Times", len(documents))
         return documents
 
 class DirectoryData(BaseDataSource):
@@ -566,6 +657,7 @@ class DirectoryData(BaseDataSource):
         if (not dir.is_dir()):
             raise ValueError("Invalid path - must be a directory")
         
+        logger.debug("Fetching data from %s", dir.absolute())
         documents = []
         for txt_file in dir.glob("*.txt"):
             txt = txt_file.read_text()

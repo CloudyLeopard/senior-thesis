@@ -9,7 +9,6 @@ from rag.vector_storages import MilvusVectorStorage
 from rag.document_storages import MongoDBStore, AsyncMongoDBStore
 from rag.embeddings import OpenAIEmbeddingModel
 
-
 @pytest_asyncio.fixture(scope="session")
 async def session():
     client = ClientSession()
