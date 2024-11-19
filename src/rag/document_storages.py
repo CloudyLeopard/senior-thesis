@@ -7,6 +7,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
 import logging
+from datetime import datetime
 
 from rag.models import Document
 
@@ -84,7 +85,8 @@ class MongoDBStore(BaseDocumentStore):
         data = {
             "text": document.text,
             "metadata": document.metadata,
-            "uuid": document.uuid
+            "uuid": document.uuid,
+            "created_at": datetime.now()
         }
         result = self.collection.insert_one(data)
 
@@ -99,7 +101,8 @@ class MongoDBStore(BaseDocumentStore):
             data.append({
                 "text": document.text,
                 "metadata": document.metadata,
-                "uuid": document.uuid
+                "uuid": document.uuid,
+                "created_at": datetime.now()
             })
         logger.debug("Attempting to insert %d documents", len(documents))
         result = self.collection.insert_many(data)
@@ -234,7 +237,8 @@ class AsyncMongoDBStore(BaseDocumentStore):
         data = {
             "text": document.text,
             "metadata": document.metadata,
-            "uuid": document.uuid
+            "uuid": document.uuid,
+            "created_at": datetime.now()
         }
         result = await self.collection.insert_one(data)
 
@@ -258,7 +262,8 @@ class AsyncMongoDBStore(BaseDocumentStore):
             {
                 "text": doc.text,
                 "metadata": doc.metadata,
-                "uuid": doc.uuid
+                "uuid": doc.uuid,
+                "created_at": datetime.now()
             }
             for doc in documents
         ]
