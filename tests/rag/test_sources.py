@@ -21,6 +21,7 @@ def source(request):
     name = request.param
 
     if name == "google":
+        pytest.xfail(reason="Google Cloud Project for JSON Search API isdisabled")
         return GoogleSearchData()
     elif name == "lexis":
         return LexisNexisData()
@@ -50,7 +51,7 @@ def test_fetch(source, query):
         assert isinstance(document, Document)
         assert len(document.text) > 0 # may report error for some sources that return empty text
         assert len(document.metadata) > 0
-        assert document.metadata["datasource"] == source.source
+        assert document.metadata["datasource"] == source.__class__.__name__
         assert document.metadata["query"] == query
         assert document.uuid and isinstance(document.uuid, UUID)
     
@@ -69,8 +70,11 @@ async def test_fetch_async(source, session, query):
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
-        assert document.metadata.get("datasource") == source.source
+        assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.metadata.get("query") == query
+        assert "url" in document.metadata
+        assert "title" in document.metadata
+        assert "publication_time" in document.metadata
         assert document.uuid and isinstance(document.uuid, UUID)
 
 def test_fetch_directory():
@@ -82,5 +86,5 @@ def test_fetch_directory():
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
-        assert document.metadata.get("datasource") == source.source
+        assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.uuid and isinstance(document.uuid, UUID)
