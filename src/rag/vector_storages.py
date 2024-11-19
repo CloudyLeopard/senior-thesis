@@ -125,6 +125,10 @@ class MilvusVectorStorage(BaseVectorStorage):
         """exit milvus client. not necessary"""
         self.client.close()
 
+    def reset_collection(self):
+        self.client.drop_collection(self.collection_name)
+        self._create_schema_and_collection()
+
     def insert_documents(
         self, documents: List[Document]
     ) -> List[int]:
