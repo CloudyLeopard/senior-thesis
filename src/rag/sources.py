@@ -7,8 +7,10 @@ import pathlib
 from bs4 import BeautifulSoup
 import asyncio
 import logging
+from datetime import datetime, timedelta
 
 from lexisnexisapi import webservices, credentials
+import yfinance as yf
 
 from rag.scraper import WebScraper
 from rag.document_storages import BaseDocumentStore
@@ -197,8 +199,141 @@ class GuardiansData(BaseDataSource):
 
 
 class NewsAPIData(BaseDataSource):
-    pass
+    
+    def __init__(self, document_store: BaseDocumentStore = None, api_key: str = None):
+        super().__init__(document_store)
+        self.source = "NewsAPI"
+        
+        self.parameters = {
+            "apiKey": api_key or os.getenv("NEWS_API_KEY"),
+        }
+    
+    def fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 100,pages: int = 1) -> List[Document]:
+        params = self.parameters
+        params["q"] = query
+        if months:
+            params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
+        params["language"] = "en"
+        params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
+        params["page"] = pages
+        params["pageSize"] = page_size
 
+        with httpx.Client(timeout=10.0) as client:
+            logger.debug("Fetching documents from NewsAPI API")
+
+            try:
+                response = client.get("https://newsapi.org/v2/everything", params=params)
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as e:
+                msg = e.response.text
+                if e.response.status_code == 429:
+                    msg = "NewsAPI query limit reached"
+                logger.error(
+                    "NewsAPI HTTP Error %d: %s",
+                    e.response.status_code,
+                    msg,
+                )
+                raise e
+            except httpx.RequestError as e:
+                logger.error("NewsAPI Failed to fetch documents: %s", e)
+                raise e
+            
+            articles = data["articles"]
+            num_results = data["totalResults"]
+            logger.debug("Fetched %d documents from NewsAPI API", num_results)
+
+            # scrape list of links
+            logger.debug("Scraping documents from links")
+            scraper = WebScraper(sync_client=client)
+
+            logger.debug("Scraping links")
+            scraped_data = scraper.scrape_links([article["url"] for article in articles])
+        
+        logger.debug("Converting data to Document objects")
+        documents = []
+        for article, data in zip(articles, scraped_data):
+            metadata = self.parse_metadata(
+                query=query,
+                url=article["url"],
+                title=article["title"],
+                publication_time=article["publishedAt"],
+                source=article["source"]["name"],
+                description=article["description"],
+            )
+            document = Document(text=data["content"], metadata=metadata)
+            documents.append(document)
+        
+        # if document store is set, save documents to document store
+        if self.document_store:
+            logger.debug("Saving documents to document store")
+            self.document_store.save_documents(documents)
+
+        logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
+        return documents
+    
+    async def async_fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 100,pages: int = 1) -> List[Document]:
+        params = self.parameters
+        params["q"] = query
+        if months:
+            params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
+        params["language"] = "en"
+        params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
+        params["page"] = pages
+        params["pageSize"] = page_size
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            logger.debug("Fetching documents from NewsAPI API")
+
+            try:
+                response = await client.get("https://newsapi.org/v2/everything", params=params)
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as e:
+                msg = e.response.text
+                if e.response.status_code == 429:
+                    msg = "NewsAPI query limit reached"
+                logger.error(
+                    "NewsAPI HTTP Error %d: %s",
+                    e.response.status_code,
+                    msg,
+                )
+                raise e
+            except httpx.RequestError as e:
+                logger.error("NewsAPI Failed to fetch documents: %s", e)
+                raise e
+            
+            articles = data["articles"]
+            num_results = data["totalResults"]
+            logger.debug("Fetched %d documents from NewsAPI API", num_results)
+
+            # scrape list of links
+            logger.debug("Scraping documents from links")
+            scraper = WebScraper(async_client=client)
+
+            logger.debug("Scraping links")
+            scraped_data = await scraper.async_scrape_links([article["url"] for article in articles])
+        
+        logger.debug("Converting data to Document objects")
+        documents = []
+        for article, data in zip(articles, scraped_data):
+            metadata = self.parse_metadata(
+                query=query,
+                url=article["url"],
+                title=article["title"],
+                publication_time=article["publishedAt"],
+                source=article["source"]["name"],
+                description=article["description"],
+            )
+            document = Document(text=data["content"], metadata=metadata)
+            documents.append(document)
+        
+        # if document store is set, save documents to document store
+        if self.document_store:
+            logger.debug("Saving documents to document store")
+            self.document_store.save_documents(documents)
+
+        logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
+        return documents    
 
 class ProQuestData(BaseDataSource):
     pass
