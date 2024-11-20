@@ -19,9 +19,9 @@ class BaseLLM(ABC):
 
 class OpenAILLM(BaseLLM):
     def __init__(self, model="gpt-4o-mini", api_key:str = None, keep_history: bool = False):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.sync_client = OpenAI(api_key=self.api_key)
-        self.async_client = AsyncOpenAI(api_key=self.api_key)
+        api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.sync_client = OpenAI(api_key=api_key)
+        self.async_client = AsyncOpenAI(api_key=api_key)
         self.model = model
         self.keep_history = keep_history
         self.messages = []
