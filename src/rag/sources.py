@@ -67,11 +67,11 @@ class BaseDataSource(ABC):
         **kwargs,
     ) -> Dict[str, str]:
         metadata = {
-            "query": query,
-            "datasource": self.__class__.__name__,  # originally self.datasource
-            "url": url,
-            "title": title,
-            "publication_time": publication_time,
+            "query": query or "",
+            "datasource": self.__class__.__name__,
+            "url": url or "",
+            "title": title or "",
+            "publication_time": publication_time or "",
         }
         metadata.update(kwargs)
         return metadata

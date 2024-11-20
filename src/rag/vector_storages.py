@@ -4,11 +4,13 @@ from uuid import UUID
 from typing import List, Any
 import os
 import chromadb
+import logging
 
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 from rag.embeddings import BaseEmbeddingModel
 from rag.document_storages import MONGODB_OBJECTID_DIM
 
+logger = logging.getLogger(__name__)
 
 class BaseVectorStorage(ABC):
     """Custom VectorStorage Class Interface. A vectorstorage is required to have a
@@ -299,10 +301,16 @@ class ChromaVectorStorage(BaseVectorStorage):
         }
 
         for document in documents:
-            data["ids"].append(hash(document))
+            data["ids"].append(str(hash(document)))
+
+            metadata = document.metadata
+            metadata["uuid"] = str(document.uuid)
             data["metadatas"].append(document.metadata)
+
             data["documents"].append(document.text)
 
+        # insert data into chromadb       
+        logger.info("Inserting documents into ChromaDB")
         self.collection.upsert(
             ids=data["ids"],
             metadatas=data["metadatas"],
@@ -323,7 +331,7 @@ class ChromaVectorStorage(BaseVectorStorage):
         documents = [
             Document(
                 text=document,
-                uuid=UUID(doc_id),
+                uuid=UUID(metadata.pop("uuid")),
                 metadata=metadata,
             )
             for document, doc_id, metadata in zip(
@@ -336,7 +344,8 @@ class ChromaVectorStorage(BaseVectorStorage):
     def remove_documents(self, ids):
         super().remove_documents(ids)
 
-        return self.collection.delete(ids=ids)
+        self.collection.delete(ids=ids)
+        return len(ids) # cheating here cuz chroma deletes doesn't return anything
 
     def clear(self):
         super().clear()
