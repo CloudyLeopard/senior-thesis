@@ -13,11 +13,13 @@ class Document:
         self.metadata: Dict[Any, Any] = metadata
         self.db_id: str = db_id # init db_id as none
 
-    def set_db_id(self, id: str):
-        self.db_id = id
-    
+    def __hash__(self) -> int:
+        return hash(self.text)
     def __str__(self):
         return f"Text: {self.text}\nMetadata: {json.dumps(self.metadata, indent=2)}"
+
+    def set_db_id(self, id: str):
+        self.db_id = id
 
 if __name__ == "__main__":
     document = Document("Hello", {"bye": "no"})
