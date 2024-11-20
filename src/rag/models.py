@@ -1,20 +1,19 @@
+from pydantic import BaseModel, Field
 from typing import Dict, Any
 import json
 from uuid import uuid4, UUID
 
 OPENAI_TEXT_EMBEDDING_SMALL_DIM = 1536
 
-class Document:
+class Document(BaseModel):
+    text: str 
+    metadata: Dict[Any, Any]
+    uuid: UUID = Field(default_factory=uuid4)
+    db_id: str = Field(default="")
 
     # TODO: move away from db_id
     # TODO: figure out how to handle uuid (or if i should use it at all)
     # TODO: figure out if i should add other "Document" classes (e.g. Node)
-    def __init__(self, text: str, metadata: Dict[Any, Any], uuid: UUID=None, db_id=""):
-        self.uuid: UUID = uuid if uuid else uuid4() # generate new for new documents
-        self.text: str = text
-        self.metadata: Dict[Any, Any] = metadata
-        self.db_id: str = db_id # init db_id as none
-
     def __hash__(self) -> int:
         return hash(self.text)
     def __str__(self):
