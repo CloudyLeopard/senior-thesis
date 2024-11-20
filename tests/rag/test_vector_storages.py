@@ -1,5 +1,41 @@
-from rag.models import Document
+import pytest
 from uuid import UUID
+import os
+
+from rag.models import Document
+from rag.vector_storages import MilvusVectorStorage, ChromaVectorStorage
+
+
+
+@pytest.fixture(params=[
+    MilvusVectorStorage,
+    ChromaVectorStorage,
+])
+def vector_storage(request, embedding_model, text_splitter, documents2):
+    storage_class = request.param
+
+    if storage_class == MilvusVectorStorage:
+        uri = os.getenv("ZILLIZ_URI")
+        token = os.getenv("ZILLIZ_TOKEN")
+        vector_storage = storage_class(
+            embedding_model=embedding_model,
+            collection_name="ind_test",
+            uri=uri,
+            token=token,
+            reset_collection=True
+        )
+    elif storage_class == ChromaVectorStorage:
+        vector_storage = storage_class(
+            embedding_model=embedding_model,
+            collection_name="ind_test",
+        )
+    
+    chunked_documents = text_splitter.split_documents(documents2)
+    vector_storage.insert_documents(chunked_documents)
+
+    yield vector_storage
+
+    vector_storage.close()
 
 def test_insert_remove_vectorstore(vector_storage, text_splitter, documents):
     chunked_documents = text_splitter.split_documents(documents)

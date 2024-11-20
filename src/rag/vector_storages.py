@@ -3,6 +3,7 @@ from pymilvus import MilvusClient, DataType
 from uuid import UUID
 from typing import List, Any
 import os
+import chromadb
 
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 from rag.embeddings import BaseEmbeddingModel
@@ -15,13 +16,18 @@ class BaseVectorStorage(ABC):
 
     def __init__(self, embedding_model: BaseEmbeddingModel):
         self.embedding_model = embedding_model
+        self.texts_hashes = set()
+
+    def __contains__(self, item) -> bool:
+        return hash(item) in self.texts_hashes
+
+    def __len__(self) -> int:
+        return len(self.texts_hashes)
 
     @abstractmethod
-    def insert_documents(
-        self, documents: List[Document]
-    ) -> List[int]:
+    def insert_documents(self, documents: List[Document]) -> List[int]:
         """insert documents, embed them, return list of ids"""
-        pass
+        self.texts_hashes.update(hash(document.text) for document in documents)
 
     @abstractmethod
     def similarity_search(self, query: str, top_k: int) -> List[Document]:
@@ -29,26 +35,44 @@ class BaseVectorStorage(ABC):
         pass
 
     @abstractmethod
-    async def async_insert_documents(
-        self, documents: List[Document]
-    ) -> List[int]:
+    def remove_documents(self, ids: List[int]) -> int:
+        """remove documents by their ids"""
+        self.texts_hashes.difference_update(ids)
+
+    @abstractmethod
+    async def async_insert_documents(self, documents: List[Document]) -> List[int]:
         """insert documents, embed them, return list of ids"""
-        pass
+        self.texts_hashes.update(hash(document.text) for document in documents)
 
     @abstractmethod
     async def async_similarity_search(self, query: str, top_k: int) -> List[Document]:
         """given query, asynchronously return top_k relevant results"""
         pass
 
+    @abstractmethod
+    def clear(self) -> None:
+        self.texts_hashes = set()
+
     def as_retriever(self):
         from rag.retrievers import SimpleRetriever
-        return SimpleRetriever(vector_database=self)
 
+        return SimpleRetriever(vector_database=self)
+    
+    def close(self):
+        """close the vector storage"""
+        pass
 
 class MilvusVectorStorage(BaseVectorStorage):
     """Custom Vector storage class for using Milvus"""
 
-    def __init__(self, embedding_model: BaseEmbeddingModel, collection_name="financial_context", uri: str="", token: str="", reset_collection: bool=False):
+    def __init__(
+        self,
+        embedding_model: BaseEmbeddingModel,
+        collection_name="financial_context",
+        uri: str = "",
+        token: str = "",
+        reset_collection: bool = False,
+    ):
         """
         Initialize Milvus Vector Storage.
 
@@ -61,7 +85,8 @@ class MilvusVectorStorage(BaseVectorStorage):
 
         If the collection does not exist, it is created with the appropriate schema.
         """
-        self.embedding_model = embedding_model
+        super().__init__(embedding_model)
+
         self.client = MilvusClient(
             uri=uri or os.getenv("ZILLIZ_URI"),
             token=token or os.getenv("ZILLIZ_TOKEN"),
@@ -70,7 +95,9 @@ class MilvusVectorStorage(BaseVectorStorage):
 
         # if collection does not exist, create schema
         if reset_collection:
-            self.client.drop_collection(self.collection_name) # dev mode, reset every time
+            self.client.drop_collection(
+                self.collection_name
+            )  # dev mode, reset every time
         if not self.client.has_collection(self.collection_name):
             self._create_schema_and_collection()
 
@@ -121,6 +148,11 @@ class MilvusVectorStorage(BaseVectorStorage):
             index_params=index_params,
         )
 
+    def clear(self):
+        """delete all documents in milvus"""
+        super().clear()
+        self.client.delete(collection_name=self.collection_name, filter="id >= 0")
+
     def close(self):
         """exit milvus client. not necessary"""
         self.client.close()
@@ -129,21 +161,21 @@ class MilvusVectorStorage(BaseVectorStorage):
         self.client.drop_collection(self.collection_name)
         self._create_schema_and_collection()
 
-    def insert_documents(
-        self, documents: List[Document]
-    ) -> List[int]:
+    def insert_documents(self, documents: List[Document]) -> List[int]:
         """Embed documents with embeddings, index and store into vector storage
 
         Args:
             documents: List of Documents that will be indexed
         """
+        super().insert_documents(documents)
+
         data = []
         for document in documents:
             # required fields
             entry = {
                 "text": document.text,
                 "vector": self.embedding_model.embed([document.text])[0],
-                "uuid": str(document.uuid)
+                "uuid": str(document.uuid),
             }
 
             # optional field
@@ -157,13 +189,14 @@ class MilvusVectorStorage(BaseVectorStorage):
 
     def remove_documents(self, ids: List[Any]) -> int:
         """delete document based on primary id in milvus. returns deleted count"""
+        super().remove_documents(ids)
         res = self.client.delete(
             collection_name=self.collection_name,
             filter=f"id in [{','.join([str(id) for id in ids])}]",
         )
         return res["delete_count"]
 
-    def _search_vector_storage (self, vectors: List[List[float]], top_k: int):
+    def _search_vector_storage(self, vectors: List[List[float]], top_k: int):
         """Search milvus and get top_k relevant results given list of vectors.
         Returns List[List[Dict]]"""
 
@@ -197,7 +230,7 @@ class MilvusVectorStorage(BaseVectorStorage):
             return list of most relevant document with metadata stored in
             vector storage. Not connected to document storage.
         """
-        
+
         retrieved_data = self._search_vector_storage(vectors=[vector], top_k=top_k)
         top_results = retrieved_data[0]
 
@@ -211,20 +244,108 @@ class MilvusVectorStorage(BaseVectorStorage):
             doc = Document(
                 text=text,
                 uuid=UUID(uuid),
-                metadata=entity, # whatever is left is part of metadata
-                db_id=db_id
+                metadata=entity,  # whatever is left is part of metadata
+                db_id=db_id,
             )
-            
+
             top_documents.append(doc)
-        
+
         return top_documents
-    
+
     async def async_similarity_search(self, query: str, top_k=3):
         """Milvus does not support async search, so this falls back to
         synchronous similarity_search"""
         return self.similarity_search(query, top_k)
-    
+
     async def async_insert_documents(self, documents):
         """Milvus does not support async insert, so this falls back to
         synchronous insert_documents"""
         return self.insert_documents(documents)
+
+
+class ChromaVectorStorage(BaseVectorStorage):
+    """Custom Vector storage class for using Chroma"""
+
+    def __init__(
+        self,
+        embedding_model: BaseEmbeddingModel,
+        collection_name: str = "financial_context",
+        persist_directory: str = None,
+        client: chromadb.Client = None,
+    ):
+        super().__init__(embedding_model)
+
+        if client is not None:
+            self.client = client
+        else:
+            if persist_directory:
+                self.client = chromadb.PersistentClient(path=persist_directory)
+            else:
+                self.client = chromadb.Client()
+
+        self.collection_name = collection_name
+        self.collection = self.client.get_or_create_collection(collection_name)
+
+    def insert_documents(self, documents: List[Document]):
+        super().insert_documents(documents)
+
+        data = {
+            "ids": [],
+            "metadatas": [],
+            "documents": [],
+            "embeddings": self.embedding_model.embed(
+                [document.text for document in documents]
+            ),
+        }
+
+        for document in documents:
+            data["ids"].append(hash(document))
+            data["metadatas"].append(document.metadata)
+            data["documents"].append(document.text)
+
+        self.collection.upsert(
+            ids=data["ids"],
+            metadatas=data["metadatas"],
+            documents=data["documents"],
+            embeddings=data["embeddings"],
+        )
+
+        return data["ids"]
+
+    def similarity_search(self, query: str, top_k=3):
+        embeddings = self.embedding_model.embed([query])
+
+        results = self.collection.query(
+            query_embeddings=embeddings,
+            n_results=top_k,
+        )
+
+        documents = [
+            Document(
+                text=document,
+                uuid=UUID(doc_id),
+                metadata=metadata,
+            )
+            for document, doc_id, metadata in zip(
+                results["documents"][0], results["ids"][0], results["metadatas"][0]
+            )
+        ]
+
+        return documents
+
+    def remove_documents(self, ids):
+        super().remove_documents(ids)
+
+        return self.collection.delete(ids=ids)
+
+    def clear(self):
+        super().clear()
+        return self.collection.delete()
+
+    async def async_insert_documents(self, documents):
+        """Not yet implemented. Falls back to synchronous insert_documents"""
+        return self.insert_documents(documents)
+
+    async def async_similarity_search(self, query: str, top_k=3):
+        """Not yet implemented. Falls back to synchronous similarity_search"""
+        return self.similarity_search(query, top_k)
