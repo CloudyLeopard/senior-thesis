@@ -4,4 +4,5 @@ __pycache__/
 .pytest_cache/
 *.db
 
+bash/
 .ft-headers.json
