@@ -18,7 +18,7 @@ def test_document_storage(document_storage, documents):
     # test fetching documents
     for doc in documents:
         regex = f"^{doc.text[:20]}"
-        fetched_res = document_storage.search_document(regex)
+        fetched_res = document_storage.search_documents(regex)
         assert len(fetched_res) > 0
         assert isinstance(fetched_res[0], Document), "Get document error"
         assert fetched_res[0].text == doc.text, "Get document error"
@@ -46,7 +46,7 @@ async def test_async_document_storage(async_document_storage, documents):
     # test fetching documents
     for doc in documents:
         regex = f"^{doc.text[:20]}"
-        fetched_res = await async_document_storage.search_document(regex)
+        fetched_res = await async_document_storage.search_documents(regex)
         assert len(fetched_res) > 0
         assert isinstance(fetched_res[0], Document), "Get document error"
         assert fetched_res[0].text == doc.text, "Get document error"

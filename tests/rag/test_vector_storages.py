@@ -10,7 +10,7 @@ from rag.vector_storages import MilvusVectorStorage, ChromaVectorStorage
 @pytest.fixture(params=[
     MilvusVectorStorage,
     ChromaVectorStorage,
-])
+], scope="module")
 def vector_storage(request, embedding_model, text_splitter, documents2):
     storage_class = request.param
 
