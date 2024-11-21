@@ -210,7 +210,7 @@ class NewsAPIData(BaseDataSource):
             "apiKey": api_key or os.getenv("NEWS_API_KEY"),
         }
     
-    def fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 100,pages: int = 1) -> List[Document]:
+    def fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 10, pages: int = 1) -> List[Document]:
         params = self.parameters
         params["q"] = query
         if months:
@@ -218,7 +218,7 @@ class NewsAPIData(BaseDataSource):
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
         params["page"] = pages
-        params["pageSize"] = page_size
+        params["pageSize"] = page_size if page_size <= 100 else 100
 
         with httpx.Client(timeout=10.0) as client:
             logger.debug("Fetching documents from NewsAPI API")
@@ -274,7 +274,7 @@ class NewsAPIData(BaseDataSource):
         logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
         return documents
     
-    async def async_fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 100,pages: int = 1) -> List[Document]:
+    async def async_fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 10 ,pages: int = 1) -> List[Document]:
         params = self.parameters
         params["q"] = query
         if months:
@@ -282,7 +282,7 @@ class NewsAPIData(BaseDataSource):
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
         params["page"] = pages
-        params["pageSize"] = page_size
+        params["pageSize"] = page_size if page_size <= 100 else 100
         async with httpx.AsyncClient(timeout=10.0) as client:
             logger.debug("Fetching documents from NewsAPI API")
 

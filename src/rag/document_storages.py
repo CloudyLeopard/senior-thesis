@@ -37,6 +37,10 @@ class BaseDocumentStore(ABC):
     def get_document_by_uuid(self, uuid: UUID) -> Document | None:
         """given uuid, fetch Document from database"""
         ...
+    
+    @abstractmethod
+    def search_documents(self, query: str) -> List[Document]:
+        ...
 
 
 
@@ -44,6 +48,7 @@ class MongoDBStore(BaseDocumentStore):
     def __init__(
         self,
         db_name="financeContextDB",
+        collection_name="documents",
         uri=None,
         reset_db: bool = False
     ):
@@ -69,7 +74,6 @@ class MongoDBStore(BaseDocumentStore):
             uuidRepresentation='standard', # uuidRepresentation is needed to use uuid
         ) 
         self.db = self.client[db_name]
-        collection_name="documents"
 
         if reset_db:
             logger.info("Dropping and creating collection %s in database %s", collection_name, db_name)
@@ -318,7 +322,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
             )
         return None
     
-    async def search_document(self, regex: str) -> List[Document]:
+    async def search_documents(self, regex: str) -> List[Document]:
         """
         Search for documents matching the regex pattern.
 

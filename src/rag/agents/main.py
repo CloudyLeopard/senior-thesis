@@ -15,7 +15,7 @@ from rag.tools.sources import (
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
 logger.addHandler(handler)
 
 
@@ -26,7 +26,7 @@ async def async_load_data(query: str, verbose: bool = False):
 
     # loading in all the api key thru environment variables
     today = datetime.now().date().isoformat()
-    document_store = MongoDBStore(db_name=today)
+    document_store = MongoDBStore(collection_name=today)
 
     with open(".ft-headers.json") as f:
         ft_headers = json.load(f)
@@ -37,7 +37,7 @@ async def async_load_data(query: str, verbose: bool = False):
     ]
 
     logger.debug("Begin scraping data for query: %s", query)
-    searcher = NewsArticleSearcher(document_store=document_store, sources=sources)
+    searcher = NewsArticleSearcher(sources=sources)
     documents = await searcher.async_search(query)
 
     logger.debug("Finished scraping data for query: %s", query)
@@ -53,3 +53,6 @@ def main():
     args = parser.parse_args()
 
     asyncio.run(async_load_data(args.query, verbose=args.verbose))
+
+if __name__ == "__main__":
+    asyncio.run(async_load_data("AAPL", verbose=True))

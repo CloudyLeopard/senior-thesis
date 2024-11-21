@@ -109,8 +109,8 @@ class WebScraper:
         else:
             client = self.async_client
 
-        r = await client.get(url)
         try:
+            r = await client.get(url)
             r.raise_for_status()
             if r.headers.get("Content-Type") == "application/pdf":
                 # if the link is a pdf, return None
@@ -130,6 +130,12 @@ class WebScraper:
             else:
                 logger.warning("No Selenium driver provided. Skipping.")
                 return None
+        except httpx.ConnectTimeout as exc:
+            logger.error("Timeout error while scraping %s", exc.request.url)
+            return None
+        except Exception as exc:
+            logger.error("Unexpected error while scraping %s: %s", url, str(exc))
+            return None
         finally:
             if self.async_client is None:
                 await client.aclose()
@@ -179,8 +185,8 @@ class WebScraper:
         else:
             client = self.sync_client
 
-        r = client.get(url)
         try:
+            r = client.get(url)
             r.raise_for_status()
             if r.headers.get("Content-Type") == "application/pdf":
                 # if the link is a pdf, return None
@@ -200,6 +206,12 @@ class WebScraper:
             else:
                 logger.warning("No Selenium driver provided. Skipping.")
                 return None
+        except httpx.ConnectTimeout as exc:
+            logger.error("Timeout error while scraping %s", exc.request.url)
+            return None
+        except Exception as exc:
+            logger.error("Unexpected error while scraping %s: %s", url, str(exc))
+            return None
         finally:
             if self.sync_client is None:
                 client.close()
@@ -228,23 +240,5 @@ class WebScraper:
 
 # Example usage
 if __name__ == "__main__":
-
-    async def main():
-        scraper = WebScraper()
-
-        # Links to scrape
-        links = [
-            "https://en.wikipedia.org/wiki/Cleveland_Guardians",
-            "https://python.langchain.com/docs/concepts/#prompt-templates",
-        ]
-
-        # Run the scraping
-        scraped_data = await scraper.scrape_links(links)
-
-        # Output the results
-        for i, data in enumerate(scraped_data):
-            if data:
-                print(f"Content for {links[i]}:\n{data[:500]}...\n")
-
-    # Run the async event loop
-    asyncio.run(main())
+    scraper = WebScraper()
+    print(scraper.random())
