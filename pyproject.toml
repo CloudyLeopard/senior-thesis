@@ -29,6 +29,7 @@ dependencies = [
 
 [project.scripts]
 finrag = "rag.scripts:main"
+finrag-load = "rag.agents.main:main"
 
 [project.urls]
 Repo = "https://github.com/CloudyLeopard/senior-thesis"

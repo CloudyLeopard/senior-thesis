@@ -3,7 +3,7 @@ import pytest_asyncio
 from aiohttp import ClientSession
 import os
 
-from rag.sources import DirectoryData
+from rag.tools.sources import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import MilvusVectorStorage
 from rag.document_storages import MongoDBStore, AsyncMongoDBStore

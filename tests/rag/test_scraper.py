@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 
-from rag.scraper import WebScraper
+from rag.tools.scraper import WebScraper
 import httpx
 import asyncio
 

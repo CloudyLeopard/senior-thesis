@@ -1,6 +1,6 @@
 
 import asyncio
-from rag.sources import GoogleSearchData, LexisNexisData, FinancialTimesData
+from rag.tools.sources import GoogleSearchData, LexisNexisData, FinancialTimesData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.embeddings import OpenAIEmbeddingModel
 from rag.document_storages import MongoDBStore

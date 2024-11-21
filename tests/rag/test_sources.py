@@ -2,7 +2,7 @@ import pytest
 from uuid import UUID
 from httpx import HTTPStatusError
 
-from rag.sources import (
+from rag.tools.sources import (
     GoogleSearchData,
     LexisNexisData,
     DirectoryData,

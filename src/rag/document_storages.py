@@ -39,6 +39,7 @@ class BaseDocumentStore(ABC):
         ...
 
 
+
 class MongoDBStore(BaseDocumentStore):
     def __init__(
         self,
@@ -140,7 +141,7 @@ class MongoDBStore(BaseDocumentStore):
         else:
             return None
     
-    def search_document(self, regex: str) -> List[Document] | None:
+    def search_documents(self, regex: str) -> List[Document] | None:
         cursor = self.collection.find({"text": {"$regex":regex}})
         documents = []        
         for result in cursor:

@@ -12,13 +12,14 @@ from datetime import datetime, timedelta
 from lexisnexisapi import webservices, credentials
 import yfinance as yf
 
-from rag.scraper import WebScraper
+from rag.tools.scraper import WebScraper
 from rag.document_storages import BaseDocumentStore
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
 
-
+class RequestSourceException(Exception):
+    pass
 class BaseDataSource(ABC):
     """Custom data source class interface"""
 
@@ -35,7 +36,7 @@ class BaseDataSource(ABC):
                             of the scraped links.
 
         Raises:
-            HTTPError: If the request to the data source API fails.
+            RequestSourceException: If the request to the data source API fails.
 
         """
         pass
@@ -49,7 +50,7 @@ class BaseDataSource(ABC):
                             of the scraped links.
 
         Raises:
-            HTTPError: If the request to the data source API fails.
+            RequestSourceException: If the request to the data source API fails.
         """
         pass
 
@@ -149,10 +150,10 @@ class LexisNexisData(BaseDataSource):
             if e.response.status_code == 429:
                 msg = "Lexis Nexis query limit reached"
             logger.error("Lexis Nexis HTTP Error %d: %s", e.response.status_code, msg)
-            raise e
+            raise RequestSourceException(msg)
         except requests.exceptions.RequestException as e:
             logger.error("Lexis Nexis Failed to fetch documents: %s", e)
-            raise e
+            raise RequestSourceException(e)
 
         logger.debug("Converting data to Document objects")
         documents = []
@@ -187,7 +188,8 @@ class LexisNexisData(BaseDataSource):
         return documents
 
     async def async_fetch(self, query: str, num_results=10) -> List[Document]:
-        raise NotImplementedError
+        """Fallback to sync fetch"""
+        return self.fetch(query, num_results)
 
 
 class NYTimesData(BaseDataSource):
@@ -234,10 +236,10 @@ class NewsAPIData(BaseDataSource):
                     e.response.status_code,
                     msg,
                 )
-                raise e
+                raise RequestSourceException(msg)
             except httpx.RequestError as e:
                 logger.error("NewsAPI Failed to fetch documents: %s", e)
-                raise e
+                raise RequestSourceException(e)
             
             articles = data["articles"]
             num_results = data["totalResults"]
@@ -297,10 +299,10 @@ class NewsAPIData(BaseDataSource):
                     e.response.status_code,
                     msg,
                 )
-                raise e
+                raise RequestSourceException(msg)
             except httpx.RequestError as e:
                 logger.error("NewsAPI Failed to fetch documents: %s", e)
-                raise e
+                raise RequestSourceException(e)
             
             articles = data["articles"]
             num_results = data["totalResults"]
@@ -414,10 +416,10 @@ class GoogleSearchData(BaseDataSource):
                         e.response.status_code,
                         msg,
                     )
-                    raise e
+                    raise RequestSourceException(msg)
                 except httpx.RequestError as e:
                     logger.error("Google Search API Failed to fetch links: %s", e)
-                    raise e
+                    raise RequestSourceException(e)
 
                 num_results = int(response_json["searchInformation"]["totalResults"])
                 raw_results = response_json["items"] if num_results != 0 else []
@@ -511,10 +513,10 @@ class GoogleSearchData(BaseDataSource):
                         e.response.status_code,
                         msg,
                     )
-                    raise e
+                    raise RequestSourceException(msg)
                 except httpx.RequestError as e:
                     logger.error("Google Search API Failed to fetch links: %s", e)
-                    raise e
+                    raise RequestSourceException(e)
 
                 num_results = int(response_json["searchInformation"]["totalResults"])
                 raw_results = response_json["items"] if num_results != 0 else []
@@ -677,12 +679,12 @@ class FinancialTimesData(BaseDataSource):
                     links.extend(self._parse_search_page(html))
                 except httpx.HTTPStatusError as e:
                     logger.error(
-                        "Financial Times HTTP Error %d: %s", e.response.status_code, e
+                        "Financial Times HTTP Error %d: %s", e.response.status_code, e.response.text
                     )
-                    raise e
+                    raise RequestSourceException(e.response.text)
                 except httpx.RequestError as e:
                     logger.error("Error fetching Financial Times search page: %s", e)
-                    raise e
+                    raise RequestSourceException(e)
 
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
@@ -781,12 +783,12 @@ class FinancialTimesData(BaseDataSource):
                     links.extend(self._parse_search_page(html))
                 except httpx.HTTPStatusError as e:
                     logger.error(
-                        "Financial Times HTTP Error %d: %s", e.response.status_code, e
+                        "Financial Times HTTP Error %d: %s", e.response.status_code, e.response.text
                     )
-                    raise e
+                    raise RequestSourceException(e.response.text)
                 except httpx.RequestError as e:
                     logger.error("Error fetching Financial Times search page: %s", e)
-                    raise e
+                    raise RequestSourceException(e)
 
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
