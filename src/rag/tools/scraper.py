@@ -33,8 +33,8 @@ class WebScraper:
         soup = BeautifulSoup(html, "lxml")
 
         # scrape title
-        if soup.title:
-            title = soup.title.get_text(" ", strip=True)
+
+        title = soup.title.get_text(" ", strip=True) if soup.title else ""
 
         # scrape article content
         text = "\n".join([p.get_text(" ", strip=True) for p in soup.find_all("p")])
@@ -47,7 +47,7 @@ class WebScraper:
             time = time.get("datetime") or time.get_text()
 
         # putting all the scraped information into a dict
-        scraped_data = {"title": title or "", "content": text, "time": time or ""}
+        scraped_data = {"title": title, "content": text, "time": time or ""}
 
         return scraped_data
 
