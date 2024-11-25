@@ -17,6 +17,7 @@ from rag.document_storages import BaseDocumentStore
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
+HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=100)
 
 class RequestSourceException(Exception):
     pass
@@ -28,7 +29,7 @@ class BaseDataSource(ABC):
         self.datasource = "Unknown"
 
     @abstractmethod
-    def fetch(self) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
 
         Returns:
@@ -42,7 +43,7 @@ class BaseDataSource(ABC):
         pass
 
     @abstractmethod
-    async def async_fetch(self) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
 
         Returns:
@@ -109,7 +110,7 @@ class LexisNexisData(BaseDataSource):
             raise ValueError("LexisNexis credentials not set")
         self.token = webservices.token()
 
-    def fetch(self, query: str, num_results=5) -> List[Document]:
+    def fetch(self, query: str, num_results=10) -> List[Document]:
         """
         Fetch documents from Lexis Nexis based on query
 
@@ -117,7 +118,7 @@ class LexisNexisData(BaseDataSource):
 
         Args:
             query: query to retrieve text from
-            num_results: number of results to retrieve (default: 5)
+            num_results: number of results to retrieve (default: 10)
 
         Returns:
             List of Document objects with text and metadata
@@ -210,17 +211,19 @@ class NewsAPIData(BaseDataSource):
             "apiKey": api_key or os.getenv("NEWS_API_KEY"),
         }
     
-    def fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 10, pages: int = 1) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt") -> List[Document]:
+        """Fetch with NewsAPI. Maximum 100 top results per fetch."""
         params = self.parameters
         params["q"] = query
-        if months:
+        if months: # NOTE: doesn't work right now, need premium subscription to use "month"
+            raise NotImplementedError
             params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
-        params["page"] = pages
-        params["pageSize"] = page_size if page_size <= 100 else 100
+        params["page"] = 1 # TODO: modify this code so that we can do multiple pages
+        params["pageSize"] = num_results
 
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             logger.debug("Fetching documents from NewsAPI API")
 
             try:
@@ -255,6 +258,9 @@ class NewsAPIData(BaseDataSource):
         logger.debug("Converting data to Document objects")
         documents = []
         for article, data in zip(articles, scraped_data):
+            if data is None:
+                continue
+
             metadata = self.parse_metadata(
                 query=query,
                 url=article["url"],
@@ -274,16 +280,18 @@ class NewsAPIData(BaseDataSource):
         logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
         return documents
     
-    async def async_fetch(self, query: str, months: int = None, sort_by = "publishedAt", page_size: int = 10 ,pages: int = 1) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt") -> List[Document]:
         params = self.parameters
         params["q"] = query
         if months:
+            raise NotImplementedError
             params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
-        params["page"] = pages
-        params["pageSize"] = page_size if page_size <= 100 else 100
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        params["page"] = 1 # TODO: modify this code so that we can do multiple pages
+        params["pageSize"] = num_results
+
+        async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             logger.debug("Fetching documents from NewsAPI API")
 
             try:
@@ -318,6 +326,9 @@ class NewsAPIData(BaseDataSource):
         logger.debug("Converting data to Document objects")
         documents = []
         for article, data in zip(articles, scraped_data):
+            if data is None:
+                continue
+
             metadata = self.parse_metadata(
                 query=query,
                 url=article["url"],
@@ -368,7 +379,7 @@ class GoogleSearchData(BaseDataSource):
 
         logger.debug("Google Search API key and search engine ID set")
 
-    def fetch(self, query: str, or_terms: str = None, pages=1) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, or_terms: str = None) -> List[Document]:
         """Fetch links from Google Search API, scrape them, and return as a list of Documents.
         If document store is set, save documents to document store
 
@@ -387,12 +398,12 @@ class GoogleSearchData(BaseDataSource):
         """
         # get list of links from Google Search API
         links = []
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             params = self.parameters
             params["q"] = query
             params["orTerms"] = or_terms
 
-            for page in range(pages):
+            for page in range(num_results // 10 + 1):
                 # not doing asyncio cuz pages is usually really small (< 50)
 
                 # 10 results per page
@@ -464,7 +475,7 @@ class GoogleSearchData(BaseDataSource):
         return documents
 
     async def async_fetch(
-        self, query: str, or_terms: str = None, pages=1
+        self, query: str, num_results: int = 10, or_terms: str = None
     ) -> List[Document]:
         """
         Async version of fetch. Fetches links from Google Search API, scrapes them, and returns as a list of Documents.
@@ -485,15 +496,13 @@ class GoogleSearchData(BaseDataSource):
         """
         # get list of links from Google Search API
         links = []
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             params = self.parameters
             params["q"] = query
             params["orTerms"] = or_terms
 
-            for page in range(pages):
+            for page in range(num_results // 10 + 1):
                 params["start"] = page * 10 + 1
-
-                # TODO: put in wrapper for error handling (i.e. 429 error = google search query limit per day reached)
 
                 try:
                     logger.debug(
@@ -567,7 +576,7 @@ class WikipediaData(BaseDataSource):
     def __init__(self):
         self.source = "Wikipedia"
 
-    def fetch(self, query: str) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10) -> List[Document]:
         """Fetches links from Wikipedia, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
@@ -584,7 +593,7 @@ class WikipediaData(BaseDataSource):
         # https://pypi.org/project/Wikipedia-API/#description
         raise NotImplementedError
 
-    async def async_fetch(self, query: str) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10) -> List[Document]:
         """N/A. Calls on sync. fetch function"""
         return self.fetch(self, query)
 
@@ -635,14 +644,14 @@ class FinancialTimesData(BaseDataSource):
 
         return {"title": title, "content": content, "time": posted_time}
 
-    def fetch(self, query: str, sort="relevance", pages=1) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 25, sort="relevance", months: int = None) -> List[Document]:
         """Fetch links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
         Args:
             query (str): The main search query to fetch relevant links.
+            num_results(int, optional): The number of search results to scrape. Defaults to 25 (or 1 page)
             sort (str, optional): The sort order of the search results. Accepted values are "date" and "relevance". Defaults to "relevance".
-            pages (int, optional): The number of search pages to scrape. Defaults to 1.
 
         Returns:
             List[Document]: A list of Document objects containing the text and metadata
@@ -653,17 +662,23 @@ class FinancialTimesData(BaseDataSource):
         """
 
         links = []
-        with httpx.Client(timeout=10.0, headers=self.headers) as client:
+        with httpx.Client(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS) as client:
             # Search FT using query and scrape list of articles
             url = "https://www.ft.com/search"
 
-            for page in range(1, pages + 1):
+            pages = num_results // 25 + 1
+            for page in range(1, pages+1):
                 params = {
                     "q": query,
                     "sort": sort,  # date or relevance
                     "page": page,
                     "isFirstView": "false",
                 }
+
+                # TODO: ft times have better date filters. Check FT search page
+                # and implement them at a later time.
+                if months:
+                    params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
 
                 # parse search page
                 logger.debug(
@@ -719,6 +734,9 @@ class FinancialTimesData(BaseDataSource):
         logger.debug("Converting data to Document Objects")
         documents = []
         for link, article in zip(article_links + blog_links, articles_data + blog_data):
+            if article is None:
+                continue
+                
             metadata = self.parse_metadata(
                 query=query,
                 url=link,
@@ -738,15 +756,15 @@ class FinancialTimesData(BaseDataSource):
         return documents
 
     async def async_fetch(
-        self, query: str, sort="relevance", pages=1
+        self, query: str, num_results: int = 25, sort="relevance", months: int = None
     ) -> List[Document]:
         """Async version of fetch. Fetches links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
         Args:
             query (str): The main search query to fetch relevant links.
+            num_results(int, optional): The number of search results to scrape. Defaults to 25 (or 1 page)
             sort (str, optional): The sort order of the search results. Accepted values are "date" and "relevance". Defaults to "relevance".
-            pages (int, optional): The number of search pages to scrape. Defaults to 1.
 
         Returns:
             List[Document]: A list of Document objects containing the text and metadata
@@ -756,11 +774,13 @@ class FinancialTimesData(BaseDataSource):
             HTTPError: If the request to the Financial Times API fails.
         """
         links = []
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers)
+        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
         try:
             # Search FT using query and scrape list of articles
             url = "https://www.ft.com/search"
 
+            search_requests = []
+            pages = num_results // 25 + 1
             for page in range(1, pages + 1):
                 params = {
                     "q": query,
@@ -769,15 +789,14 @@ class FinancialTimesData(BaseDataSource):
                     "isFirstView": "false",
                 }
 
-                # parse search page
-                logger.debug(
-                    "Async scraping Financial Times for query: %s (sort: %s, page: %d)",
-                    query,
-                    sort,
-                    page,
-                )
+                if months:
+                    params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
+                
+                search_requests.append(client.build_request("GET", url, params=params))
+            
+            async def send_requests_for_links(search_request):
                 try:
-                    response = await client.get(url, params=params)
+                    response = await client.send(search_request)
                     response.raise_for_status()  # TODO: error handling
                     html = response.text
                     links.extend(self._parse_search_page(html))
@@ -789,7 +808,10 @@ class FinancialTimesData(BaseDataSource):
                 except httpx.RequestError as e:
                     logger.error("Error fetching Financial Times search page: %s", e)
                     raise RequestSourceException(e)
+            
+            await asyncio.gather(*map(send_requests_for_links, search_requests))
 
+            logger.info("Fetched %d links from Financial Times on query %s", len(links), query)
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
             # extract the relevant blog portion
@@ -829,6 +851,10 @@ class FinancialTimesData(BaseDataSource):
         logger.debug("Converting data to Document Objects")
         documents = []
         for link, article in zip(article_links + blog_links, articles_data + blog_data):
+            if article is None:
+                # if both selenium scrape and httpx scrape fails, article will return None
+                # in this case, we can't parse the metadata, so we skip
+                continue
             metadata = self.parse_metadata(
                 query=query,
                 url=link,
@@ -839,10 +865,10 @@ class FinancialTimesData(BaseDataSource):
 
         # if document store is set, save documents to document store
         if self.document_store:
-            logger.debug("Saving %d documents to document store", len(documents))
+            logger.info("Saving %d documents to document store", len(documents))
             self.document_store.save_documents(documents)
 
-        logger.debug(
+        logger.info(
             "Successfully async fetched %d documents from Financial Times",
             len(documents),
         )

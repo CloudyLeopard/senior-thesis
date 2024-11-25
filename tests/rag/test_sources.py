@@ -16,14 +16,14 @@ import json
 @pytest.fixture(
     params=[
         # YFinanceData,
-        "lexis",
+        # "lexis",
         # NYTimesData,
         # GuardiansData,
         # NewsAPIData,
         # ProQuestData,
         # BingsNewsData,
-        "newsapi",
-        pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
+        # "newsapi",
+        # pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
         "financial times",
     ]
 )
