@@ -633,6 +633,8 @@ class FinancialTimesData(BaseDataSource):
             Dict[str, str]: A dictionary containing the content and other metadata of the blog post.
         """
         soup = BeautifulSoup(html, "lxml")
+        if "post" not in post_id:
+            post_id = f"post-{post_id}"
         post_id_element = soup.find(id=post_id)
         if not post_id_element:
             # if cannot find post_id in website, return None
