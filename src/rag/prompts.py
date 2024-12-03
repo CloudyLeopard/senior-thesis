@@ -28,6 +28,26 @@ class BasePromptFormatter(ABC):
     def reset(self):
         pass
 
+class CustomPromptFormatter(BasePromptFormatter):
+    def __init__(self, system_prompt: str = None, prompt_template: str = None):
+        self.system_prompt = system_prompt
+        self.prompt_template = prompt_template
+
+    def format_messages(self, **kwargs):
+        if any(key not in re.findall(r"{(.*?)}", self.prompt_template) for key in kwargs):
+            raise ValueError(
+                "Custom prompt template does not contain all the required keyword arguments."
+            )
+        
+        user_prompt = self.prompt_template.format(**kwargs)
+        return [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+    def reset(self, system_prompt: str = None, prompt_template: str = None):
+        self.system_prompt = system_prompt
+        self.prompt_template = prompt_template
 
 class SimplePromptFormatter(BasePromptFormatter):
     def __init__(self, system_prompt: str = "You are a helpful assistant."):

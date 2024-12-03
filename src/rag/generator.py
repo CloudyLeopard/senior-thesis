@@ -25,6 +25,7 @@ class OpenAILLM(BaseLLM):
         self.model = model
         self.keep_history = keep_history
         self.messages = []
+        self.session_token_usage = 0
     
     def generate(
         self, messages: List[Dict], max_tokens=2000
@@ -46,6 +47,7 @@ class OpenAILLM(BaseLLM):
         # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
         total_tokens = completion.usage.total_tokens
+        self.session_token_usage += total_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
@@ -70,10 +72,12 @@ class OpenAILLM(BaseLLM):
 
         # TODO: add logger to track openai response, token usage here
         total_tokens = completion.usage.total_tokens
+        self.session_token_usage += total_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
 
         return completion.choices[0].message.content
 
-    
+    def price(self):
+        raise NotImplementedError
