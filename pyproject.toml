@@ -23,10 +23,14 @@ dependencies = [
     "yfinance==0.2.50",
     "langchain_text_splitters>=0.3.0",
     "pymongo>=4.1, <5",
-    "bson==0.5.10",
+    # "bson==0.5.10",
     "motor>=3.6.0",
-    "transformers",
+]
+
+[project.optional-dependencies]
+ml = [
     "torch==2.5.1",
+    "transformers",
     "numpy>=2.1.0",
     "pandas==2.2.3"
 ]
