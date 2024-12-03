@@ -54,15 +54,17 @@ async def async_export_data(query: str, num_results: int, verbose: bool = False)
     with open(".ft-headers.json") as f:
         ft_headers = json.load(f)
     sources = [
-        # LexisNexisData(),
+        LexisNexisData(),
         FinancialTimesData(headers=ft_headers),
-        # NewsAPIData(),
+        NewsAPIData(),
     ]
+
+    logging.info("Initialized %d data sources", len(sources))
 
     logger.debug("Begin scraping data for query: %s", query)
     searcher = NewsArticleSearcher(sources=sources)
     # TODO make "months" a parameter (or some other form like "from" or whatever)
-    documents = await searcher.async_search(query, num_results=num_results, months=12)
+    documents = await searcher.async_search(query, num_results=num_results, months=6)
 
     logger.info("Finished scraping data for query \"%s\". Obtained %d documents", query, len(documents))
 

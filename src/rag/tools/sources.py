@@ -29,7 +29,7 @@ class BaseDataSource(ABC):
         self.datasource = "Unknown"
 
     @abstractmethod
-    def fetch(self, query: str, num_results: int = 10) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
         """Fetch links relevant to the query with the corresponding data source
 
         Returns:
@@ -43,7 +43,7 @@ class BaseDataSource(ABC):
         pass
 
     @abstractmethod
-    async def async_fetch(self, query: str, num_results: int = 10) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
         """Async fetch links relevant to the query with the corresponding data source
 
         Returns:
@@ -110,7 +110,7 @@ class LexisNexisData(BaseDataSource):
             raise ValueError("LexisNexis credentials not set")
         self.token = webservices.token()
 
-    def fetch(self, query: str, num_results=10) -> List[Document]:
+    def fetch(self, query: str, num_results=10, **kwargs) -> List[Document]:
         """
         Fetch documents from Lexis Nexis based on query
 
@@ -188,7 +188,7 @@ class LexisNexisData(BaseDataSource):
         )
         return documents
 
-    async def async_fetch(self, query: str, num_results=10) -> List[Document]:
+    async def async_fetch(self, query: str, num_results=10, **kwargs) -> List[Document]:
         """Fallback to sync fetch"""
         return self.fetch(query, num_results)
 
@@ -211,13 +211,13 @@ class NewsAPIData(BaseDataSource):
             "apiKey": api_key or os.getenv("NEWS_API_KEY"),
         }
     
-    def fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt") -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
         """Fetch with NewsAPI. Maximum 100 top results per fetch."""
         params = self.parameters
         params["q"] = query
         if months: # NOTE: doesn't work right now, need premium subscription to use "month"
-            raise NotImplementedError
-            params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
+            pass
+            # params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
         params["page"] = 1 # TODO: modify this code so that we can do multiple pages
@@ -280,12 +280,12 @@ class NewsAPIData(BaseDataSource):
         logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
         return documents
     
-    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt") -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
         params = self.parameters
         params["q"] = query
         if months:
-            raise NotImplementedError
-            params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
+            pass # TODO: doesn't work right now, need premium subscription to use "month"
+            # params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
         params["language"] = "en"
         params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
         params["page"] = 1 # TODO: modify this code so that we can do multiple pages
@@ -379,7 +379,7 @@ class GoogleSearchData(BaseDataSource):
 
         logger.debug("Google Search API key and search engine ID set")
 
-    def fetch(self, query: str, num_results: int = 10, or_terms: str = None) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, or_terms: str = None, **kwargs) -> List[Document]:
         """Fetch links from Google Search API, scrape them, and return as a list of Documents.
         If document store is set, save documents to document store
 
@@ -475,7 +475,7 @@ class GoogleSearchData(BaseDataSource):
         return documents
 
     async def async_fetch(
-        self, query: str, num_results: int = 10, or_terms: str = None
+        self, query: str, num_results: int = 10, or_terms: str = None, **kwargs
     ) -> List[Document]:
         """
         Async version of fetch. Fetches links from Google Search API, scrapes them, and returns as a list of Documents.
@@ -576,7 +576,7 @@ class WikipediaData(BaseDataSource):
     def __init__(self):
         self.source = "Wikipedia"
 
-    def fetch(self, query: str, num_results: int = 10) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
         """Fetches links from Wikipedia, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
@@ -593,7 +593,7 @@ class WikipediaData(BaseDataSource):
         # https://pypi.org/project/Wikipedia-API/#description
         raise NotImplementedError
 
-    async def async_fetch(self, query: str, num_results: int = 10) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
         """N/A. Calls on sync. fetch function"""
         return self.fetch(self, query)
 
@@ -646,7 +646,7 @@ class FinancialTimesData(BaseDataSource):
 
         return {"title": title, "content": content, "time": posted_time}
 
-    def fetch(self, query: str, num_results: int = 25, sort="relevance", months: int = None) -> List[Document]:
+    def fetch(self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs) -> List[Document]:
         """Fetch links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
@@ -758,7 +758,7 @@ class FinancialTimesData(BaseDataSource):
         return documents
 
     async def async_fetch(
-        self, query: str, num_results: int = 25, sort="relevance", months: int = None
+        self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs
     ) -> List[Document]:
         """Async version of fetch. Fetches links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
