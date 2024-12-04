@@ -7,7 +7,7 @@ name = "FinRAG"
 dynamic = ["version"]
 description = "Task Specialized RAG for Financial Analysis"
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10, <3.13"
 authors = [{ name = "Daniel", email = "daniel.liu@stern.nyu.edu"}]
 dependencies = [
     "openai>=1.52.0",
@@ -29,8 +29,9 @@ dependencies = [
 
 [project.optional-dependencies]
 ml = [
-    "torch==2.5.1",
+    "torch==2.2.2",
     "transformers",
+    "datasets",
     "numpy>=2.1.0",
     "pandas==2.2.3"
 ]
@@ -64,6 +65,9 @@ extra-dependencies = [
     "ipywidgets>=8.0.0",
     "matplotlib==3.9.2",
     "IPython[all]>=8.29.0",
+]
+features = [
+    'ml'
 ]
 
 [tool.pytest]
