@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-from aiohttp import ClientSession
 import os
 
 from rag.tools.sources import DirectoryData
@@ -9,24 +8,17 @@ from rag.vector_storages import MilvusVectorStorage
 from rag.document_storages import MongoDBStore, AsyncMongoDBStore
 from rag.embeddings import OpenAIEmbeddingModel
 
-@pytest_asyncio.fixture(scope="session")
-async def session():
-    client = ClientSession()
-    yield client
-    await client.close()
-
-
 @pytest.fixture(scope="session")
 def documents():
-    source = DirectoryData()
-    documents = source.fetch("tests/rag/data/1")
+    source = DirectoryData("tests/rag/data")
+    documents = source.fetch("1")
     return documents
 
 
 @pytest.fixture(scope="session")
 def documents2():
-    source = DirectoryData()
-    documents = source.fetch("tests/rag/data/2")
+    source = DirectoryData("tests/rag/data")
+    documents = source.fetch("2")
     return documents
 
 

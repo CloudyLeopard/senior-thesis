@@ -21,6 +21,9 @@ HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connect
 
 class RequestSourceException(Exception):
     pass
+
+# TODO: remove the "document_store" parameter. Keep entering documents into 
+# document store separate from the data source class
 class BaseDataSource(ABC):
     """Custom data source class interface"""
 
@@ -60,8 +63,9 @@ class BaseDataSource(ABC):
         # to extract information that can be used later. Example: category
         pass
 
+    @classmethod
     def parse_metadata(
-        self,
+        cls,
         query: str,
         url: str = None,
         title: str = None,
@@ -70,7 +74,7 @@ class BaseDataSource(ABC):
     ) -> Dict[str, str]:
         metadata = {
             "query": query or "",
-            "datasource": self.__class__.__name__,
+            "datasource": cls.__name__,
             "url": url or "",
             "title": title or "",
             "publication_time": publication_time or "",
@@ -875,36 +879,75 @@ class FinancialTimesData(BaseDataSource):
             len(documents),
         )
         return documents
-
+    
 
 class DirectoryData(BaseDataSource):
-    def __init__(self):
+    def __init__(self, path: str):
         self.source = "Local Directory"
-
-    def fetch(self, path: str):
-        """given path to directory, fetch all .txt files within that directory"""
         dir = pathlib.Path(path)
         if not dir.is_dir():
             raise ValueError("Invalid path - must be a directory")
+        self.dir = dir
 
-        logger.debug("Fetching data from %s", dir.absolute())
+    def fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
+        """given path to data folder, fetch text files in 
+        subdirectory with name matching query"""
+        subdir = self.dir / query
+        if not subdir.is_dir():
+            raise ValueError(f"Subdirectory {subdir} does not exist")
+        
         documents = []
-        for txt_file in dir.glob("*.txt"):
-            txt = txt_file.read_text()
-            name = txt_file.name
+        for file_path in subdir.rglob("*"):
+            if file_path.suffix == ".txt":
+                txt = file_path.read_text()
 
-            metadata = self.parse_metadata(
-                query="NA",
-                name=name,
-                path=txt_file.as_posix(),
-            )
-            documents.append(Document(text=txt, metadata=metadata))
+                metadata = self.parse_metadata(
+                    query="NA",
+                    name=file_path.name,
+                    path=file_path.as_posix(),
+                )
+                documents.append(Document(text=txt, metadata=metadata))
+            if file_path.suffix == ".pdf":
+                pdf_text, pdf_meta = self.simple_pdf_parser(file_path.as_posix())
+                metadata = self.parse_metadata(
+                    query="query",
+                    name=file_path.name,
+                    path=file_path.as_posix(),
+                    publication_time = pdf_meta.get("creation_date")
+                )
+                documents.append(Document(text=pdf_text, metadata=metadata))
 
         return documents
 
-    async def async_fetch(self, path: str):
+    async def async_fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
         """N/A. Calls on sync. fetch function"""
-        return self.fetch(self, path)
+        return self.fetch(self, query)
+
+    @staticmethod
+    def simple_pdf_parser(pdf_path: str) -> tuple[str, Dict[str, str]]:        
+        from pypdf import PdfReader
+
+        reader = PdfReader(pdf_path)
+        pdf_pages = []
+        for page in reader.pages:
+            # extract text
+            extracted_text = page.extract_text()
+
+            # process text
+            processed_lines = []
+            for line in extracted_text.split("\n"):
+                line = line.strip()
+                if not line:
+                    # line is empty
+                    continue
+                processed_lines.append(line)
+
+            pdf_pages.append("\n".join(processed_lines))
+        
+        pdf_text = "\n".join(pdf_pages)
+
+        pdf_meta = reader.metadata | {}
+        return pdf_text, pdf_meta
 
 
 if __name__ == "__main__":

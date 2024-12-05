@@ -22,8 +22,8 @@ import json
         # NewsAPIData,
         # ProQuestData,
         # BingsNewsData,
-        # "newsapi",
-        # pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
+        "newsapi",
+        pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
         "financial times",
     ]
 )
@@ -92,8 +92,8 @@ async def test_fetch_async(source, query):
 
 
 def test_fetch_directory():
-    source = DirectoryData()
-    documents = source.fetch("tests/rag/data/1")
+    source = DirectoryData("tests/rag/data")
+    documents = source.fetch("1")
 
     assert len(documents) > 0
     for document in documents:
