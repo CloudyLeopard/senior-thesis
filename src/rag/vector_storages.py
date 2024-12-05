@@ -41,7 +41,9 @@ class BaseVectorStorage(ABC):
     @abstractmethod
     def remove_documents(self, ids: List[int]) -> int:
         """remove documents by their ids"""
-        self.texts_hashes.difference_update(ids)
+        # self.texts_hashes.difference_update(ids)
+        # TODO: this doesn't work lol
+        pass
 
     @abstractmethod
     async def async_insert_documents(self, documents: List[Document]) -> List[int]:
@@ -361,7 +363,7 @@ class ChromaVectorStorage(BaseVectorStorage):
         """Not yet implemented. Falls back to synchronous similarity_search"""
         return self.similarity_search(query, top_k)
 
-def cosine_similarity(a, b):
+def cosine_similarity(a: np.ndarray, b: np.ndarray):
     """calculates cosine similarity between a and b, both 2d array of shape (n or m, embedding_dim)
     returns a 2d array of shape (n, m) where similarity[i][j] = cosine similarity between a[i] and b[j]
     """
@@ -375,14 +377,18 @@ class NumPyVectorStorage(BaseVectorStorage):
     
     async def async_insert_documents(self, documents: List[Document]):
         await super().async_insert_documents(documents)
-        self.documents.extend(documents)
 
         texts = [document.text for document in documents]
         embeddings = await self.embedding_model.async_embed(texts)
-        if not self._embeddings_matrix.size:
+        if self._embeddings_matrix is None:
             self._embeddings_matrix = np.array(embeddings)
+            ids = list(range(len(documents)))
         else:
             self._embeddings_matrix = np.concatenate((self._embeddings_matrix, np.array(embeddings)), axis=0)
+            ids = list(range(len(self.documents), len(documents) + len(self.documents)))
+        
+        self.documents.extend(documents)
+        return ids
 
     def insert_documents(self, documents: List[Document]):
         return asyncio.run(self.async_insert_documents(documents))
@@ -392,8 +398,8 @@ class NumPyVectorStorage(BaseVectorStorage):
         if (top_k == 0):
             return []
 
-        query_embedding = await self.embedding_model.async_embed([query])[0]
-        np_query = np.array(query_embedding) # this is a 1D array
+        query_embeddings = await self.embedding_model.async_embed([query])
+        np_query = np.array(query_embeddings[0]) # this is a 1D array
 
         similarity_scores = cosine_similarity(np_query.reshape(1, -1), self._embeddings_matrix)[0]
         similarity_scores = np.nan_to_num(similarity_scores, nan=-np.inf) # treat nan values as -inf
@@ -406,3 +412,15 @@ class NumPyVectorStorage(BaseVectorStorage):
     def similarity_search(self, query: str, top_k: int = 3):
         return asyncio.run(self.async_similarity_search(query, top_k))
         
+    def remove_documents(self, ids: List[int]):
+        mask = np.ones(len(self.documents), dtype=bool)
+        mask[ids] = False
+        original_size = len(self.documents)
+        self.documents = [doc for doc, keep in zip(self.documents, mask) if keep]
+        self._embeddings_matrix = self._embeddings_matrix[mask]
+        return original_size - len(self.documents)
+    
+    def clear(self):
+        super().clear()
+        self.documents = []
+        self._embeddings_matrix = None
