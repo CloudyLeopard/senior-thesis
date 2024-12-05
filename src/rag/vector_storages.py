@@ -1,3 +1,5 @@
+import asyncio
+import numpy as np
 from abc import ABC, abstractmethod
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
@@ -358,3 +360,49 @@ class ChromaVectorStorage(BaseVectorStorage):
     async def async_similarity_search(self, query: str, top_k=3):
         """Not yet implemented. Falls back to synchronous similarity_search"""
         return self.similarity_search(query, top_k)
+
+def cosine_similarity(a, b):
+    """calculates cosine similarity between a and b, both 2d array of shape (n or m, embedding_dim)
+    returns a 2d array of shape (n, m) where similarity[i][j] = cosine similarity between a[i] and b[j]
+    """
+    norm_product = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
+    return np.dot(a, b.T) / norm_product
+class NumPyVectorStorage(BaseVectorStorage):
+    def __init__(self, embedding_model: BaseEmbeddingModel):
+        super().__init__(embedding_model)
+        self.documents: List[Document] = []
+        self._embeddings_matrix: np.ndarray = None
+    
+    async def async_insert_documents(self, documents: List[Document]):
+        await super().async_insert_documents(documents)
+        self.documents.extend(documents)
+
+        texts = [document.text for document in documents]
+        embeddings = await self.embedding_model.async_embed(texts)
+        if not self._embeddings_matrix.size:
+            self._embeddings_matrix = np.array(embeddings)
+        else:
+            self._embeddings_matrix = np.concatenate((self._embeddings_matrix, np.array(embeddings)), axis=0)
+
+    def insert_documents(self, documents: List[Document]):
+        return asyncio.run(self.async_insert_documents(documents))
+    
+    async def async_similarity_search(self, query: str, top_k: int = 3):
+        top_k = min(top_k, len(self.documents))
+        if (top_k == 0):
+            return []
+
+        query_embedding = await self.embedding_model.async_embed([query])[0]
+        np_query = np.array(query_embedding) # this is a 1D array
+
+        similarity_scores = cosine_similarity(np_query.reshape(1, -1), self._embeddings_matrix)[0]
+        similarity_scores = np.nan_to_num(similarity_scores, nan=-np.inf) # treat nan values as -inf
+        sorted_indices = np.argsort(similarity_scores)[::-1] # sort in descending order
+        top_indices = sorted_indices[:top_k] # get top k indices
+
+        documents = [self.documents[index] for index in top_indices]
+        return documents
+
+    def similarity_search(self, query: str, top_k: int = 3):
+        return asyncio.run(self.async_similarity_search(query, top_k))
+        
