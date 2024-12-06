@@ -1,8 +1,9 @@
-from typing import List, Dict
+from typing import List
 import re
 from abc import ABC, abstractmethod
 from rag.models import Document
 
+SYSTEM_STANDARD = "You are a helpful assistant."
 
 RAG_PROMPT_STANDARD = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.\
  If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.\
@@ -11,7 +12,7 @@ RAG_PROMPT_STANDARD = """You are an assistant for question-answering tasks. Use 
 """
 
 RAG_SYSTEM_STANDARD = (
-    """You are a helpful assistant that answers a query using the given query"""
+    """You are a helpful assistant that answers a query using the given contexts"""
 )
 
 
@@ -29,14 +30,14 @@ class BasePromptFormatter(ABC):
         pass
 
 class CustomPromptFormatter(BasePromptFormatter):
-    def __init__(self, system_prompt: str = None, prompt_template: str = None):
+    def __init__(self, prompt_template: str, system_prompt: str = SYSTEM_STANDARD):
         self.system_prompt = system_prompt
         self.prompt_template = prompt_template
 
     def format_messages(self, **kwargs):
         if any(key not in re.findall(r"{(.*?)}", self.prompt_template) for key in kwargs):
             raise ValueError(
-                "Custom prompt template does not contain all the required keyword arguments."
+                "Prompt template does not contain all the necessary fields for formatting."
             )
         
         user_prompt = self.prompt_template.format(**kwargs)
@@ -50,7 +51,7 @@ class CustomPromptFormatter(BasePromptFormatter):
         self.prompt_template = prompt_template
 
 class SimplePromptFormatter(BasePromptFormatter):
-    def __init__(self, system_prompt: str = "You are a helpful assistant."):
+    def __init__(self, system_prompt: str = SYSTEM_STANDARD):
         """
         Initializes the SimplePromptFormatter with an optional system prompt.
 
@@ -87,7 +88,7 @@ class SimplePromptFormatter(BasePromptFormatter):
 class RAGPromptFormatter(BasePromptFormatter):
     def __init__(
         self,
-        system_prompt: str = None,
+        system_prompt: str = RAG_SYSTEM_STANDARD,
         prompt_template="default",
         documents: List[Document] = [],
     ):
@@ -104,19 +105,14 @@ class RAGPromptFormatter(BasePromptFormatter):
         Raises:
             ValueError: If a custom prompt template does not contain both 'query' and 'context' fields.
         """
+        self.system_prompt = system_prompt
         self.documents = documents
-
-        # initialize system prompt
-        if system_prompt:
-            self.system_prompt = system_prompt
-        else:
-            self.system_prompt = RAG_SYSTEM_STANDARD
 
         # initialize prompt template for formatting user prompt
         if prompt_template == "default":
             self.prompt_template = RAG_PROMPT_STANDARD
         else:
-            pattern = r"\{query\}.*\{context\}|\{context\}.*\{query\}"
+            pattern = r"(?s)\{query\}.*\{context\}|\{context\}.*\{query\}"
             if not re.search(pattern, prompt_template):
                 raise ValueError(
                     "Custom prompt template is not valid. Must have 'query' and 'context' fields"
@@ -140,6 +136,7 @@ class RAGPromptFormatter(BasePromptFormatter):
         method="concatenate",
         use_metadata=False,
         metadata_fields=None,
+         **kwargs
     ):
         """
         Formats the user prompt and documents into a list of messages for LLM processing.
@@ -160,6 +157,11 @@ class RAGPromptFormatter(BasePromptFormatter):
         if not self.documents:
             raise ValueError("No documents added to the prompt formatter.")
 
+        if any(key not in re.findall(r"{(.*?)}", self.prompt_template) for key in kwargs):
+            raise ValueError(
+                "Prompt template does not contain all the necessary fields for formatting."
+            )
+        
         # Add system message
         messages = [{"role": "system", "content": self.system_prompt}]
 
@@ -180,7 +182,7 @@ class RAGPromptFormatter(BasePromptFormatter):
             raise ValueError(f"Unknown combination method '{method}'.")
 
         # Format RAG prompt
-        prompt = self.prompt_template.format(query=user_prompt, context=context)
+        prompt = self.prompt_template.format(query=user_prompt, context=context, **kwargs)
 
         # Add user message
         user_message = {"role": "user", "content": prompt}
