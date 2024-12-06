@@ -5,6 +5,7 @@ __pycache__/
 *.db
 .DS_Store
 .ipynb_checkpoints/
+data/
 
 bash/
 .ft-headers.json
