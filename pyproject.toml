@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10, <3.13"
 authors = [{ name = "Daniel", email = "daniel.liu@stern.nyu.edu"}]
 dependencies = [
+    "numpy>=2.1.0",
     "openai>=1.52.0",
     "pydantic==2.10.0",
     "pymilvus>=2.4.0",
@@ -28,12 +29,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+jupyter = [
+    "ipykernel",
+    "jupyterlab",
+    "pandas>=2.2.0",
+    "ipywidgets>=8.0.0",
+    "matplotlib==3.9.2",
+    "IPython[all]>=8.29.0",
+]
 ml = [
     "torch==2.5.1",
     "transformers",
     "datasets",
-    "numpy>=2.1.0",
-    "pandas==2.2.3"
 ]
 
 [project.scripts]
@@ -49,6 +56,12 @@ packages = ["src/rag"]
 [tool.hatch.version]
 path = "src/rag/__about__.py"
 
+[tool.hatch.envs.experimental]
+features = [
+    'jupyter',
+    'ml'
+]
+
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
     "pytest_asyncio",
@@ -56,19 +69,6 @@ extra-dependencies = [
     "pytest-retry" # for retrying failed tests
 ]
 extra-args = ["-vv"]
-
-[tool.hatch.envs.jupyter]
-extra-dependencies = [
-    "ipykernel",
-    "jupyterlab",
-    "pandas>=2.2.0",
-    "ipywidgets>=8.0.0",
-    "matplotlib==3.9.2",
-    "IPython[all]>=8.29.0",
-]
-features = [
-    'ml'
-]
 
 [tool.pytest]
 env_files = [
