@@ -173,7 +173,8 @@ class MilvusVectorStorage(BaseVectorStorage):
         Args:
             documents: List of Documents that will be indexed
         """
-        super().insert_documents(documents)
+        # remove duplicate documents
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
 
         data = []
         for document in documents:
@@ -293,7 +294,8 @@ class ChromaVectorStorage(BaseVectorStorage):
         self.collection = self.client.get_or_create_collection(collection_name)
 
     def insert_documents(self, documents: List[Document]):
-        super().insert_documents(documents)
+        # remove duplicate documents
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
 
         data = {
             "ids": [],
@@ -376,7 +378,8 @@ class NumPyVectorStorage(BaseVectorStorage):
         self._embeddings_matrix: np.ndarray = None
     
     async def async_insert_documents(self, documents: List[Document]):
-        await super().async_insert_documents(documents)
+        # remove duplicate documents
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
 
         texts = [document.text for document in documents]
         embeddings = await self.embedding_model.async_embed(texts)
