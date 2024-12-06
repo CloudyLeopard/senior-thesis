@@ -26,6 +26,8 @@ class OpenAILLM(BaseLLM):
         self.keep_history = keep_history
         self.messages = []
         self.session_token_usage = 0
+        self.input_token_usage = 0
+        self.output_token_usage = 0
     
     def generate(
         self, messages: List[Dict], max_tokens=2000
@@ -48,6 +50,8 @@ class OpenAILLM(BaseLLM):
         # https://platform.openai.com/docs/api-reference/introduction
         total_tokens = completion.usage.total_tokens
         self.session_token_usage += total_tokens
+        self.input_token_usage += completion.usage.prompt_tokens
+        self.output_token_usage += completion.usage.completion_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
@@ -73,6 +77,8 @@ class OpenAILLM(BaseLLM):
         # TODO: add logger to track openai response, token usage here
         total_tokens = completion.usage.total_tokens
         self.session_token_usage += total_tokens
+        self.input_token_usage += completion.usage.prompt_tokens
+        self.output_token_usage += completion.usage.completion_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
@@ -80,4 +86,9 @@ class OpenAILLM(BaseLLM):
         return completion.choices[0].message.content
 
     def price(self):
-        raise NotImplementedError
+        if self.model == "gpt-4o":
+            return (self.input_token_usage * 2.5 + self.output_token_usage * 10) / 1_000_000
+        elif self.model == "gpt-4o-mini":
+            return (self.input_token_usage * 0.15 + self.output_token_usage * 0.075) / 1_000_000
+        else:
+            return 0
