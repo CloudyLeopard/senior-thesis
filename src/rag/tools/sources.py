@@ -714,10 +714,12 @@ class FinancialTimesData(BaseDataSource):
             blog_links = []
 
             for link in links:
-                if link.startswith("https"):
-                    article_links.append(link)
+                if not link.startswith("https"):
+                    link = f"https://www.ft.com{link}"
+                if "#" in link:
+                    blog_links.append(link)
                 else:
-                    blog_links.append(f"https://www.ft.com{link}")
+                    article_links.append(link)
 
             # NOTE: not using the default parser. The custom parser takes an additional input
             # so i am scraping the link individually, rather than scraping the whole list
@@ -825,10 +827,12 @@ class FinancialTimesData(BaseDataSource):
             blog_links = []
 
             for link in links:
-                if link.startswith("https"):
-                    article_links.append(link)
+                if not link.startswith("https"):
+                    link = f"https://www.ft.com{link}"
+                if "#" in link:
+                    blog_links.append(link)
                 else:
-                    blog_links.append(f"https://www.ft.com{link}")
+                    article_links.append(link)
 
             # scrape articles
             logger.debug("Initialize Async WebScraper")
@@ -913,7 +917,8 @@ class DirectoryData(BaseDataSource):
                     query="query",
                     name=file_path.name,
                     path=file_path.as_posix(),
-                    publication_time = pdf_meta.get("creation_date")
+                    publication_time = pdf_meta.get("creation_date"),
+                    title = pdf_meta.get("title")
                 )
                 documents.append(Document(text=pdf_text, metadata=metadata))
 
@@ -921,7 +926,7 @@ class DirectoryData(BaseDataSource):
 
     async def async_fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
         """N/A. Calls on sync. fetch function"""
-        return self.fetch(self, query)
+        return self.fetch(query, num_results)
 
     @staticmethod
     def simple_pdf_parser(pdf_path: str) -> tuple[str, Dict[str, str]]:        
@@ -946,7 +951,7 @@ class DirectoryData(BaseDataSource):
         
         pdf_text = "\n".join(pdf_pages)
 
-        pdf_meta = reader.metadata | {}
+        pdf_meta = reader.metadata or {}
         return pdf_text, pdf_meta
 
 

@@ -16,7 +16,7 @@ import json
 @pytest.fixture(
     params=[
         # YFinanceData,
-        # "lexis",
+        "lexis",
         # NYTimesData,
         # GuardiansData,
         # NewsAPIData,

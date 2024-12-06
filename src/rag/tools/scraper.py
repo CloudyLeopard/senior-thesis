@@ -148,7 +148,7 @@ class WebScraper:
                     logging.debug("Closed async client")
 
     async def async_scrape_links(
-        self, links: List[str], headers: Dict[str, str] = None
+        self, links: List[str], headers: Dict[str, str] = None, selenium_fallback: bool = True
     ) -> List[Dict[str, str]] | None:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works.
 
@@ -160,7 +160,7 @@ class WebScraper:
         logger.debug("Async scraping %d links", len(links))
 
         logger.debug("Creating Selenium driver")
-        driver = self._create_selenium_driver()
+        driver = self._create_selenium_driver() if selenium_fallback else None
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
         else:
@@ -173,8 +173,10 @@ class WebScraper:
         finally:
             if self.async_client is None:
                 await client.aclose()
-            driver.quit()
-            logger.debug("Closed Selenium driver")
+            
+            if driver:
+                driver.quit()
+                logger.debug("Closed Selenium driver")
 
     def scrape_link(
         self,
@@ -230,7 +232,7 @@ class WebScraper:
                     client.close()
 
     def scrape_links(
-        self, links: List[str], headers: Dict[str, str] = None
+        self, links: List[str], headers: Dict[str, str] = None, selenium_fallback: bool = True,
     ) -> List[Dict[str, str]]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
         logger.debug("Scraping %d links", len(links))
@@ -240,15 +242,16 @@ class WebScraper:
         else:
             client = self.sync_client
 
-        logger.debug("Creating Selenium driver")
-        driver = self._create_selenium_driver()
+
+        driver = self._create_selenium_driver() if selenium_fallback else None
         try:
             return [self.scrape_link(url=link, driver=driver) for link in links]
         finally:
             if self.sync_client is None:
                 client.close()
-            driver.quit()
-            logger.debug("Closed Selenium driver")
+            if driver:
+                driver.quit()
+                logger.debug("Closed Selenium driver")
 
 
 # Example usage
