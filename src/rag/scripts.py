@@ -7,7 +7,7 @@ from rag.document_storages import MongoDBStore
 from rag.vector_storages import MilvusVectorStorage
 from rag.retrievers import DocumentRetriever
 from rag.prompts import RAGPromptFormatter
-from rag.generator import OpenAILLM
+from rag.llm import OpenAILLM
 import argparse
 import json
 
