@@ -37,6 +37,9 @@ jupyter = [
     "matplotlib==3.9.2",
     "IPython[all]>=8.29.0",
 ]
+gradio = [
+    "gradio==5.8.0"
+]
 ml = [
     "torch==2.5.1",
     "transformers",
@@ -59,7 +62,8 @@ path = "src/rag/__about__.py"
 [tool.hatch.envs.experimental]
 features = [
     'jupyter',
-    'ml'
+    'gradio'
+    # 'ml'
 ]
 
 [tool.hatch.envs.hatch-test]
