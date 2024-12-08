@@ -886,22 +886,37 @@ class FinancialTimesData(BaseDataSource):
     
 
 class DirectoryData(BaseDataSource):
-    def __init__(self, path: str):
+    def __init__(self, path: str = None, input_files: List[str] = None):
         self.source = "Local Directory"
-        dir = pathlib.Path(path)
-        if not dir.is_dir():
-            raise ValueError("Invalid path - must be a directory")
-        self.dir = dir
 
-    def fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
+        if (path is not None):
+            dir = pathlib.Path(path)
+            if not dir.is_dir():
+                raise ValueError("Invalid path - must be a directory")
+            self.dir = dir
+
+            self._file_generator = dir.rglob("*")
+        elif (input_files is not None):
+            if not isinstance(input_files, list):
+                raise ValueError("input_files must be a list")
+            
+            input_files = [pathlib.Path(f) for f in input_files]
+            if not all(f.is_file() for f in input_files):
+                raise ValueError("input_files must be valid file paths")
+            self._file_generator = input_files
+        else:
+            raise ValueError("Must provide either path or input_files")
+
+    def fetch(self, query: str = None, **kwargs) -> List[Document]:
         """given path to data folder, fetch text files in 
         subdirectory with name matching query"""
-        subdir = self.dir / query
-        if not subdir.is_dir():
-            raise ValueError(f"Subdirectory {subdir} does not exist")
         
         documents = []
-        for file_path in subdir.rglob("*"):
+        for file_path in self._file_generator:
+            if query is not None:
+                if query not in file_path.name:
+                    continue
+            
             if file_path.suffix == ".txt":
                 txt = file_path.read_text()
 
@@ -914,7 +929,7 @@ class DirectoryData(BaseDataSource):
             if file_path.suffix == ".pdf":
                 pdf_text, pdf_meta = self.simple_pdf_parser(file_path.as_posix())
                 metadata = self.parse_metadata(
-                    query="query",
+                    query="NA",
                     name=file_path.name,
                     path=file_path.as_posix(),
                     publication_time = pdf_meta.get("creation_date"),

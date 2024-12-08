@@ -17,8 +17,8 @@ def documents():
 
 @pytest.fixture(scope="session")
 def documents2():
-    source = DirectoryData("tests/rag/data")
-    documents = source.fetch("2")
+    source = DirectoryData("tests/rag/data/2")
+    documents = source.fetch()
     return documents
 
 
