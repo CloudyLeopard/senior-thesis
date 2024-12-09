@@ -42,7 +42,7 @@ class NewsArticleSearcher:
         documents = []
         results = await asyncio.gather(*[_async_fetch(source.async_fetch) for source in self.sources])
         for result in results:
-            documents.extend(result)
+            documents.extend(result[:num_results])
         self.documents.extend(documents)
         return documents
 
