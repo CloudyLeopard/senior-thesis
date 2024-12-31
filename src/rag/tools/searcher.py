@@ -21,7 +21,7 @@ class NewsArticleSearcher:
         for source in self.sources:
             try:
                 fetched_documents = source.fetch(query, num_results = num_results, **kwargs)
-                documents.extend(fetched_documents)
+                documents.extend(fetched_documents[:num_results])
             except RequestSourceException as e:
                 logging.error("Error occurred while fetching documents from %s: %s", source.__class__.__name__, str(e))
         
