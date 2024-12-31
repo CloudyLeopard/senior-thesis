@@ -62,7 +62,7 @@ class BaseVectorStorage(ABC):
     def as_retriever(self):
         from rag.retrievers import SimpleRetriever
 
-        return SimpleRetriever(vector_database=self)
+        return SimpleRetriever(index=self)
     
     def close(self):
         """close the vector storage"""
@@ -396,7 +396,7 @@ class NumPyVectorStorage(BaseVectorStorage):
     def insert_documents(self, documents: List[Document]):
         return asyncio.run(self.async_insert_documents(documents))
     
-    async def async_similarity_search(self, query: str, top_k: int = 3):
+    async def async_similarity_search(self, query: str, top_k: int = 3) -> List[Document]:
         top_k = min(top_k, len(self.documents))
         if (top_k == 0):
             return []

@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field
 from abc import ABC, abstractmethod
 from typing import List
 import logging
@@ -9,15 +10,9 @@ from rag.models import Document
 logger = logging.getLogger(__name__)
 
 
-class BaseRetriever(ABC):
+class BaseRetriever(BaseModel, ABC):
     """Retriever interface"""
-    def __init__(
-        self,
-        vector_storage: BaseVectorStorage,
-    ):
-        """A retriever retrieves documents using the vector storage. Certain retrieveres
-        will also use a document storage to get the original data/metadata"""
-        self.vector_storage = vector_storage
+    index: BaseVectorStorage = Field(..., description="The index used for similarity search")
 
     @abstractmethod
     def retrieve(self, prompt: str, top_k=3) -> List[Document]:
@@ -30,19 +25,14 @@ class BaseRetriever(ABC):
 
 class SimpleRetriever(BaseRetriever):
     """Retriever class using only similarity search"""
-    def __init__(
-        self,
-        vector_storage: BaseVectorStorage,
-    ):
-        super().__init__(vector_storage=vector_storage)
 
     def retrieve(self, prompt: str, top_k=3) -> List[Document]:
         """return list of documents using retrieval based only on similarity search"""
 
-        return self.vector_storage.similarity_search(prompt, top_k)
+        return self.index.similarity_search(prompt, top_k)
 
     async def async_retrieve(self, prompt: str, top_k=3) -> List[Document]:
-        raise NotImplementedError
+        raise await self.index.async_similarity_search(prompt, top_k)
 
 class DocumentRetriever(BaseRetriever):
     """Retriever class using similarity search and document storage"""
