@@ -3,7 +3,7 @@ import asyncio
 from rag.tools.sources import GoogleSearchData, LexisNexisData, FinancialTimesData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.embeddings import OpenAIEmbeddingModel
-from rag.document_storages import MongoDBStore
+from rag.document_store import MongoDBStore
 from rag.vector_storages import MilvusVectorStorage
 from rag.retrievers import DocumentRetriever
 from rag.prompts import RAGPromptFormatter

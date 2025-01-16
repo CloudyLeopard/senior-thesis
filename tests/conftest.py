@@ -5,7 +5,7 @@ import os
 from rag.tools.sources import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import MilvusVectorStorage
-from rag.document_storages import MongoDBStore, AsyncMongoDBStore
+from rag.document_store import MongoDBStore, AsyncMongoDBStore
 from rag.embeddings import OpenAIEmbeddingModel
 
 @pytest.fixture(scope="session")

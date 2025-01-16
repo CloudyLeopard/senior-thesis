@@ -8,7 +8,7 @@ import logging
 
 from rag.vector_store.base_store import BaseVectorStore
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
-from rag.document_storages import MONGODB_OBJECTID_DIM
+from rag.document_store import MONGODB_OBJECTID_DIM
 
 logger = logging.getLogger(__name__)
 

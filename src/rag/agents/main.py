@@ -4,7 +4,7 @@ import json
 import logging
 import asyncio
 
-from rag.document_storages import MongoDBStore
+from rag.document_store import MongoDBStore
 from rag.tools.searcher import NewsArticleSearcher
 from rag.tools.sources import (
     LexisNexisData,

@@ -13,7 +13,7 @@ from lexisnexisapi import webservices, credentials
 import yfinance as yf
 
 from rag.tools.scraper import WebScraper
-from rag.document_storages import BaseDocumentStore
+from rag.document_store import BaseDocumentStore
 from rag.models import Document
 
 logger = logging.getLogger(__name__)

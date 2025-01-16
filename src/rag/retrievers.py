@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List
 import logging
 
-from rag.document_storages import BaseDocumentStore
+from rag.document_store import BaseDocumentStore
 from rag.vector_storages import BaseVectorStorage
 from rag.models import Document
 

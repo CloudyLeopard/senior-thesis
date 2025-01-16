@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from rag.embeddings import BaseEmbeddingModel, OpenAIEmbeddingModel
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import BaseVectorStorage, NumPyVectorStorage
-from rag.document_storages import BaseDocumentStore, MongoDBStore
+from rag.document_store import BaseDocumentStore, MongoDBStore
 from rag.llm import BaseLLM, OpenAILLM
 from rag.prompts import SimplePromptFormatter, RAGPromptFormatter, CustomPromptFormatter
 from rag.tools.sources import DirectoryData
