@@ -1,14 +1,12 @@
 import asyncio
 
-from click import prompt
-
 from rag.llm import OpenAILLM, OpenAIEmbeddingModel
 from rag.scraper.ft import FinancialTimesData
 from rag.vector_store.in_memory import InMemoryVectorStore
 from rag.index.vectorstore_index import VectorStoreIndex
 from rag.retriever.simple_retriever import SimpleRetriever
 from rag.prompts import RAGPromptFormatter
-from rag.models import Document, Query
+from rag.models import Query
 
 async def main():
     # define query
@@ -42,3 +40,6 @@ async def main():
     response = await llm.async_generate(messages)
 
     print(response)
+
+if __name__ == "__main__":
+    asyncio.run(main())

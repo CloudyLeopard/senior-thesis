@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import List
-from pydantic import Field
 
 from rag.llm import BaseEmbeddingModel
 from rag.index.base_index import BaseIndex
-from rag.index.vectorstore_index import VectorStoreIndex
 from rag.models import Document, Query
 
 class BaseRetriever(ABC, BaseModel):
