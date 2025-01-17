@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List
 
 from rag.llm import BaseEmbeddingModel
@@ -8,6 +8,7 @@ from rag.models import Document, Query
 
 class BaseRetriever(ABC, BaseModel):
     """retrieves query from index"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     embedder: BaseEmbeddingModel
     index: BaseIndex

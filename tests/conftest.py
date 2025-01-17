@@ -1,30 +1,34 @@
 import pytest
 import pytest_asyncio
 import os
+import nest_asyncio
 
-from rag.tools.sources import DirectoryData
+from rag.scraper import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
-from rag.vector_storages import MilvusVectorStorage
+from rag.vectorstore import InMemoryVectorStore
 from rag.document_store import MongoDBStore, AsyncMongoDBStore
-from rag.embeddings import OpenAIEmbeddingModel
+from rag.llm import OpenAIEmbeddingModel
+from rag.models import Query
+
+nest_asyncio.apply()
 
 @pytest.fixture(scope="session")
 def documents():
-    source = DirectoryData("tests/rag/data")
-    documents = source.fetch("1")
+    source = DirectoryData(path="tests/rag/data/1")
+    documents = source.fetch()
     return documents
 
 
 @pytest.fixture(scope="session")
 def documents2():
-    source = DirectoryData("tests/rag/data/2")
+    source = DirectoryData(path="tests/rag/data/2")
     documents = source.fetch()
     return documents
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def query():
-    return "What is Apple's performance?"
+    return Query(text="What is Apple's performance?", metadata={})
 
 
 @pytest.fixture(scope="module")
@@ -51,29 +55,6 @@ async def async_document_storage(documents2):
 
     await doc_storage.close()
 
-
-@pytest.fixture(scope="module")
-def vector_storage(embedding_model, text_splitter, documents2):
-    uri = os.getenv("ZILLIZ_URI")
-    token = os.getenv("ZILLIZ_TOKEN")
-
-    # uri = "tests/rag/milvus_test.db" # this doesn't work for some reason
-    vector_storage = MilvusVectorStorage(
-        embedding_model,
-        collection_name="test",
-        uri=uri,
-        token=token,
-        reset_collection=True,
-    )
-
-    chunked_documents = text_splitter.split_documents(documents2)
-    vector_storage.insert_documents(chunked_documents)
-
-    yield vector_storage
-
-    vector_storage.close()
-
-
 @pytest.fixture(scope="module")
 def text_splitter():
     return RecursiveTextSplitter()
@@ -82,3 +63,12 @@ def text_splitter():
 @pytest.fixture(scope="module")
 def embedding_model():
     return OpenAIEmbeddingModel()
+
+@pytest.fixture(scope="module")
+def vector_storage(embedding_model, text_splitter, documents2):
+    vector_storage = InMemoryVectorStore(embedding_model=embedding_model)
+
+    chunked_documents = text_splitter.split_documents(documents2)
+    vector_storage.insert_documents(chunked_documents)
+
+    yield vector_storage

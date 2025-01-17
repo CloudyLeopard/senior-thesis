@@ -1,7 +1,7 @@
 import pytest
 from uuid import UUID
 
-from rag.tools.sources import (
+from rag.scraper import (
     GoogleSearchData,
     LexisNexisData,
     DirectoryData,
@@ -45,15 +45,16 @@ def source(request):
 @pytest.mark.slow
 # @pytest.mark.flaky(retries=2)
 def test_fetch(source, query):
+    query = query.text
     try:
         documents = source.fetch(query)
     except NotImplementedError:
         pytest.skip(f"async_fetch not implemented for {source}")
     except RequestSourceException as e:
-        pytest.xfail(str(e))
+        pytest.xfail(reason=str(e))
         raise e
     except Exception as e:
-        pytest.xfail("Failed to capture exception.", str(e))
+        pytest.xfail(reason="Failed to capture exception. " + str(e))
         raise e
 
     assert len(documents) > 0
@@ -73,6 +74,7 @@ def test_fetch(source, query):
 # @pytest.mark.flaky(retries=2)
 @pytest.mark.asyncio(loop_scope="session")
 async def test_fetch_async(source, query):
+    query = query.text
     try:
         documents = await source.async_fetch(query)
     except NotImplementedError:
@@ -92,7 +94,7 @@ async def test_fetch_async(source, query):
 
 
 def test_fetch_directory():
-    source = DirectoryData("tests/rag/data/1")
+    source = DirectoryData(path="tests/rag/data/1")
     documents = source.fetch()
 
     assert len(documents) > 0

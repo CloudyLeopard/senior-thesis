@@ -3,14 +3,17 @@ from typing import List, Dict
 import os
 from openai import OpenAI, AsyncOpenAI
 import logging
+from pydantic import BaseModel, Field, PrivateAttr, ConfigDict
 
 from rag.models import Embeddable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-class BaseLLM(ABC):
+class BaseLLM(ABC, BaseModel):
     """Custom generator interface"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     @abstractmethod
     def generate(self) -> str:
         pass
@@ -20,16 +23,22 @@ class BaseLLM(ABC):
         pass
 
 class OpenAILLM(BaseLLM):
-    def __init__(self, model="gpt-4o-mini", api_key:str = None, keep_history: bool = False):
-        api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.sync_client = OpenAI(api_key=api_key)
-        self.async_client = AsyncOpenAI(api_key=api_key)
-        self.model = model
-        self.keep_history = keep_history
-        self.messages = []
-        self.session_token_usage = 0
-        self.input_token_usage = 0
-        self.output_token_usage = 0
+    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
+    model: str = "gpt-4o-mini"
+    keep_history: bool = False
+    messages: List[Dict] = []
+    _session_token_usage: int = PrivateAttr(default=0)
+    _input_token_usage: int = PrivateAttr(default=0)
+    _output_token_usage: int = PrivateAttr(default=0)
+    
+    sync_client: OpenAI = None
+    async_client: AsyncOpenAI = None
+    
+    def model_post_init(self, __context):
+        if self.sync_client is None:
+            self.sync_client = OpenAI(api_key=self.api_key)
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(api_key=self.api_key)
     
     def generate(
         self, messages: List[Dict], max_tokens=2000
@@ -51,9 +60,9 @@ class OpenAILLM(BaseLLM):
         # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
         total_tokens = completion.usage.total_tokens
-        self.session_token_usage += total_tokens
-        self.input_token_usage += completion.usage.prompt_tokens
-        self.output_token_usage += completion.usage.completion_tokens
+        self._session_token_usage += total_tokens
+        self._input_token_usage += completion.usage.prompt_tokens
+        self._output_token_usage += completion.usage.completion_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
@@ -78,9 +87,9 @@ class OpenAILLM(BaseLLM):
 
         # TODO: add logger to track openai response, token usage here
         total_tokens = completion.usage.total_tokens
-        self.session_token_usage += total_tokens
-        self.input_token_usage += completion.usage.prompt_tokens
-        self.output_token_usage += completion.usage.completion_tokens
+        self._session_token_usage += total_tokens
+        self._input_token_usage += completion.usage.prompt_tokens
+        self._output_token_usage += completion.usage.completion_tokens
 
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
@@ -89,14 +98,15 @@ class OpenAILLM(BaseLLM):
 
     def price(self):
         if self.model == "gpt-4o":
-            return (self.input_token_usage * 2.5 + self.output_token_usage * 10) / 1_000_000
+            return (self._input_token_usage * 2.5 + self._output_token_usage * 10) / 1_000_000
         elif self.model == "gpt-4o-mini":
-            return (self.input_token_usage * 0.15 + self.output_token_usage * 0.075) / 1_000_000
+            return (self._input_token_usage * 0.15 + self._output_token_usage * 0.075) / 1_000_000
         else:
             return 0
 
-class BaseEmbeddingModel(ABC):
+class BaseEmbeddingModel(ABC, BaseModel):
     "Custom embedding model interface"
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @abstractmethod
     def embed(self, text: List[str]) -> List[List[float]]:
@@ -109,11 +119,17 @@ class BaseEmbeddingModel(ABC):
         pass
 
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
-    def __init__(self, model="text-embedding-3-small", api_key:str = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.sync_client = OpenAI(api_key=api_key)
-        self.async_client = AsyncOpenAI(api_key=api_key)
-        self.model = model
+    model: str = Field(default="text-embedding-3-small")
+    api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"))
+    sync_client: OpenAI = None
+    async_client: AsyncOpenAI = None
+
+    def model_post_init(self, __context):
+        if self.sync_client is None:
+            self.sync_client = OpenAI(api_key=self.api_key)
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(api_key=self.api_key)
+        
 
     # TODO: work on "retry" when encountered error
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:

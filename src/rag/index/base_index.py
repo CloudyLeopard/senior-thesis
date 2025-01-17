@@ -1,9 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import List
+from pydantic import BaseModel, ConfigDict
+
 
 from rag.models import Document, Query
 
-class BaseIndex(ABC):
+class BaseIndex(ABC, BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+        
     @abstractmethod
     def add_documents(self, documents: List[Document]):
         """Add documents to the index."""

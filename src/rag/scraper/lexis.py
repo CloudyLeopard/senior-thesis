@@ -108,11 +108,6 @@ class LexisNexisData(BaseDataSource):
 
             documents.append(document)
 
-        # if document store is set, save document to document store
-        if self.document_store:
-            logger.debug("Saving documents to document store")
-            self.document_store.save_documents(documents)
-
         logger.debug(
             "Successfully fetched %d documents from Lexis Nexis API", len(documents)
         )

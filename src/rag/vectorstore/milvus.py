@@ -6,7 +6,7 @@ import os
 import logging
 
 
-from rag.vector_store.base_store import BaseVectorStore
+from rag.vectorstore.base_store import BaseVectorStore
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 # from rag.document_store import MONGODB_OBJECTID_DIM
 
@@ -19,6 +19,7 @@ class MilvusVectorStore(BaseVectorStore):
     uri: Optional[str] = None
     token: Optional[str] = None
     reset_collection: bool = False
+    client: Optional[MilvusClient] = None
 
     # Validator to load default values from environment variables
     @field_validator("uri", "token", mode="before")
@@ -30,7 +31,7 @@ class MilvusVectorStore(BaseVectorStore):
         return value
     
     # Post-initialization logic
-    def model_post_init(self):
+    def model_post_init(self, __context):
         self.client = MilvusClient(
             uri=self.uri,
             token=self.token,
@@ -96,7 +97,7 @@ class MilvusVectorStore(BaseVectorStore):
             documents: List of Documents that will be indexed
         """
         # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._texts_hashes and not self._texts_hashes.add(doc_hash)]
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
 
         data = []
         for document in documents:

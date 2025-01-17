@@ -23,7 +23,7 @@ class NewsAPIData(BaseDataSource):
     
     def fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
         """Fetch with NewsAPI. Maximum 100 top results per fetch."""
-        params = self.parameters
+        params = {"apiKey": self.apiKey}
         params["q"] = query
         if months: # NOTE: doesn't work right now, need premium subscription to use "month"
             pass
@@ -81,17 +81,12 @@ class NewsAPIData(BaseDataSource):
             )
             document = Document(text=data["content"], metadata=metadata)
             documents.append(document)
-        
-        # if document store is set, save documents to document store
-        if self.document_store:
-            logger.debug("Saving documents to document store")
-            self.document_store.save_documents(documents)
 
         logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
         return documents
     
     async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
-        params = self.parameters
+        params = {"apiKey": self.apiKey}
         params["q"] = query
         if months:
             pass # TODO: doesn't work right now, need premium subscription to use "month"
@@ -149,11 +144,6 @@ class NewsAPIData(BaseDataSource):
             )
             document = Document(text=data["content"], metadata=metadata)
             documents.append(document)
-        
-        # if document store is set, save documents to document store
-        if self.document_store:
-            logger.debug("Saving documents to document store")
-            self.document_store.save_documents(documents)
 
         logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
         return documents    

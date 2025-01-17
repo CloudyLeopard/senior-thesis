@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import List
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .models import Document
@@ -17,7 +16,7 @@ class BaseTextSplitter(ABC):
 class RecursiveTextSplitter(BaseTextSplitter):
     """langchain recursive character text splitter"""
 
-    def __init__(self, chunk_size=1024, chunk_overlap=32):
+    def __init__(self, chunk_size=1024, chunk_overlap=64):
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )

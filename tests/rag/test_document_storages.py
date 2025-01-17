@@ -30,7 +30,7 @@ def test_document_storage(document_storage, documents):
         assert res # making sure docs are deleted
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_async_document_storage(async_document_storage, documents):
     # insert documents
     ids = await async_document_storage.save_documents(documents)

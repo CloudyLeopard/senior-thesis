@@ -2,7 +2,7 @@ import asyncio
 
 from rag.llm import OpenAILLM, OpenAIEmbeddingModel
 from rag.scraper.ft import FinancialTimesData
-from rag.vector_store.in_memory import InMemoryVectorStore
+from rag.vectorstore.in_memory import InMemoryVectorStore
 from rag.index.vectorstore_index import VectorStoreIndex
 from rag.retriever.simple_retriever import SimpleRetriever
 from rag.prompts import RAGPromptFormatter

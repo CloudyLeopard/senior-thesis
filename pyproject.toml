@@ -36,6 +36,7 @@ jupyter = [
     "ipywidgets>=8.0.0",
     "matplotlib==3.9.2",
     "IPython[all]>=8.29.0",
+    "nest_asyncio"
 ]
 gradio = [
     "gradio==5.8.0"
@@ -70,7 +71,8 @@ features = [
 extra-dependencies = [
     "pytest_asyncio",
     "pytest-dotenv", # for loading .env in testing environment
-    "pytest-retry" # for retrying failed tests
+    "pytest-retry", # for retrying failed tests
+    "nest_asyncio"
 ]
 extra-args = ["-vv"]
 

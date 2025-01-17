@@ -1,10 +1,11 @@
 from uuid import UUID
 from typing import List
-from pydantic import Field, Optional
+from pydantic import Field
+from typing import Optional
 import chromadb
 import logging
 
-from rag.vector_store.base_store import BaseVectorStore
+from rag.vectorstore.base_store import BaseVectorStore
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
@@ -15,8 +16,9 @@ class ChromaVectorStore(BaseVectorStore):
     collection_name: str = Field(default="financial_context")
     persist_directory: Optional[str] = None
     client: Optional[chromadb.Client] = None
+    collection: Optional[chromadb.Collection] = None
 
-    def model_post_init(self):
+    def model_post_init(self, __context):
         if self.client is None:
             if self.persist_directory:
                 self.client = chromadb.PersistentClient(path=self.persist_directory)
@@ -27,7 +29,7 @@ class ChromaVectorStore(BaseVectorStore):
 
     def insert_documents(self, documents: List[Document]):
         # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
 
         data = {
             "ids": [],

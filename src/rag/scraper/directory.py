@@ -1,7 +1,8 @@
 from typing import List, Dict
 import pathlib
 import logging
-from pydantic import Optional, field_validator, model_validator
+from typing import Optional
+from pydantic import field_validator, model_validator
 
 from rag.scraper.base_source import BaseDataSource
 from rag.models import Document
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 class DirectoryData(BaseDataSource):
     path: Optional[pathlib.Path] = None
     input_files: Optional[List[pathlib.Path]] = None
+    source: str = "Local Directory"
 
     @field_validator("path", mode="after")
     @classmethod
@@ -30,15 +32,12 @@ class DirectoryData(BaseDataSource):
         return v
 
     @model_validator(mode="after")
-    @classmethod
-    def validate_either_path_or_input_files(cls, values):
-        if not (values["path"] is None or values["input_files"] is None):
-            raise ValueError("Must provide either path or input_files")
-        return values
+    def validate_either_path_or_input_files(self):
+        if self.path is None and self.input_files is None:
+            raise ValueError("Either path or input_files must be set")
+        return self
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.source = "Local Directory"
+    def model_post_init(self, __context):
         if self.path is not None:
             self._file_generator = self.path.rglob("*")
         else:

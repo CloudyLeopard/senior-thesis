@@ -4,7 +4,7 @@ from typing import List
 import logging
 from pydantic import Field, PrivateAttr
 
-from rag.vector_store.base_store import BaseVectorStore
+from rag.vectorstore.base_store import BaseVectorStore
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray):
     return np.dot(a, b.T) / norm_product
 
 class InMemoryVectorStore(BaseVectorStore):
-    documents: List[Document] = Field(default_factory=list)
+    documents: List[Document] = Field(default=[])
     _embeddings_matrix: np.ndarray = PrivateAttr(default=None)
     
     def insert_documents(self, documents: List[Document]):
@@ -25,7 +25,7 @@ class InMemoryVectorStore(BaseVectorStore):
     
     async def async_insert_documents(self, documents: List[Document]):
         # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
 
         embeddings = await self.embedding_model.async_embed(documents)
         if self._embeddings_matrix is None:
@@ -43,7 +43,10 @@ class InMemoryVectorStore(BaseVectorStore):
         if (top_k == 0):
             return []
         
-        similarity_scores = cosine_similarity(vector.reshape(1, -1), self._embeddings_matrix)[0]
+        # Convert input vector to a numpy array if needed
+        vector = np.array(vector).reshape(1, -1)
+        
+        similarity_scores = cosine_similarity(vector, self._embeddings_matrix)[0]
         similarity_scores = np.nan_to_num(similarity_scores, nan=-np.inf) # treat nan values as -inf
         sorted_indices = np.argsort(similarity_scores)[::-1] # sort in descending order
         top_indices = sorted_indices[:top_k] # get top k indices

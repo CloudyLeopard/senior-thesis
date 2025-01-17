@@ -158,11 +158,6 @@ class FinancialTimesData(BaseDataSource):
             )
             documents.append(Document(text=article["content"], metadata=metadata))
 
-        # if document store is set, save documents to document store
-        if self.document_store:
-            logger.debug("Saving %d documents to document store", len(documents))
-            self.document_store.save_documents(documents)
-
         logger.debug(
             "Successfully fetched %d documents from Financial Times", len(documents)
         )
@@ -277,11 +272,6 @@ class FinancialTimesData(BaseDataSource):
                 publication_time=article["time"],
             )
             documents.append(Document(text=article["content"], metadata=metadata))
-
-        # if document store is set, save documents to document store
-        if self.document_store:
-            logger.info("Saving %d documents to document store", len(documents))
-            self.document_store.save_documents(documents)
 
         logger.info(
             "Successfully async fetched %d documents from Financial Times",

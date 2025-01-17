@@ -1,27 +1,29 @@
-from uuid import UUID
+import pytest
 
-from rag.retrievers import SimpleRetriever, DocumentRetriever
+from rag.retriever.simple_retriever import SimpleRetriever
+from rag.index.vectorstore_index import VectorStoreIndex
+from rag.vectorstore import InMemoryVectorStore
 
+@pytest.fixture(scope="module")
+def index (embedding_model, documents):
+    vectorstore = InMemoryVectorStore(embedding_model=embedding_model)
+    index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
 
-def test_simple_retriever_retrieve(vector_storage, query):
-    retriever = SimpleRetriever(vector_storage=vector_storage)
-    
-    retrieved_documents = retriever.retrieve(prompt=query, top_k=3)
-    assert len(retrieved_documents) == 3
-    for retrieved_doc in retrieved_documents:
-        assert retrieved_doc.text != ""
-        assert retrieved_doc.uuid and isinstance(retrieved_doc.uuid, UUID)
+    # test insert documents
+    index.add_documents(documents)
 
+    yield index
 
-def test_document_retriever_retrieve(vector_storage, document_storage, query):
-    retriever = DocumentRetriever(vector_storage=vector_storage, document_store=document_storage)
+@pytest.mark.asyncio
+async def test_simple_retriever(index, embedding_model, query):
+    retriever = SimpleRetriever(embedder = embedding_model, index = index)
 
-    retrieved_documents = retriever.retrieve(prompt=query, top_k=3)
-    assert len(retrieved_documents) == 3
-    for retrieved_doc in retrieved_documents:
-        assert retrieved_doc.text != ""
-        assert retrieved_doc.metadata
-        assert retrieved_doc.db_id
-        assert retrieved_doc.uuid and isinstance(retrieved_doc.uuid, UUID)
+    top_k = 3
+    relevant_documents = retriever.retrieve(query, top_k=top_k)
+    assert len(relevant_documents) == top_k
+    assert relevant_documents[0].text != ""
 
-
+    # test retrieve documents async
+    relevant_documents = await retriever.async_retrieve(query, top_k=top_k)
+    assert len(relevant_documents) == top_k
+    assert relevant_documents[0].text != ""

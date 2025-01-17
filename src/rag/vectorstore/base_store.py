@@ -1,27 +1,28 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, ConfigDict
 from typing import List
 
 from rag.models import Document
-from rag.embeddings import BaseEmbeddingModel
+from rag.llm import BaseEmbeddingModel
 
 
 class BaseVectorStore(ABC, BaseModel):
     """Base class for vector storage"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     embedding_model: BaseEmbeddingModel
-    text_hashes: set[str] = PrivateAttr(default_factory=set)
+    _text_hashes: set[str] = PrivateAttr(default_factory=set)
 
     def __contains__(self, item) -> bool:
-        return hash(item) in self.texts_hashes
+        return hash(item) in self._text_hashes
 
-    def __len__(self) -> int:
-        return len(self.texts_hashes)
+    def size(self) -> int:
+        return len(self._text_hashes)
 
     @abstractmethod
     def insert_documents(self, documents: List[Document]) -> List[int]:
         """insert documents, embed them, return list of ids"""
-        # self.texts_hashes.update(hash(document.text) for document in documents)
+        # self._texts_hashes.update(hash(document.text) for document in documents)
         pass
 
     @abstractmethod
@@ -46,7 +47,7 @@ class BaseVectorStore(ABC, BaseModel):
 
     # @abstractmethod
     # def clear(self) -> None:
-    #     self.texts_hashes = set()
+    #     self._texts_hashes = set()
     
     # def close(self):
     #     """close the vector storage"""
