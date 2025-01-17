@@ -16,7 +16,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray):
     norm_product = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
     return np.dot(a, b.T) / norm_product
 
-class NumPyVectorStorage(BaseVectorStore):
+class InMemoryVectorStore(BaseVectorStore):
     documents: List[Document] = Field(default_factory=list)
     _embeddings_matrix: np.ndarray = PrivateAttr(default=None)
     
@@ -27,8 +27,7 @@ class NumPyVectorStorage(BaseVectorStore):
         # remove duplicate documents
         documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
 
-        texts = [document.text for document in documents]
-        embeddings = await self.embedding_model.async_embed(texts)
+        embeddings = await self.embedding_model.async_embed(documents)
         if self._embeddings_matrix is None:
             self._embeddings_matrix = np.array(embeddings)
             ids = list(range(len(documents)))

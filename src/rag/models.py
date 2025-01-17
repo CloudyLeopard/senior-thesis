@@ -5,8 +5,10 @@ from uuid import uuid4, UUID
 
 OPENAI_TEXT_EMBEDDING_SMALL_DIM = 1536
 
-class Document(BaseModel):
-    text: str 
+class Embeddable(BaseModel):
+    text: str
+
+class Document(Embeddable):
     metadata: Dict[Any, Any]
     uuid: UUID = Field(default_factory=uuid4)
     db_id: str = Field(default="")
@@ -21,6 +23,12 @@ class Document(BaseModel):
 
     def set_db_id(self, id: str):
         self.db_id = id
+
+class Query(Embeddable):
+    metadata: Dict[Any, Any] = {}
+
+class Result(Embeddable):
+    metadata: Dict[Any, Any] = {}
 
 if __name__ == "__main__":
     document = Document("Hello", {"bye": "no"})
