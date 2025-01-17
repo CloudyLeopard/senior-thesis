@@ -1,14 +1,14 @@
-from pydantic import Optional, field_validator
+from pydantic import field_validator
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
-from typing import List, Any
+from typing import List, Any, Optional
 import os
 import logging
 
 
 from rag.vector_store.base_store import BaseVectorStore
 from rag.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
-from rag.document_store import MONGODB_OBJECTID_DIM
+# from rag.document_store import MONGODB_OBJECTID_DIM
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +55,11 @@ class MilvusVectorStore(BaseVectorStore):
             field_name="text", datatype=DataType.VARCHAR, max_length=2048
         )  # stores chunked text
 
-        schema.add_field(
-            field_name="db_id",
-            datatype=DataType.VARCHAR,
-            max_length=MONGODB_OBJECTID_DIM,
-        )  # mongo db id length = 24 byte
+        # schema.add_field(
+        #     field_name="db_id",
+        #     datatype=DataType.VARCHAR,
+        #     max_length=MONGODB_OBJECTID_DIM,
+        # )  # mongo db id length = 24 byte
 
         schema.add_field(
             field_name="uuid",
@@ -96,7 +96,7 @@ class MilvusVectorStore(BaseVectorStore):
             documents: List of Documents that will be indexed
         """
         # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self.texts_hashes and not self.texts_hashes.add(doc_hash)]
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._texts_hashes and not self._texts_hashes.add(doc_hash)]
 
         data = []
         for document in documents:
@@ -108,7 +108,7 @@ class MilvusVectorStore(BaseVectorStore):
             }
 
             # optional field
-            entry["db_id"] = document.db_id
+            # entry["db_id"] = document.db_id
             entry["datasource"] = document.metadata.get("datasource", "")
             data.append(entry)
 
@@ -126,7 +126,7 @@ class MilvusVectorStore(BaseVectorStore):
             data=[vector],
             limit=top_k,
             search_params={"metric_type": "IP", "params": {}},
-            output_fields=["id", "text", "uuid", "db_id", "datasource"],
+            output_fields=["id", "text", "uuid", "datasource"] # + ["db_id"],
             # filter=f'source == "{source}"' # filter by metadata
         )
         top_results = retrieved_data[0]
@@ -136,13 +136,13 @@ class MilvusVectorStore(BaseVectorStore):
             entity = result["entity"]
             text = entity.pop("text")
             uuid = entity.pop("uuid")
-            db_id = entity.pop("db_id")
+            # db_id = entity.pop("db_id")
 
             doc = Document(
                 text=text,
                 uuid=UUID(uuid),
                 metadata=entity,  # whatever is left is part of metadata
-                db_id=db_id,
+                # db_id=db_id,
             )
 
             top_documents.append(doc)
