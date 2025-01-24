@@ -3,12 +3,9 @@ from uuid import UUID
 import os
 
 from rag.models import Document
-from rag.vectorstore import (
-    MilvusVectorStore,
-    ChromaVectorStore,
-    InMemoryVectorStore
-)
-
+from rag.vectorstore.in_memory import InMemoryVectorStore
+from rag.vectorstore.milvus import MilvusVectorStore
+from rag.vectorstore.chroma import ChromaVectorStore
 @pytest.fixture(
     params=[
         MilvusVectorStore,

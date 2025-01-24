@@ -13,8 +13,8 @@ from rag.models import Document
 logger = logging.getLogger(__name__)
 
 class LexisNexisData(BaseDataSource):
-    source: str = Field(default="LexisNexis", init=False)
-    token: str = Field(default=None, init=False)
+    source: str = Field(default="LexisNexis")
+    token: str = Field(default=None, exclude=True)
 
     @model_validator(mode="before")
     @classmethod

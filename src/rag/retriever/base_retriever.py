@@ -19,6 +19,6 @@ class BaseRetriever(ABC, BaseModel):
         pass
 
     @abstractmethod
-    def async_retrieve(self, query: Query, top_k: int = 5) -> List[Document]:
+    async def async_retrieve(self, query: Query, top_k: int = 5) -> List[Document]:
         """Retrieve documents based on the query asynchronously."""
         pass

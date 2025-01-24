@@ -15,7 +15,7 @@ class ChromaVectorStore(BaseVectorStore):
 
     collection_name: str = Field(default="financial_context")
     persist_directory: Optional[str] = None
-    client: Optional[chromadb.Client] = None
+    client: Optional[chromadb.ClientAPI] = None
     collection: Optional[chromadb.Collection] = None
 
     def model_post_init(self, __context):

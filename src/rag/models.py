@@ -25,11 +25,11 @@ class Document(Embeddable):
         self.db_id = id
 
 class Query(Embeddable):
-    metadata: Dict[Any, Any] = {}
+    metadata: Dict[Any, Any] = Field(default_factory=dict)
 
 class Result(Embeddable):
-    metadata: Dict[Any, Any] = {}
+    metadata: Dict[Any, Any] = Field(default_factory=dict)
 
 if __name__ == "__main__":
-    document = Document("Hello", {"bye": "no"})
+    document = Document(text="Hello", metadata={"bye": "no"})
     print(document)

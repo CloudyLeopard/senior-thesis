@@ -31,14 +31,8 @@ class OpenAILLM(BaseLLM):
     _input_token_usage: int = PrivateAttr(default=0)
     _output_token_usage: int = PrivateAttr(default=0)
     
-    sync_client: OpenAI = None
-    async_client: AsyncOpenAI = None
-    
-    def model_post_init(self, __context):
-        if self.sync_client is None:
-            self.sync_client = OpenAI(api_key=self.api_key)
-        if self.async_client is None:
-            self.async_client = AsyncOpenAI(api_key=self.api_key)
+    sync_client: OpenAI = Field(default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
+    async_client: AsyncOpenAI = Field(default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     
     def generate(
         self, messages: List[Dict], max_tokens=2000

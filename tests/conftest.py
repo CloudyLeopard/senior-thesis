@@ -5,7 +5,7 @@ import nest_asyncio
 
 from rag.scraper import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
-from rag.vectorstore import InMemoryVectorStore
+from rag.vectorstore.in_memory import InMemoryVectorStore
 from rag.document_store import MongoDBStore, AsyncMongoDBStore
 from rag.llm import OpenAIEmbeddingModel
 from rag.models import Query

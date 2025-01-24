@@ -1,7 +1,5 @@
 from typing import List
 import asyncio
-from pydantic import BaseModel, Field
-
 from rag.embeddings import BaseEmbeddingModel, OpenAIEmbeddingModel
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vector_storages import BaseVectorStorage, NumPyVectorStorage

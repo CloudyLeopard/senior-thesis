@@ -1,8 +1,9 @@
+from rag.operate import ask_simple_llm, ask_simple_rag, build_vectorstore_index
+from rag.llm import OpenAIEmbeddingModel, OpenAILLM
+
 import gradio as gr
 import asyncio
 
-from rag.operate import ask_simple_llm, ask_simple_rag, build_vectorstore_index
-from rag.llm import OpenAIEmbeddingModel, OpenAILLM
 
 embedding_model=OpenAIEmbeddingModel()
 llm = OpenAILLM()
@@ -20,14 +21,15 @@ def handle_submit(query):
             )
 
 with gr.Blocks() as demo:
-    gr.Markdown("### RAG Demo Comparator")
-    with gr.Row():
-        query_input = gr.Textbox(label="Ask your question:")
-        submit_button = gr.Button("Submit")
+    gr.Markdown("## RAG Demo Comparator")
+    query_input = gr.Textbox(label="Ask your question:")
+    submit_button = gr.Button("Submit")
     with gr.Row():
         with gr.Column():
+            gr.Markdown('### Simple LLM Response')
             response_1 = gr.Textbox(label="LLM Response", interactive=False)
         with gr.Column():
+            gr.Markdown('### Standard RAG Response')
             response_2 = gr.Textbox(label="RAG Response", interactive=False)
             dropdown_2 = gr.Dropdown(label="Show Contexts", interactive=False)
 
@@ -36,5 +38,7 @@ with gr.Blocks() as demo:
         submit_button.click(
             handle_submit,
             inputs=[query_input],
-            outputs=[]
+            outputs=[response_1, response_2, dropdown_2]
         )
+
+demo.launch()

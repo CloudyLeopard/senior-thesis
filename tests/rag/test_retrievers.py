@@ -2,7 +2,7 @@ import pytest
 
 from rag.retriever.simple_retriever import SimpleRetriever
 from rag.index.vectorstore_index import VectorStoreIndex
-from rag.vectorstore import InMemoryVectorStore
+from rag.vectorstore.in_memory import InMemoryVectorStore
 
 @pytest.fixture(scope="module")
 def index (embedding_model, documents):
