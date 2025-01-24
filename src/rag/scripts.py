@@ -1,203 +1,51 @@
 
 import asyncio
-from rag.tools.sources import GoogleSearchData, LexisNexisData, FinancialTimesData
-from rag.text_splitters import RecursiveTextSplitter
-from rag.embeddings import OpenAIEmbeddingModel
-from rag.document_store import MongoDBStore
-from rag.vector_storages import MilvusVectorStorage
-from rag.retrievers import DocumentRetriever
-from rag.prompts import RAGPromptFormatter
-from rag.llm import OpenAILLM
-import argparse
+import os
 import json
+import argparse
+from datetime import datetime
 
-async def async_rag_load_data(query: str, verbose: bool = False):
-    """given query, scrape relevant news articles, store in document store and vector store"""
-    # loading in all the api key thru environment variables
-    text_splitter = RecursiveTextSplitter()
-    document_store = MongoDBStore()
-    vector_store = MilvusVectorStorage(embedding_model=OpenAIEmbeddingModel())
+from rag.scraper import NewYorkTimesData, FinancialTimesData
+from rag.document_store import AsyncMongoDBStore
 
-    if verbose:
-        print("Initialized document store (MongoDB) and vector store (Milvus)")
+async def scrape_news_feed(nyt=True, ft=True):
+    today_date = datetime.now().date().isoformat()
+    document_store = await AsyncMongoDBStore.create(uri=os.getenv("MONGODB_URI"), db_name="FinancialNews", collection_name=f"news_{today_date}")
 
-    total_documents = []
+    if nyt:
+        with open("./.nyt-headers.json") as f:
+            nyt_headers = json.load(f)
+        nyt_source = NewYorkTimesData(headers=nyt_headers)
 
-    # scrape news articles
-    # Google
-    google_data = GoogleSearchData(document_store=document_store)
-    if verbose:
-        print("Attempting to load news articles from google")
-    try:
-        documents = await google_data.async_fetch(query) # returns list of Documents
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading news articles from google")
-    except Exception:
-        print("Could not load news articles from google")
+        print("Scraping New York Times...")
+        nyt_documents = await nyt_source.fetch_news_feed(num_results=100)
 
-    # Lexis Nexis
-    lexis_data = LexisNexisData(document_store=document_store)
-    if verbose:
-        print("Attempting to load Lexis Nexis data")
-    try:
-        documents = await lexis_data.async_fetch(query)
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading Lexis Nexis data")
-    except Exception:
-        print("Could not load Lexis Nexis data")
-    
-    # Financial Times
-    with open(".ft-headers.json") as f:
-        headers = json.load(f)
-    ft_data = FinancialTimesData(headers=headers, document_store=document_store)
-    if verbose:
-        print("Attempting to load Financial Times data")
-    try:
-        documents = await ft_data.async_fetch(query)
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading Financial Times data")
-    except Exception:
-        print("Could not load Financial Times data")
+        print(f"Saving New York Times... ({len(nyt_documents)} documents)")
+        await document_store.save_documents(nyt_documents)
 
-    
-    chunked_documents = text_splitter.split_documents(total_documents) # split documents into chunks
-    vector_store.insert_documents(chunked_documents) # insert documents into vector store
-    if verbose:
-        print("Finished inserting documents into vector store")
+    if ft:
+        with open("./.ft-headers.json") as f:
+            ft_headers = json.load(f)
+        ft_source = FinancialTimesData(headers=ft_headers)
 
-    # close connections
-    document_store.close()
-    vector_store.close()
+        print("Scraping Financial Times...")
+        links = await ft_source.fetch_news_feed(days=1)
+        ft_documents = await ft_source.async_scrape_links(links)
 
-    print("Number of documents found and loaded: ", len(total_documents))
-
-# TODO: scripts for async versions (much faster)
-def rag_load_data(query: str, verbose: bool = False):
-    """given query, scrape relevant news articles, store in document store and vector store"""
-
-    # loading in all the api key thru environment variables
-    text_splitter = RecursiveTextSplitter()
-    document_store = MongoDBStore()
-    vector_store = MilvusVectorStorage(embedding_model=OpenAIEmbeddingModel())
-
-    if verbose:
-        print("Initialized document store (MongoDB) and vector store (Milvus)")
-
-    total_documents = []
-
-    # scrape news articles
-    # Google
-    google_data = GoogleSearchData(document_store=document_store)
-    if verbose:
-        print("Attempting to load news articles from google")
-    try:
-        documents = google_data.fetch(query) # returns list of Documents
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading news articles from google")
-    except Exception:
-        print("Could not load news articles from google")
-
-    # Lexis Nexis
-    lexis_data = LexisNexisData(document_store=document_store)
-    if verbose:
-        print("Attempting to load Lexis Nexis data")
-    try:
-        documents = lexis_data.fetch(query)
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading Lexis Nexis data")
-    except Exception:
-        print("Could not load Lexis Nexis data")
-    
-    # Financial Times
-    
-    with open(".ft-headers.json") as f:
-        headers = json.load(f)
-    ft_data = FinancialTimesData(headers=headers,document_store=document_store)
-    if verbose:
-        print("Attempting to load Financial Times data")
-    try:
-        documents = ft_data.fetch(query)
-        total_documents.extend(documents)
-        if verbose:
-            print("Finished loading Financial Times data")
-    except Exception:
-        print("Could not load Financial Times data")
-
-    if verbose:
-        print("Attempting to insert documents into vector store")
-
-    chunked_documents = text_splitter.split_documents(total_documents) # split documents into chunks
-    vector_store.insert_documents(chunked_documents) # insert documents into vector store
-    if verbose:
-        print("Finished inserting documents into vector store")
-
-    # close connections
-    document_store.close()
-    vector_store.close()
-
-    print("Number of documents found and loaded: ", len(total_documents))
-
-def rag_query(query: str, verbose: bool = False):
-    """given query, retrieve relevant documents and generate response"""
-
-    # loading in all the api key thru environment variables
-    vector_store = MilvusVectorStorage(embedding_model=OpenAIEmbeddingModel())
-    document_store = MongoDBStore()
-    retriever = DocumentRetriever(vector_storage=vector_store, document_store=document_store)
-    print("Initialized retriever using vector store (Milvus) and document store (MongoDB)")
-
-    prompt_formatter = RAGPromptFormatter()
-    llm = OpenAILLM()
-
-    documents = retriever.retrieve(prompt=query, top_k=3)
-    prompt_formatter.add_documents(documents)
-    messages = prompt_formatter.format_messages(user_prompt=query)
-
-    print("Generating response...")
-    response = llm.generate(messages)
-
-    # close connections
-    document_store.close()
-    vector_store.close()
-    
-    print("Query: ", query)
-
-    if verbose:
-        print("-- Messages --")
-        for message in messages:
-            print(message["role"], ": ", message["content"])
-        print("-- End Messages --")
-    print("Response: ", response)
+        print(f"Saving Financial Times... ({len(ft_documents)} documents)")
+        await document_store.save_documents(ft_documents)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Load data for RAG.")
-    # make load and query mutually exclusive (user can't do both at once)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--load', action='store_true', help="Load data for RAG. WARNING: must have either --load or --query")
-    group.add_argument('--query', action='store_true', help="Query data for RAG. WARNING: must have either --load or --query")
-    # optional verbose mode
-    parser.add_argument('-v', action='store_true', help="Verbose mode.")
-    # optional async mode
-    parser.add_argument('-a', action='store_true', help="Async mode.")
-    # required query string
-    parser.add_argument("query", type=str, help="The query for sources to retrieve data for.")
+    parser = argparse.ArgumentParser(description="Scrape news feed and save to MongoDB.")
+    parser.add_argument('--nyt', action='store_true', help="Scrape today's NYT newswire")
+    parser.add_argument('--ft', action='store_true', help="Scrape today's' FT newsfeed")
+    parser.add_argument('--all', action='store_true', help="Scrape all newsfeeds")
+
     args = parser.parse_args()
+
+    asyncio.run(scrape_news_feed(nyt=args.nyt or args.all, ft=args.ft or args.all))
     
-    if args.load:
-        if args.a:
-            asyncio.run(async_rag_load_data(args.query, verbose=args.v))
-        else:
-            rag_load_data(args.query, verbose=args.v)
-    elif args.query:
-        rag_query(args.query, verbose=args.v)
-    else:
-        print("Must have either --load or --query")
 
 if __name__ == "__main__":
     # main_load()

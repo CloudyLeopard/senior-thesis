@@ -183,6 +183,7 @@ class AsyncMongoDBStore(BaseDocumentStore):
     async def create(
         cls,
         db_name: str = "financeContextDB",
+        collection_name: str = "documents",
         uri: Optional[str] = None,
         reset_db: bool = False
     ) -> "AsyncMongoDBStore":
@@ -212,7 +213,6 @@ class AsyncMongoDBStore(BaseDocumentStore):
         self.client.get_io_loop = asyncio.get_event_loop 
 
         self.db = self.client[self.db_name]
-        collection_name="documents"
 
         self.collection = self.db[collection_name]
 

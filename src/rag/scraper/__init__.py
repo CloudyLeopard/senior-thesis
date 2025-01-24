@@ -4,3 +4,4 @@ from .ft import FinancialTimesData
 from .google import GoogleSearchData
 from .lexis import LexisNexisData
 from .newsapi import NewsAPIData
+from .nyt import NewYorkTimesData

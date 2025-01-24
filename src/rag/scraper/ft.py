@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import asyncio
 import logging
 from datetime import datetime, timedelta
+import re
 
 from rag.scraper.base_source import BaseDataSource, RequestSourceException, HTTPX_CONNECTION_LIMITS
 from rag.scraper.utils import WebScraper
@@ -279,3 +280,114 @@ class FinancialTimesData(BaseDataSource):
         )
         return documents
     
+    async def fetch_news_feed(self, days: int = 365):
+        links = []
+        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        url = "https://www.ft.com/news-feed"
+        pages = 1
+        end = False
+
+        def parse_datetime(datetime_str):
+            # Check if the string ends with 'Z' (UTC format)
+            if datetime_str.endswith("Z"):
+                dt_format = "%Y-%m-%dT%H:%M:%S.%fZ" if "." in datetime_str else "%Y-%m-%dT%H:%M:%SZ"
+                dt_parsed = datetime.strptime(datetime_str, dt_format)
+            else:
+                # Handle timezone offset format
+                # Regex to detect presence of milliseconds before timezone
+                if re.search(r"\.\d+", datetime_str):
+                    dt_format = "%Y-%m-%dT%H:%M:%S.%f%z"
+                else:
+                    dt_format = "%Y-%m-%dT%H:%M:%S%z"
+                dt_parsed = datetime.strptime(datetime_str, dt_format)
+            
+            return dt_parsed
+
+        if days:
+            end_date = datetime.today().date()
+            start_date = (datetime.today() - timedelta(days=days)).date()
+            logger.info("Fetching news feed from %s to %s", start_date, end_date)
+
+        try:
+            while not end:
+                logger.info("Current page: %d", pages)
+                params = {
+                    "page": pages,
+                }
+
+                try:
+                    response = await client.get(url, params=params)
+                    response.raise_for_status()
+                    html = response.text
+                    soup = BeautifulSoup(html, "lxml")
+
+                    a_tags = soup.find_all("a", class_="js-teaser-heading-link")
+                    time_tags = soup.find_all("time")
+
+                    logger.debug("Found %d articles on page %d", len(a_tags), pages)
+
+                    for a_tag, time_tag in zip(a_tags, time_tags):
+                        parsed_date = parse_datetime(time_tag['datetime']).date()
+                        logger.debug("Article date: %s", parsed_date)
+
+                        # filter by date
+                        if days and parsed_date > end_date:
+                            continue
+                        if days and parsed_date < start_date:
+                            end = True
+                            break
+
+                        links.append("https://www.ft.com" + a_tag.get("href"))
+                except httpx.HTTPStatusError as e:
+                    logger.error(
+                        "Financial Times HTTP Error %d: %s", e.response.status_code, e.response.text
+                    )
+                    raise RequestSourceException(e.response.text)
+                except httpx.RequestError as e:
+                    logger.error("Error fetching Financial Times search page: %s", e)
+                    raise RequestSourceException(e)
+                except Exception as e:
+                    logger.error("Error fetching Financial Times search page: %s", e)
+                    raise RequestSourceException(e)
+                finally:
+                    pages += 1
+        finally:
+            await client.aclose()
+        
+        logger.info("Fetched %d links from Financial Times news feed", len(links))
+    
+        return links
+    
+    async def async_scrape_links(self, links: List[str]):
+        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        try:
+            # scrape articles
+            logger.debug("Initialize Async WebScraper")
+            scraper = WebScraper(async_client=client)
+
+            logger.debug("Async scraping %d Financial Times articles", len(links))
+            articles_data = await scraper.async_scrape_links(links)
+        finally:
+            await client.aclose()
+        
+        documents = []
+        
+        for link, article in zip(links, articles_data):
+            if article is None:
+                # if both selenium scrape and httpx scrape fails, article will return None
+                # in this case, we can't parse the metadata, so we skip
+                continue
+            metadata = self.parse_metadata(
+                query=None,
+                url=link,
+                title=article["title"],
+                publication_time=article["time"],
+            )
+            documents.append(Document(text=article["content"], metadata=metadata))
+
+        logger.info(
+            "Successfully async fetched %d documents from Financial Times",
+            len(documents),
+        )
+        return documents
+

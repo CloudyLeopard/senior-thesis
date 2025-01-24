@@ -9,5 +9,6 @@ data/
 
 bash/
 .ft-headers.json
+.nyt-headers.json
 exports/
 .gradio/

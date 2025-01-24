@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from rag.llm import OpenAILLM, OpenAIEmbeddingModel
 from rag.scraper.ft import FinancialTimesData
@@ -10,7 +11,7 @@ from rag.models import Query
 
 async def main():
     # define query
-    query = Query(text="What is the capital of France?", metadata={})
+    query = Query(text="What is Microsoft's performance?", metadata={})
 
     # define llm
     llm = OpenAILLM()
@@ -18,7 +19,7 @@ async def main():
 
     # collect documents
     with open("./.ft-headers.json") as f:
-        headers = f.read()
+        headers = json.load(f)
     ft_scraper = FinancialTimesData(headers=headers)
     documents = await ft_scraper.async_fetch(query.text)
 

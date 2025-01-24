@@ -6,10 +6,13 @@ import time
 from typing import List, Dict
 import logging
 from pathlib import Path
+from tqdm import tqdm
 
 
 from rag.scraper.base_source import BaseDataSource, RequestSourceException
 from rag.models import Document
+
+CONNECTIONS_LIMIT = 10
 
 # TODO: timeout error
 
@@ -172,9 +175,14 @@ class WebScraper:
             client = self.async_client
 
         try:
-            return await asyncio.gather(
-                *[self.async_scrape_link(url=link, driver=driver) for link in links]
-            )
+            results = []
+            for i in tqdm(range(0, len(links), CONNECTIONS_LIMIT), desc="Async scraping links"):
+                tasks = [
+                    self.async_scrape_link(url=link, driver=driver)
+                    for link in links[i : i + CONNECTIONS_LIMIT]
+                ]
+                results.extend(await asyncio.gather(*tasks))
+            return results
         finally:
             if self.async_client is None:
                 await client.aclose()
