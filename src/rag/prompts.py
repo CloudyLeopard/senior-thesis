@@ -1,7 +1,7 @@
 from typing import List
 import re
 from abc import ABC, abstractmethod
-from rag.models import Document
+from rag.models import Document, Query
 
 SYSTEM_STANDARD = "You are a helpful assistant."
 
@@ -60,7 +60,7 @@ class SimplePromptFormatter(BasePromptFormatter):
         """
         self.system_prompt = system_prompt
 
-    def format_messages(self, user_prompt: str):
+    def format_messages(self, user_prompt: str | Query):
         """
         Formats the user prompt into a list of messages accepted by the LLM.
 
@@ -132,7 +132,7 @@ class RAGPromptFormatter(BasePromptFormatter):
 
     def format_messages(
         self,
-        user_prompt: str,
+        user_prompt: str | Query,
         method="concatenate",
         use_metadata=False,
         metadata_fields=None,
@@ -156,6 +156,9 @@ class RAGPromptFormatter(BasePromptFormatter):
         """
         if not self.documents:
             raise ValueError("No documents added to the prompt formatter.")
+        
+        if isinstance(user_prompt, Query): 
+            user_prompt = user_prompt.text
 
         if any(key not in re.findall(r"{(.*?)}", self.prompt_template) for key in kwargs):
             raise ValueError(
