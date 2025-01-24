@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
 import os
+import asyncio
 from openai import OpenAI, AsyncOpenAI
 import logging
 from pydantic import BaseModel, Field, PrivateAttr, ConfigDict
@@ -135,13 +136,14 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
         )
 
         return [x.embedding for x in embeddings.data]
-
+    
     async def async_embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
             
-        embeddings = await self.async_client.embeddings.create(
-            input=text, model=self.model
-        )
-
-        return [x.embedding for x in embeddings.data]
+        # batch requests so that we don't have a list that is too large
+        tasks = []
+        for i in range(0, len(text), 100):
+            tasks.append(self.async_client.embeddings.create(input=text[i : i + 100], model=self.model))
+        results = await asyncio.gather(*tasks)
+        return [x.embedding for result in results for x in result.data]
