@@ -1,37 +1,52 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Literal
 import os
 import asyncio
 from openai import OpenAI, AsyncOpenAI
 import logging
-from pydantic import BaseModel, Field, PrivateAttr, ConfigDict
+from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
+import httpx
 
 from rag.models import Embeddable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+class BaseNYUModel(BaseModel):
+    api_key: str = Field(default_factory=lambda: os.getenv("NYU_API_KEY"))
+    project_id: str = Field(default_factory=lambda: os.getenv("NYU_PROJECT_ID"))
+    net_id: str = Field(default_factory=lambda: os.getenv("NYU_NET_ID"))
+
+    @computed_field
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {
+            "rit_access": f"{self.project_id}|{self.net_id}|{self.model}",
+            "rit_timeout": "60",
+            "Content-Type": "application/json",
+            "AUTHORIZATION_KEY": self.api_key,
+        }
+
 class BaseLLM(ABC, BaseModel):
     """Custom generator interface"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    keep_history: bool = False
+    messages: List[Dict] = []
+    _session_token_usage: int = PrivateAttr(default=0)
+    _input_token_usage: int = PrivateAttr(default=0)
+    _output_token_usage: int = PrivateAttr(default=0)
 
-    @abstractmethod
-    def generate(self) -> str:
-        pass
+    # @abstractmethod
+    # def generate(self) -> str:
+    #     pass
 
     @abstractmethod
     async def async_generate(self) -> str:
         pass
 
 class OpenAILLM(BaseLLM):
+    model: Literal["gpt-4o", "gpt-4o-mini"] = "gpt-4o-mini"
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    model: str = "gpt-4o-mini"
-    keep_history: bool = False
-    messages: List[Dict] = []
-    _session_token_usage: int = PrivateAttr(default=0)
-    _input_token_usage: int = PrivateAttr(default=0)
-    _output_token_usage: int = PrivateAttr(default=0)
-    
     sync_client: OpenAI = Field(default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     async_client: AsyncOpenAI = Field(default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     
@@ -99,14 +114,56 @@ class OpenAILLM(BaseLLM):
         else:
             return 0
 
+class NYUOpenAILLM(BaseNYUModel, BaseLLM):
+    model: Literal["gpt-4o-mini"] = "gpt-4o-mini"
+    endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT"))
+
+    async def async_generate(self, messages: List[Dict], max_tokens=2000):
+        if self.keep_history:
+            self.messages.extend(messages)
+            messages = self.messages
+        body = {
+            "message": messages,
+            "openai_parameters": {"max_tokens": max_tokens},
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    self.endpoint_url,
+                    headers=self.headers,
+                    json=body,
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+
+                if self.keep_history:
+                    self.messages.append({"role": "assistant", "content": content})
+                
+                total_tokens = data["usage"]["total_tokens"]
+                self._session_token_usage += total_tokens
+                self._input_token_usage += data["usage"]["prompt_tokens"]
+                self._output_token_usage += data["usage"]["completion_tokens"]
+
+                logger.info("Total tokens used: %d", total_tokens)
+                logger.info("Completion: %s", content)
+
+                return content
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error: {e}")
+                return None
+            
+
 class BaseEmbeddingModel(ABC, BaseModel):
     "Custom embedding model interface"
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @abstractmethod
-    def embed(self, text: List[str]) -> List[List[float]]:
-        """embeds a list of strings, and returns a list of embeddings"""
-        pass
+    # @abstractmethod
+    # def embed(self, text: List[str]) -> List[List[float]]:
+    #     """embeds a list of strings, and returns a list of embeddings"""
+    #     pass
 
     @abstractmethod
     def async_embed(self, text: List[str]) -> List[List[float]]:
@@ -114,7 +171,7 @@ class BaseEmbeddingModel(ABC, BaseModel):
         pass
 
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
-    model: str = Field(default="text-embedding-3-small")
+    model: Literal["text-embedding-3-small"] = "text-embedding-3-small"
     api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"))
     sync_client: OpenAI = None
     async_client: AsyncOpenAI = None
@@ -148,3 +205,36 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
             tasks.append(self.async_client.embeddings.create(input=text[i : i + 100], model=self.model))
         results = await asyncio.gather(*tasks)
         return [x.embedding for result in results for x in result.data]
+
+class NYUOpenAIEmbeddingModel(BaseNYUModel, BaseEmbeddingModel):
+    model: Literal['api-embedding-openai-text-embed-3-small'] = 'api-embedding-openai-text-embed-3-small'
+    endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_EMBEDDING"))
+    
+    async def async_embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
+        if isinstance(text[0], Embeddable):
+            text = [x.text for x in text]
+            
+        async def send_embedding_request(line: str, client: httpx.AsyncClient):
+            try:
+                response = await client.post(
+                    self.endpoint_url,
+                    headers=self.headers,
+                    json={"text": line},
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["embedding"]
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error: {e}")
+                return None
+                
+        # batch requests so that we don't have a list that is too large
+        embeddings = []
+        async with httpx.AsyncClient() as client:
+            for i in range(0, len(text), 100):
+                results = await asyncio.gather(*[send_embedding_request(line, client) for line in text[i : i + 100]])
+                embeddings.extend(results)
+
+        return embeddings
+
+            
