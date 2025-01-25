@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, Field
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
 from typing import List, Any, Optional
@@ -16,26 +16,18 @@ class MilvusVectorStore(BaseVectorStore):
     """Custom Vector storage class for using Milvus"""
 
     collection_name: str = "financial_context"
-    uri: Optional[str] = None
-    token: Optional[str] = None
+    uri: str = Field(default_factory = lambda x: os.getenv("ZILLIZ_URI"))
+    token: str = Field(default_factory = lambda x: os.getenv("ZILLIZ_TOKEN"))
     reset_collection: bool = False
     client: Optional[MilvusClient] = None
-
-    # Validator to load default values from environment variables
-    @field_validator("uri", "token", mode="before")
-    def validate_env_vars(cls, value, field_name):
-        if value is None:
-            env_var = os.getenv(f"ZILLIZ_{field_name.upper()}")
-            if env_var:
-                return env_var
-        return value
     
     # Post-initialization logic
     def model_post_init(self, __context):
-        self.client = MilvusClient(
-            uri=self.uri,
-            token=self.token,
-        )
+        if not self.client:
+            self.client = MilvusClient(
+                uri=self.uri,
+                token=self.token,
+            )
 
         if self.reset_collection:
             self.client.drop_collection(self.collection_name)

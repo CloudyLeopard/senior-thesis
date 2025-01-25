@@ -14,14 +14,14 @@ class ChromaVectorStore(BaseVectorStore):
     """Custom Vector storage class for using Chroma"""
 
     collection_name: str = Field(default="financial_context")
-    persist_directory: Optional[str] = None
+    persist_path: Optional[str] = None
     client: Optional[chromadb.ClientAPI] = None
     collection: Optional[chromadb.Collection] = None
 
     def model_post_init(self, __context):
         if self.client is None:
-            if self.persist_directory:
-                self.client = chromadb.PersistentClient(path=self.persist_directory)
+            if self.persist_path:
+                self.client = chromadb.PersistentClient(path=self.persist_path)
             else:
                 self.client = chromadb.Client()
 
@@ -61,8 +61,40 @@ class ChromaVectorStore(BaseVectorStore):
         return data["ids"]
     
     async def async_insert_documents(self, documents):
-        """Falls back to synchronous insert_documents"""
-        return self.insert_documents(documents)
+        # remove duplicate documents
+        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
+
+        embeddings = await self.embedding_model.async_embed(
+            [document.text for document in documents]
+        )
+
+        # insert data into chromadb
+        data = {
+            "ids": [],
+            "metadatas": [],
+            "documents": [],
+            "embeddings": embeddings,
+        }
+
+        for document in documents:
+            data["ids"].append(str(hash(document)))
+
+            metadata = document.metadata
+            metadata["uuid"] = str(document.uuid)
+            data["metadatas"].append(document.metadata)
+
+            data["documents"].append(document.text)
+
+        # insert data into chromadb       
+        logger.info("Inserting documents into ChromaDB")
+        self.collection.upsert(
+            ids=data["ids"],
+            metadatas=data["metadatas"],
+            documents=data["documents"],
+            embeddings=data["embeddings"],
+        )
+
+        return data["ids"]
 
     def search(self, vector: List[float], top_k: int = 3):
         results = self.collection.query(

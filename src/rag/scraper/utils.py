@@ -12,7 +12,7 @@ from tqdm import tqdm
 from rag.scraper.base_source import BaseDataSource, RequestSourceException
 from rag.models import Document
 
-CONNECTIONS_LIMIT = 10
+HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=50, max_connections=400)
 
 # TODO: timeout error
 
@@ -176,10 +176,10 @@ class WebScraper:
 
         try:
             results = []
-            for i in tqdm(range(0, len(links), CONNECTIONS_LIMIT), desc="Async scraping links"):
+            for i in tqdm(range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections), desc="Async scraping links"):
                 tasks = [
                     self.async_scrape_link(url=link, driver=driver)
-                    for link in links[i : i + CONNECTIONS_LIMIT]
+                    for link in links[i : i + HTTPX_CONNECTION_LIMITS.max_connections]
                 ]
                 results.extend(await asyncio.gather(*tasks))
             return results

@@ -1,6 +1,7 @@
-from rag.operate import ask_simple_llm, ask_simple_rag, build_vectorstore_index
+from rag.operate import ask_simple_llm, ask_simple_rag, build_vectorstore_index_from_mongo_db
 from rag.llm import OpenAIEmbeddingModel, OpenAILLM
 from rag.vectorstore.in_memory import InMemoryVectorStore
+from rag.vectorstore.chroma import ChromaVectorStore
 from rag.index.vectorstore_index import VectorStoreIndex
 
 import gradio as gr
@@ -9,7 +10,8 @@ import asyncio
 
 embedding_model=OpenAIEmbeddingModel()
 llm = OpenAILLM()
-vectorstore = InMemoryVectorStore.load_pickle("/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle")
+# vectorstore = InMemoryVectorStore.load_pickle("/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle")
+vectorstore = ChromaVectorStore(embedding_model=embedding_model, collection_name="financial-times", persist_path="/tmp/ft_chroma_vectorstore")
 index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
 
 # asyncio.run(build_vectorstore_index(embedding_model=embedding_model))

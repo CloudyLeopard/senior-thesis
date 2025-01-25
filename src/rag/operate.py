@@ -1,18 +1,23 @@
 import asyncio
-import json
+from tqdm import tqdm
+import os
 
-from rag.llm import BaseLLM, BaseEmbeddingModel, OpenAILLM, OpenAIEmbeddingModel
+from rag.llm import BaseLLM, BaseEmbeddingModel, OpenAIEmbeddingModel
 from rag.scraper.ft import FinancialTimesData
+from rag.scraper.utils import WebScraper
+from rag.vectorstore.base_store import BaseVectorStore
 from rag.vectorstore.in_memory import InMemoryVectorStore
+
+# from rag.vectorstore.milvus import MilvusVectorStore
+from rag.vectorstore.chroma import ChromaVectorStore
 from rag.index.base_index import BaseIndex
 from rag.index.vectorstore_index import VectorStoreIndex
 from rag.retriever.simple_retriever import SimpleRetriever
-from rag.retriever.base_retriever import BaseRetriever
 from rag.prompts import RAGPromptFormatter, SimplePromptFormatter
-from rag.models import Query
+from rag.models import Query, Document
 from rag.document_store import AsyncMongoDBStore
 
-'''
+"""
  # collect documents
     with open("./.ft-headers.json") as f:
         headers = json.load(f)
@@ -20,14 +25,69 @@ from rag.document_store import AsyncMongoDBStore
     documents = await ft_scraper.async_fetch(query.text)
 
 
-'''
+"""
 
-async def build_vectorstore_index(embedding_model: BaseEmbeddingModel,
-                                  save_path: str = None) -> BaseIndex:
+
+async def built_ft_vectorstore_index(
+    embedding_model: BaseEmbeddingModel, vectorstore: BaseVectorStore
+) -> BaseIndex:
+    dir = "/Volumes/Lexar/Daniel Liu/ft"
+
+    num_documents = 10000
+
+    # collect documents and insert documents into index
+    index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
+
+    print(f"Collecting documents from {dir} and indexing into {vectorstore.__class__.__name__}...")
+    with open(f"{dir}/ft_scrape_info.txt", "r") as f:
+        # 0 is id, 1 is url, 2 is scraped_at
+        headers = f.readline().split("\t")
+
+        line = f.readline()
+        pbar = tqdm(total=num_documents, desc=f"Indexing ft html into {vectorstore.__class__.__name__}")
+        batched_documents = []
+        while line:
+            parts = line.split("\t")
+
+            if os.path.exists(f"{dir}/{parts[0]}.html"):
+                with open(f"{dir}/{parts[0]}.html", "r") as f_html:
+                    html = f_html.read()
+                    if html: # some files are empty
+                        data = WebScraper.default_html_parser(html)
+                        metadata = FinancialTimesData.parse_metadata(
+                            query=None,
+                            url=parts[1],
+                            title=data["title"],
+                            publication_time=data["time"],
+                        )
+
+                        batched_documents.append(
+                            Document(text=data["content"], metadata=metadata)
+                        )
+
+            if len(batched_documents) == 1000:
+                await index.async_add_documents(batched_documents)
+                batched_documents = []
+            line = f.readline()
+            pbar.update(1)
+
+        if batched_documents:
+            await index.async_add_documents(batched_documents)
+        pbar.close()
+        print("DONE.")
+
+    return index
+
+
+async def build_vectorstore_index_from_mongo_db(
+    embedding_model: BaseEmbeddingModel
+) -> BaseIndex:
     # TODO: add document collection logic here
     # ...
     print("Downloading documents...")
-    document_store = await AsyncMongoDBStore.create(db_name="FinancialNews", collection_name="2025-01-23")
+    document_store = await AsyncMongoDBStore.create(
+        db_name="FinancialNews", collection_name="2025-01-23"
+    )
     documents = await document_store.get_all_documents()
 
     # insert documents into index
@@ -36,11 +96,8 @@ async def build_vectorstore_index(embedding_model: BaseEmbeddingModel,
     index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
     await index.async_add_documents(documents)
 
-    if save_path:
-        print("Saving vectorstore...")
-        vectorstore.save_pickle(save_path)
-
     return index
+
 
 async def ask_simple_llm(query: str, llm: BaseLLM):
     prompt_formatter = SimplePromptFormatter()
@@ -48,6 +105,7 @@ async def ask_simple_llm(query: str, llm: BaseLLM):
     response = await llm.async_generate(messages)
 
     return response
+
 
 async def ask_simple_rag(
     query: str, index: BaseIndex, embedding_model: BaseEmbeddingModel, llm: BaseLLM
@@ -72,8 +130,16 @@ async def ask_simple_rag(
 
 
 if __name__ == "__main__":
-    asyncio.run(build_vectorstore_index(embedding_model=OpenAIEmbeddingModel(),
-                                        save_path = "/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle"))
+    embedding_model = OpenAIEmbeddingModel()
+    vectorstore = ChromaVectorStore(
+        embedding_model=embedding_model,
+        collection_name="financial-times",
+        persist_path="/tmp/ft_chroma_vectorstore",
+    )
+    asyncio.run(built_ft_vectorstore_index(embedding_model=embedding_model, vectorstore=vectorstore))
+
+    # save_path = "/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle"
+    # vectorstore.save_pickle(save_path)
     # vs = InMemoryVectorStore.load_pickle("/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle")
     # print(vs.embedding_model)
     # print(vs._embeddings_matrix.shape)

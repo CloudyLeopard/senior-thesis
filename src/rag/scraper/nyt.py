@@ -6,8 +6,8 @@ import os
 from pydantic import Field
 import time
 
-from rag.scraper.base_source import BaseDataSource, RequestSourceException, HTTPX_CONNECTION_LIMITS
-from rag.scraper.utils import WebScraper
+from rag.scraper.base_source import BaseDataSource, RequestSourceException
+from rag.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS
 from rag.models import Document
 
 logger = logging.getLogger(__name__)

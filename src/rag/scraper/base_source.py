@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import httpx
 from typing import List, Dict
 import logging
 from pydantic import BaseModel, Field
@@ -7,7 +6,6 @@ from pydantic import BaseModel, Field
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
-HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=100)
 
 class RequestSourceException(Exception):
     pass
