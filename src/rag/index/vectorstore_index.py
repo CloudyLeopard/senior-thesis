@@ -25,8 +25,7 @@ class VectorStoreIndex(BaseIndex):
     
     async def async_add_documents(self, documents: List[Document]):
         # split documents into chunks
-        chunked_documents = self.text_splitter.split_documents(documents)
-        
+        chunked_documents = self.text_splitter.split_documents(documents)        
         # insert documents into vector store
         await self.vectorstore.async_insert_documents(chunked_documents)
 

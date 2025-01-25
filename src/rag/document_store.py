@@ -145,6 +145,13 @@ class MongoDBStore(BaseDocumentStore):
         else:
             return None
     
+    def get_all_documents(self) -> List[Document]:
+        cursor = self.collection.find({})
+        documents = []        
+        for result in cursor:
+            documents.append(Document(text=result["text"], metadata=result["metadata"]))
+        return documents
+    
     def search_documents(self, regex: str) -> List[Document] | None:
         cursor = self.collection.find({"text": {"$regex":regex}})
         documents = []        
@@ -334,6 +341,18 @@ class AsyncMongoDBStore(BaseDocumentStore):
         """
         cursor = self.collection.find({"text": {"$regex": regex}})
         documents = []
+        async for result in cursor:
+            documents.append(Document(
+                text=result["text"],
+                metadata=result["metadata"],
+                uuid=result["uuid"],
+                db_id=str(result["_id"])
+            ))
+        return documents
+    
+    async def get_all_documents(self) -> List[Document]:
+        cursor = self.collection.find({})
+        documents = []        
         async for result in cursor:
             documents.append(Document(
                 text=result["text"],

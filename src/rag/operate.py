@@ -10,6 +10,7 @@ from rag.retriever.simple_retriever import SimpleRetriever
 from rag.retriever.base_retriever import BaseRetriever
 from rag.prompts import RAGPromptFormatter, SimplePromptFormatter
 from rag.models import Query
+from rag.document_store import AsyncMongoDBStore
 
 '''
  # collect documents
@@ -21,21 +22,27 @@ from rag.models import Query
 
 '''
 
-async def build_vectorstore_index(embedding_model: BaseEmbeddingModel) -> BaseIndex:
+async def build_vectorstore_index(embedding_model: BaseEmbeddingModel,
+                                  save_path: str = None) -> BaseIndex:
     # TODO: add document collection logic here
     # ...
-    documents = []
+    print("Downloading documents...")
+    document_store = await AsyncMongoDBStore.create(db_name="FinancialNews", collection_name="2025-01-23")
+    documents = await document_store.get_all_documents()
 
     # insert documents into index
+    print("Indexing documents...")
     vectorstore = InMemoryVectorStore(embedding_model=embedding_model)
     index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
     await index.async_add_documents(documents)
 
+    if save_path:
+        print("Saving vectorstore...")
+        vectorstore.save_pickle(save_path)
+
     return index
 
 async def ask_simple_llm(query: str, llm: BaseLLM):
-    llm = llm()
-
     prompt_formatter = SimplePromptFormatter()
     messages = prompt_formatter.format_messages(user_prompt=query)
     response = await llm.async_generate(messages)
@@ -47,9 +54,6 @@ async def ask_simple_rag(
 ):
     # define query
     query = Query(text=query, metadata={})
-
-    # define llm
-    llm = llm()
 
     # define retriever and retrieve documents
     retriever = SimpleRetriever(embedder=embedding_model, index=index)
@@ -67,5 +71,10 @@ async def ask_simple_rag(
     }
 
 
-# if __name__ == "__main__":
-#     asyncio.run(())
+if __name__ == "__main__":
+    asyncio.run(build_vectorstore_index(embedding_model=OpenAIEmbeddingModel(),
+                                        save_path = "/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle"))
+    # vs = InMemoryVectorStore.load_pickle("/Users/danielliu/Workspace/fin-rag/src/rag/tmp/vectorstore.pickle")
+    # print(vs.embedding_model)
+    # print(vs._embeddings_matrix.shape)
+    # print(len(vs.documents))
