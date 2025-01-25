@@ -12,6 +12,19 @@ from rag.models import Query
 
 nest_asyncio.apply()
 
+@pytest.mark.asyncio
+async def sanity_check():
+    import httpx
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://httpbin.org/get")
+        assert response.status_code == 200
+        assert response.json()["url"] == "https://httpbin.org/get"
+    
+    with httpx.Client() as client:
+        response = client.get("https://httpbin.org/get")
+        assert response.status_code == 200
+        assert response.json()["url"] == "https://httpbin.org/get"
+
 @pytest.fixture(scope="session")
 def documents():
     source = DirectoryData(path="tests/rag/data/1")
