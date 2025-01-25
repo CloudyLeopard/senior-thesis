@@ -14,14 +14,6 @@ llm = OpenAILLM()
 vectorstore = ChromaVectorStore(embedding_model=embedding_model, collection_name="financial-times", persist_path="/tmp/ft_chroma_vectorstore")
 index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
 
-# asyncio.run(build_vectorstore_index(embedding_model=embedding_model))
-
-# async def ask_simple_llm(query, llm):
-#     return "simple"
-
-# async def ask_simple_rag(query, index, embedding_model, llm):
-#     return {"response": "simple", "contexts": ["blah","heh", "meh"]}
-
 async def handle_submit(query):
     llm_response, simple_rag_response = await asyncio.gather(
         ask_simple_llm(query, llm),
