@@ -129,7 +129,7 @@ class ContextualTextSplitter(BaseTextSplitter):
             prev_chunk = None
             for i in range(0, len(chunked_texts)):
                 curr_chunk = ContextualizedChunk(
-                    text=chunked_texts[i],
+                    text=contexts_list[i] + " " + chunked_texts[i], # NOTE: THIS STEP COMBINES CONTEXT WITH CHUNK
                     metadata=document.metadata,
                     uuid=document.uuid,
                     db_id=document.db_id,

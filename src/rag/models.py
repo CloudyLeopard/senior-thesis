@@ -33,8 +33,8 @@ class ContextualizedChunk(Chunk):
 
     @computed_field
     @property
-    def contextual_text(self) -> str:
-        return self.context + self.text
+    def original_text(self) -> str:
+        return self.text[len(self.context):]
 
 
 class Query(Embeddable):

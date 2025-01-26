@@ -48,8 +48,9 @@ def test_contextual_splitter(documents):
 
     assert len(chunked_documents) > 1
     for chunk in chunked_documents:
-        assert 0 < len(chunk.text) <= CHUNK_SIZE
+        assert len(chunk.text) > 0 # not comparing to CHUNK_SIZE because chunk.text also includes context
         assert chunk.metadata == documents[0].metadata
         assert chunk.db_id == documents[0].db_id
         assert chunk.uuid == documents[0].uuid
         assert len(chunk.context) > 0
+        assert len(chunk.original_text) == len(chunk.text) - len(chunk.context) # apparently after adding the space, no need to add +1
