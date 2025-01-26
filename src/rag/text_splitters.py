@@ -1,36 +1,153 @@
+import asyncio
+from pydantic import BaseModel, PrivateAttr
 from abc import ABC, abstractmethod
 from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from .models import Document
+from rag.llm import BaseLLM
+from rag.models import Document, Chunk, ContextualizedChunk
+from rag.prompts import PROMPTS, CustomPromptFormatter
 
 
-class BaseTextSplitter(ABC):
+class BaseTextSplitter(ABC, BaseModel):
     """Custom Text Splitter interface"""
 
     @abstractmethod
-    def split_documents(documents: List[Document]) -> List[Document]:
+    def split_documents(documents: List[Document]) -> List[Chunk]:
+        pass
+
+    @abstractmethod
+    async def async_split_documents(documents: List[Document]) -> List[Chunk]:
         pass
 
 
 class RecursiveTextSplitter(BaseTextSplitter):
     """langchain recursive character text splitter"""
 
-    def __init__(self, chunk_size=1024, chunk_overlap=64):
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    chunk_size: int = 1024
+    chunk_overlap: int = 64
+    _text_splitter = PrivateAttr()
+
+    def model_post_init(self, __context):
+        self._text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
         )
 
-    def split_documents(self, documents: List[Document]) -> List[Document]:
-        """split documents using langchain's recursive character text splitter"""
-        new_documents = []
-        for document in documents:
-            chunks = self.text_splitter.split_text(document.text)
-            # need to make sure all chunks have the same metadata, uuid, and db_id as the original document
-            chunk_documents = [
-                Document(text=chunk, metadata=document.metadata, uuid=document.uuid, db_id=document.db_id)
-                for chunk in chunks
-            ]
-            new_documents.extend(chunk_documents)
+    def split_documents(self, documents: List[Document]) -> List[Chunk]:
+        """
+        Split the given documents into chunks of text according to the recursive character text splitter
 
-        return new_documents
+        The output chunks will have the same metadata, uuid, and db_id as the original document
+        The chunks are linked together in a doubly linked list, where each chunk has a reference to the previous and next chunk
+
+        Args:
+            documents (List[Document]): the documents to split
+
+        Returns:
+            List[Chunk]: the list of chunked texts
+        """
+        new_chunks = []
+        for document in documents:
+            chunked_texts = self._text_splitter.split_text(document.text)
+            prev_chunk = None
+
+            # create a Chunk object for each chunked text
+            # and link them together
+            for i in range(0, len(chunked_texts)):
+                curr_chunk = Chunk(
+                    text=chunked_texts[i],
+                    metadata=document.metadata,
+                    uuid=document.uuid,
+                    db_id=document.db_id,
+                    previous_chunk=prev_chunk,
+                )
+
+                # link the chunks together
+                if prev_chunk is not None:
+                    prev_chunk.next_chunk = curr_chunk
+                prev_chunk = curr_chunk
+                new_chunks.append(curr_chunk)
+
+        return new_chunks
+
+    async def async_split_documents(self, documents: List[Document]) -> List[Chunk]:
+        return self.split_documents(documents)
+
+
+class ContextualTextSplitter(BaseTextSplitter):
+    chunk_size: int = 1024
+    chunk_overlap: int = 64
+    llm: BaseLLM
+    _text_splitter = PrivateAttr()
+
+    def model_post_init(self, __context):
+        self._text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
+        )
+
+    async def async_split_documents(
+        self, documents: List[Document]
+    ) -> List[ContextualizedChunk]:
+        """
+        Split the given documents into chunks of text according to the recursive character text splitter
+        and generate a context for each chunk using the llm.
+
+        The output chunks will have the same metadata, uuid, and db_id as the original document
+        The chunks are linked together in a doubly linked list, where each chunk has a reference to the previous and next chunk
+
+        Args:
+            documents (List[Document]): the documents to split
+
+        Returns:
+            List[ContextualizedChunk]: the list of chunked texts
+        """
+        # create a prompt formatter to format the messages for the llm
+        prompt_formatter = CustomPromptFormatter(
+            prompt_template=PROMPTS["contextualize_chunk_prompt"]
+        )
+         
+        # for document in documents:
+        
+        async def split_document_helper(document: Document) -> List[ContextualizedChunk]:
+            document_chunks = []  # list of Chunk objects, each representing a chunk of the document
+
+            chunked_texts = self._text_splitter.split_text(document.text)
+
+            # generate the message to contextualize the chunks using llm
+            messages_list = []
+            for chunked_text in chunked_texts:
+                messages = prompt_formatter.format_messages(
+                    WHOLE_DOCUMENT=document.text,
+                    CHUNK_CONTENT=chunked_text,
+                )
+                messages_list.append(messages)
+
+            # generate the context for each chunk using the llm
+            contexts_list = await self.llm.batch_async_generate(messages_list)
+
+            # create a Chunk object for each chunked text and link them together
+            prev_chunk = None
+            for i in range(0, len(chunked_texts)):
+                curr_chunk = ContextualizedChunk(
+                    text=chunked_texts[i],
+                    metadata=document.metadata,
+                    uuid=document.uuid,
+                    db_id=document.db_id,
+                    previous_chunk=prev_chunk,
+                    context=contexts_list[i],
+                )
+
+                # link the chunks together
+                if prev_chunk is not None:
+                    prev_chunk.next_chunk = curr_chunk
+                prev_chunk = curr_chunk
+                document_chunks.append(curr_chunk)
+            return document_chunks
+
+        # NOTE: i'm not sure doing it this way is actually faster, but eh it's worth a shot
+        new_chunks = await asyncio.gather(*[split_document_helper(document) for document in documents])
+        new_chunks = [chunk for sublist in new_chunks for chunk in sublist] # flatten the list of lists
+        return new_chunks
+    
+    def split_documents(self, documents: List[Document]) -> List[ContextualizedChunk]:
+        return asyncio.run(self.async_split_documents(documents))

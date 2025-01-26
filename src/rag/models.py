@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Dict, Any
+from pydantic import BaseModel, Field, computed_field
+from typing import Dict, Any, Optional
 import json
 from uuid import uuid4, UUID
 
@@ -23,6 +23,19 @@ class Document(Embeddable):
 
     def set_db_id(self, id: str):
         self.db_id = id
+
+class Chunk(Document):
+    previous_chunk: Optional["Chunk"] = None
+    next_chunk: Optional["Chunk"] = None
+
+class ContextualizedChunk(Chunk):
+    context: str
+
+    @computed_field
+    @property
+    def contextual_text(self) -> str:
+        return self.context + self.text
+
 
 class Query(Embeddable):
     metadata: Dict[Any, Any] = Field(default_factory=dict)

@@ -1,23 +1,17 @@
-import pytest
-
-from rag.text_splitters import RecursiveTextSplitter
-from rag.models import Document
+from rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
+from rag.llm import OpenAILLM
+from rag.models import Chunk
 
 CHUNK_SIZE = 1024
 CHUNK_OVERLAP = 64
 
-@pytest.fixture(params=[
-    RecursiveTextSplitter,
-])
-def text_splitter(request):
-    return request.param(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
-
-def test_splitter(text_splitter, documents):
+def test_recursive_splitter(documents):
+    text_splitter = RecursiveTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     # test chunk multiple documents at once
     chunked_documents = text_splitter.split_documents(documents)
 
     assert len(chunked_documents) > len(documents)
-    assert all([isinstance(doc, Document) for doc in documents])
+    assert all([isinstance(chunk, Chunk) for chunk in chunked_documents])
     assert len(chunked_documents[0].text) < len(documents[0].text)
 
     # test chunk specifics
@@ -37,3 +31,25 @@ def test_splitter(text_splitter, documents):
     documents = [doc for doc in chunked_documents if (doc_hash := hash(doc)) not in _text_hashes and not _text_hashes.add(doc_hash)]
     print("Number of unique chunks: ", len(_text_hashes))
     assert len(chunked_documents) == len(documents)
+
+def test_contextual_splitter(documents):
+    llm = OpenAILLM()
+    text_splitter = ContextualTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, llm=llm)
+
+    # # test chunk multiple documents at once
+    # chunked_documents = text_splitter.split_documents(documents)
+
+    # assert len(chunked_documents) > len(documents)
+    # assert all([isinstance(chunk, Chunk) for chunk in chunked_documents])
+    # assert len(chunked_documents[0].text) < len(documents[0].text)
+
+    # test chunk specifics
+    chunked_documents = text_splitter.split_documents([documents[0]])
+
+    assert len(chunked_documents) > 1
+    for chunk in chunked_documents:
+        assert 0 < len(chunk.text) <= CHUNK_SIZE
+        assert chunk.metadata == documents[0].metadata
+        assert chunk.db_id == documents[0].db_id
+        assert chunk.uuid == documents[0].uuid
+        assert len(chunk.context) > 0
