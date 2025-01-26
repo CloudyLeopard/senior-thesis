@@ -3,18 +3,21 @@ import re
 from abc import ABC, abstractmethod
 from rag.models import Document, Query
 
-SYSTEM_STANDARD = "You are a helpful assistant."
+PROMPTS = {}
 
-RAG_PROMPT_STANDARD = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.\
+PROMPTS["system_standard"] = "You are a helpful assistant."
+
+PROMPTS["rag_prompt_standard"] = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.\
  If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.\
  \nQuestion: {query}
  \nContext: {context}
 """
 
-RAG_SYSTEM_STANDARD = (
-    """You are a helpful assistant that answers a query using the given contexts"""
-)
+PROMPTS["rag_system_standard"] = "You are a helpful assistant that answers a query using the given contexts"
 
+# ============================================
+# ------------ PROMPT FORMATTERS ------------
+# ============================================
 
 class BasePromptFormatter(ABC):
     @abstractmethod
@@ -30,7 +33,7 @@ class BasePromptFormatter(ABC):
         pass
 
 class CustomPromptFormatter(BasePromptFormatter):
-    def __init__(self, prompt_template: str, system_prompt: str = SYSTEM_STANDARD):
+    def __init__(self, prompt_template: str, system_prompt: str = PROMPTS["system_standard"]):
         self.system_prompt = system_prompt
         self.prompt_template = prompt_template
 
@@ -51,7 +54,7 @@ class CustomPromptFormatter(BasePromptFormatter):
         self.prompt_template = prompt_template
 
 class SimplePromptFormatter(BasePromptFormatter):
-    def __init__(self, system_prompt: str = SYSTEM_STANDARD):
+    def __init__(self, system_prompt: str = PROMPTS["system_standard"]):
         """
         Initializes the SimplePromptFormatter with an optional system prompt.
 
@@ -88,7 +91,7 @@ class SimplePromptFormatter(BasePromptFormatter):
 class RAGPromptFormatter(BasePromptFormatter):
     def __init__(
         self,
-        system_prompt: str = RAG_SYSTEM_STANDARD,
+        system_prompt: str = PROMPTS["rag_system_standard"],
         prompt_template="default",
         documents: List[Document] = [],
     ):
@@ -110,7 +113,7 @@ class RAGPromptFormatter(BasePromptFormatter):
 
         # initialize prompt template for formatting user prompt
         if prompt_template == "default":
-            self.prompt_template = RAG_PROMPT_STANDARD
+            self.prompt_template = PROMPTS["rag_prompt_standard"]
         else:
             pattern = r"(?s)\{query\}.*\{context\}|\{context\}.*\{query\}"
             if not re.search(pattern, prompt_template):

@@ -1,7 +1,7 @@
 # tests/test_prompts.py
 import pytest
 from rag.models import Document
-from rag.prompts import RAG_SYSTEM_STANDARD, SimplePromptFormatter, RAGPromptFormatter
+from rag.prompts import PROMPTS, SimplePromptFormatter, RAGPromptFormatter
 
 
 class TestSimplePromptFormatter:
@@ -44,7 +44,7 @@ class TestRAGPromptFormatter:
 
         # Test without system prompt
         formatter = RAGPromptFormatter(documents=documents)
-        assert formatter.system_prompt == RAG_SYSTEM_STANDARD
+        assert formatter.system_prompt == PROMPTS["rag_system_standard"]
         assert formatter.documents == documents
     
     def test_format_messages(self, sample_documents):
@@ -61,7 +61,7 @@ class TestRAGPromptFormatter:
                 assert sample_documents[2].text in message["content"]
             else:
                 assert message["role"] == "system"
-                assert message["content"] == RAG_SYSTEM_STANDARD
+                assert message["content"] == PROMPTS["rag_system_standard"]
         
         # Test with metadata
         formatter = RAGPromptFormatter(documents=sample_documents)
@@ -83,4 +83,4 @@ class TestRAGPromptFormatter:
                 assert sample_documents[2].metadata["date"] in message["content"]
             else:
                 assert message["role"] == "system"
-                assert message["content"] == RAG_SYSTEM_STANDARD
+                assert message["content"] == PROMPTS["rag_system_standard"]
