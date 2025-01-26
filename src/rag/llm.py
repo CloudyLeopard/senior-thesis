@@ -210,7 +210,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
             result = self.sync_client.embeddings.create(input=text[i : i + 100], model=self.model)
             embeddings.extend([x.embedding for x in result.data])
 
-        return result
+        return embeddings
     
     async def async_embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
         if isinstance(text[0], Embeddable):
