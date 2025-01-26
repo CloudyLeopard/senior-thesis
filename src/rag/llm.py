@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Literal
 import os
 import asyncio
-from h11 import Response
 from openai import OpenAI, AsyncOpenAI
 import logging
 from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
