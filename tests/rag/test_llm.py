@@ -6,6 +6,7 @@ from rag.llm import (
     OpenAILLM,
     NYUOpenAILLM,
 )
+from rag.models import Response
 
 
 @pytest.fixture(params=[OpenAIEmbeddingModel, NYUOpenAIEmbeddingModel])
@@ -33,6 +34,7 @@ async def test_llm(llm):
     ]
     response = await llm.async_generate(message)
 
+    assert isinstance(response, Response)
     assert response is not None
-    assert len(response) > 0
+    assert len(response.text) > 0
     

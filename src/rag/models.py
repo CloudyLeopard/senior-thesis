@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, computed_field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 from uuid import uuid4, UUID
 
@@ -40,8 +40,11 @@ class ContextualizedChunk(Chunk):
 class Query(Embeddable):
     metadata: Dict[Any, Any] = Field(default_factory=dict)
 
-class Result(Embeddable):
-    metadata: Dict[Any, Any] = Field(default_factory=dict)
+class Response(Embeddable):
+    sources: List[Document] = Field(default_factory=list)
+
+    def __str__(self):
+        return self.text
 
 if __name__ == "__main__":
     document = Document(text="Hello", metadata={"bye": "no"})

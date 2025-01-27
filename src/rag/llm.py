@@ -7,7 +7,7 @@ import logging
 from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
 import httpx
 
-from rag.models import Embeddable
+from rag.models import Embeddable, Response
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -42,11 +42,19 @@ class BaseLLM(ABC, BaseModel):
     #     pass
 
     @abstractmethod
-    async def async_generate(self, messages: List[Dict], max_tokens=2000) -> str:
+    async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
         pass
 
-    async def batch_async_generate(self, messages_list: List[List[Dict]], max_tokens=2000) -> List[str]:
+    async def batch_async_generate(self, messages_list: List[List[Dict]], max_tokens=2000) -> List[Response]:
         return await asyncio.gather(*(self.async_generate(messages=messages, max_tokens=max_tokens) for messages in messages_list))
+    
+    def price(self):
+        if self.model == "gpt-4o":
+            return (self._input_token_usage * 2.5 + self._output_token_usage * 10) / 1_000_000
+        elif self.model == "gpt-4o-mini":
+            return (self._input_token_usage * 0.15 + self._output_token_usage * 0.075) / 1_000_000
+        else:
+            return 0
 
 class OpenAILLM(BaseLLM):
     model: Literal["gpt-4o", "gpt-4o-mini"] = "gpt-4o-mini"
@@ -56,7 +64,7 @@ class OpenAILLM(BaseLLM):
     
     def generate(
         self, messages: List[Dict], max_tokens=2000
-    ) -> str:
+    ) -> Response:
         """returns openai response based on given messages"""
 
         # if we want to keep history, add messages to history
@@ -81,11 +89,11 @@ class OpenAILLM(BaseLLM):
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
 
-        return completion.choices[0].message.content
+        return Response(text=completion.choices[0].message.content)
 
     async def async_generate(
         self, messages: List[Dict], max_tokens=2000
-    ) -> str:
+    ) -> Response:
         """returns openai response based on given messages"""
 
         if self.keep_history:
@@ -108,15 +116,7 @@ class OpenAILLM(BaseLLM):
         logger.info("Total tokens used: %d", total_tokens)
         logger.info("Completion: %s", completion.choices[0].message.content)
 
-        return completion.choices[0].message.content
-
-    def price(self):
-        if self.model == "gpt-4o":
-            return (self._input_token_usage * 2.5 + self._output_token_usage * 10) / 1_000_000
-        elif self.model == "gpt-4o-mini":
-            return (self._input_token_usage * 0.15 + self._output_token_usage * 0.075) / 1_000_000
-        else:
-            return 0
+        return Response(text=completion.choices[0].message.content)
 
 class NYUOpenAILLM(BaseNYUModel, BaseLLM):
     model: Literal["gpt-4o-mini"] = "gpt-4o-mini"
@@ -156,7 +156,7 @@ class NYUOpenAILLM(BaseNYUModel, BaseLLM):
             logger.info("Total tokens used: %d", total_tokens)
             logger.info("Completion: %s", content)
 
-            return content
+            return Response(text=content)
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error: {response}")
 
