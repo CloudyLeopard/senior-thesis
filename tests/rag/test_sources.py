@@ -25,6 +25,7 @@ import json
         "newsapi",
         pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
         "financial times",
+        "nytimes"
     ]
 )
 def source(request):
@@ -40,6 +41,10 @@ def source(request):
         with open(".ft-headers.json") as f:
             headers = json.load(f)
         return FinancialTimesData(headers=headers)
+    elif name == "nytimes":
+        with open(".nyt-headers.json") as f:
+            headers = json.load(f)
+        return NewYorkTimesData(headers=headers)
 
 
 @pytest.mark.slow

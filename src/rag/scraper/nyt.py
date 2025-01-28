@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import os
 from pydantic import Field
 import time
+import asyncio
 
 from rag.scraper.base_source import BaseDataSource, RequestSourceException
 from rag.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS
@@ -17,17 +18,84 @@ class NewYorkTimesData(BaseDataSource):
     sources: str = "New York Times"
     apiKey: str = Field(default_factory=lambda: os.getenv("NYTIMES_API_KEY"))
 
-    def fetch(self, query: str) -> List[Document]:
-        raise NotImplementedError()
+    async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> List[Document]:
+        urls = [article["web_url"] for article in article_metadata]
+
+        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        scraper = WebScraper(async_client=client)
+        article_data = await scraper.async_scrape_links(urls)
+
+        documents = []
+        for article, meta in zip(article_data, article_metadata):
+            if article is None:
+                continue
+            metadata = self.parse_metadata(
+                query=query,
+                url=meta["web_url"],
+                title=meta["headline"]["main"],
+                publication_time=meta["pub_date"],
+                abstract=meta["snippet"],
+            ) # NOTE: there are a lot more metadata avaiable
+            documents.append(Document(text=article["content"], metadata=metadata))
+
+        await client.aclose()
+        return documents
     
-    def async_fetch(self, query: str) -> List[Document]:
-        raise NotImplementedError()
+    def fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> List[Document]:
+        return asyncio.run(self.async_fetch(query=query, num_results=num_results, sort=sort))
+    
+    async def async_fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> List[Document]:
+        article_metadata = []
+        async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
+            url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
+
+            NUM_RESULTS_PER_PAGE = 10
+            page = 0
+            while page * NUM_RESULTS_PER_PAGE < num_results: # Fetch until we have enough articles
+                params = {
+                    "q": query,
+                    "api-key": self.apiKey,
+                    "sort": sort, # newest, oldest, relevance
+                    "fl": "web_url,headline,pub_date,snippet",
+                    "page": page,
+                }
+
+                page += 1 # Increment page number
+
+                try:
+                    response = await client.get(url, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                except httpx.HTTPStatusError as e:
+                    msg = e.response.text
+                    if e.response.status_code == 429:
+                        msg = "New York Times query limit reached"
+                    logger.error(
+                        "New York Times HTTP Error %d: %s",
+                        e.response.status_code,
+                        msg,
+                    )
+                    raise RequestSourceException(msg)
+                except httpx.RequestError as e:
+                    logger.error("New York Times Failed to fetch documents: %s", e)
+                    raise RequestSourceException(e)
+                
+                # Break if there are no more articles to fetch
+                if data["response"]["meta"]["hits"] <= data["response"]["meta"]["offset"]:
+                    break
+
+                article_metadata.extend(data["response"]["docs"])
+                time.sleep(13)
+
+        article_metadata = article_metadata[:num_results]
+        logger.debug("Fetched %d articles", len(article_metadata))
+
+        return await self._nyt_scraper_helper(article_metadata, query=query)
     
     async def fetch_news_feed(self, num_results: int = 20) -> List[Document]:
         # sections = ["business", "education", "job market", "technology", "u.s.", "world"]
         sections = ["business", "technology"]
         article_metadata = []
-        documents = []
 
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             for section in sections:
@@ -54,25 +122,7 @@ class NewYorkTimesData(BaseDataSource):
                     article_metadata.extend(data["results"])
                 time.sleep(13)
         
-        urls = [article["url"] for article in article_metadata]
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
-        scraper = WebScraper(async_client=client)
-        article_data = await scraper.async_scrape_links(urls)
-
-        for article, meta in zip(article_data, article_metadata):
-            if article is None:
-                continue
-            metadata = self.parse_metadata(
-                query=None,
-                url=meta["url"],
-                title=meta["title"],
-                publication_time=meta["published_date"],
-                abstract=meta["abstract"],
-            ) # NOTE: there are a lot more metadata avaiable
-            documents.append(Document(text=article["content"], metadata=metadata))
-        
-        await client.aclose()
-        return documents
+        return await self._nyt_scraper_helper(article_metadata)
     
     async def fetch_archive(self, months: int) -> List[Document]:
         # section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
@@ -123,26 +173,6 @@ class NewYorkTimesData(BaseDataSource):
                 article_metadata.extend([doc for doc in data["response"]['docs'] if doc.get("section_name") in section_names])
                 time.sleep(13)
 
-        urls = [article["web_url"] for article in article_metadata]
-
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
-        scraper = WebScraper(async_client=client)
-        article_data = await scraper.async_scrape_links(urls)
-
-        documents = []
-        for article, meta in zip(article_data, article_metadata):
-            if article is None:
-                continue
-            metadata = self.parse_metadata(
-                query=None,
-                url=meta["web_url"],
-                title=meta["headline"]["main"],
-                publication_time=meta["pub_date"],
-                abstract=meta["snippet"],
-            ) # NOTE: there are a lot more metadata avaiable
-            documents.append(Document(text=article["content"], metadata=metadata))
-
-        await client.aclose()
-        return documents
+        return await self._nyt_scraper_helper(article_metadata)
         
 
