@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import field_validator, model_validator
 
 from rag.scraper.base_source import BaseDataSource
+from rag.scraper.utils import WebScraper
 from rag.models import Document
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,17 @@ class DirectoryData(BaseDataSource):
                     title = pdf_meta.get("title")
                 )
                 documents.append(Document(text=pdf_text, metadata=metadata))
-
+            if file_path.suffix == ".html":
+                html = file_path.read_text()
+                scraped_data = WebScraper.default_html_parser(html)
+                metadata = self.parse_metadata(
+                    query="NA",
+                    name=file_path.name,
+                    path=file_path.as_posix(),
+                    title=scraped_data["title"],
+                    publication_time=scraped_data["time"],
+                )
+                documents.append(Document(text=scraped_data["content"], metadata=metadata))
         return documents
 
     async def async_fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
