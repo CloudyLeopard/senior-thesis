@@ -36,7 +36,7 @@ async def built_ft_vectorstore_index(
     num_documents = 10000
 
     # collect documents and insert documents into index
-    index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
+    index = VectorStoreIndex(vectorstore=vectorstore)
 
     print(f"Collecting documents from {dir} and indexing into {vectorstore.__class__.__name__}...")
     with open(f"{dir}/ft_scrape_info.txt", "r") as f:
@@ -80,21 +80,22 @@ async def built_ft_vectorstore_index(
 
 
 async def build_vectorstore_index_from_mongo_db(
-    embedding_model: BaseEmbeddingModel
+    embedding_model: BaseEmbeddingModel, vectorstore: BaseVectorStore, collection_name: str, db_name="FinancialNews"
 ) -> BaseIndex:
     # TODO: add document collection logic here
     # ...
     print("Downloading documents...")
     document_store = await AsyncMongoDBStore.create(
-        db_name="FinancialNews", collection_name="2025-01-23"
+        db_name=db_name, collection_name=collection_name
     )
     documents = await document_store.get_all_documents()
 
     # insert documents into index
     print("Indexing documents...")
-    vectorstore = InMemoryVectorStore(embedding_model=embedding_model)
-    index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
+    index = VectorStoreIndex(vectorstore=vectorstore)
     await index.async_add_documents(documents)
+
+    print("DONE.")
 
     return index
 

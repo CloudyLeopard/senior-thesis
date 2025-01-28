@@ -147,9 +147,9 @@ class WebScraper:
             except httpx.ConnectTimeout as exc:
                 logger.error("Timeout error while scraping %s", exc.request.url)
                 return None
-            except Exception as exc:
-                logger.error("Unexpected error while scraping %s: %s", url, str(exc))
-                return None
+            # except Exception as exc:
+            #     logger.error("Unexpected error while scraping %s: %s", url, str(exc))
+            #     return None
             finally:
                 if self.async_client is None:
                     await client.aclose()
@@ -176,12 +176,14 @@ class WebScraper:
 
         try:
             results = []
-            for i in tqdm(range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections), desc="Async scraping links"):
+            pbar = tqdm(total=len(links), desc="Async scraping links")
+            for i in range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections):
                 tasks = [
                     self.async_scrape_link(url=link, driver=driver)
                     for link in links[i : i + HTTPX_CONNECTION_LIMITS.max_connections]
                 ]
                 results.extend(await asyncio.gather(*tasks))
+                pbar.update(len(tasks))
             return results
         finally:
             if self.async_client is None:
@@ -237,9 +239,9 @@ class WebScraper:
             except httpx.ConnectTimeout as exc:
                 logger.error("Timeout error while scraping %s", exc.request.url)
                 return None
-            except Exception as exc:
-                logger.error("Unexpected error while scraping %s: %s", url, str(exc))
-                return None
+            # except Exception as exc:
+            #     logger.error("Unexpected error while scraping %s: %s", url, str(exc))
+            #     return None
             finally:
                 if self.sync_client is None:
                     client.close()

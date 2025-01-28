@@ -118,8 +118,8 @@ class NewsAPIData(BaseDataSource):
                 raise RequestSourceException(e)
             
             articles = data["articles"]
-            num_results = data["totalResults"]
-            logger.debug("Fetched %d documents from NewsAPI API", num_results)
+            total_results = data["totalResults"]
+            logger.debug("Fetched %d documents from NewsAPI API", total_results)
 
             # scrape list of links
             logger.debug("Scraping documents from links")

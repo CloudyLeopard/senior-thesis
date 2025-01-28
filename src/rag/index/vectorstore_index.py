@@ -12,9 +12,12 @@ logger = logging.getLogger(__name__)
 
 class VectorStoreIndex(BaseIndex):
 
-    embedder: BaseEmbeddingModel
     vectorstore: BaseVectorStore
     text_splitter: BaseTextSplitter = Field(default_factory=RecursiveTextSplitter)
+    embedder: BaseEmbeddingModel = None
+
+    def model_post_init(self, __context):
+        self.embedder = self.vectorstore.embedding_model
 
     def add_documents(self, documents: List[Document]):
         # split documents into chunks

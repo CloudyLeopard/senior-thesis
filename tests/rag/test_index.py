@@ -6,7 +6,7 @@ from rag.vectorstore.in_memory import InMemoryVectorStore
 @pytest.mark.asyncio
 async def test_vectorstore_index(embedding_model, documents, documents2, query):
     vectorstore = InMemoryVectorStore(embedding_model=embedding_model)
-    index = VectorStoreIndex(embedder=embedding_model, vectorstore=vectorstore)
+    index = VectorStoreIndex(vectorstore=vectorstore)
 
     # test insert documents
     index.add_documents(documents)
