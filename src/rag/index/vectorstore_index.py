@@ -1,6 +1,6 @@
 from typing import List
 import logging
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from rag.llm import BaseEmbeddingModel
 from rag.index.base_index import BaseIndex
@@ -14,10 +14,10 @@ class VectorStoreIndex(BaseIndex):
 
     vectorstore: BaseVectorStore
     text_splitter: BaseTextSplitter = Field(default_factory=RecursiveTextSplitter)
-    embedder: BaseEmbeddingModel = None
+    _embedder: BaseEmbeddingModel = PrivateAttr(default=None) 
 
     def model_post_init(self, __context):
-        self.embedder = self.vectorstore.embedding_model
+        self._embedder = self.vectorstore.embedding_model
 
     def add_documents(self, documents: List[Document]):
         # split documents into chunks
@@ -28,13 +28,13 @@ class VectorStoreIndex(BaseIndex):
     
     async def async_add_documents(self, documents: List[Document]):
         # split documents into chunks
-        chunked_documents = self.text_splitter.split_documents(documents)        
+        chunked_documents = await self.text_splitter.async_split_documents(documents)        
         # insert documents into vector store
         await self.vectorstore.async_insert_documents(chunked_documents)
 
     def query(self, query: Query, top_k: int = 3) -> List[Document]:
         # embed query
-        query_vector = self.embedder.embed([query])[0]
+        query_vector = self._embedder.embed([query])[0]
 
         # search vector store
         relevant_documents = self.vectorstore.search(vector=query_vector, top_k=top_k)
@@ -43,7 +43,7 @@ class VectorStoreIndex(BaseIndex):
 
     async def async_query(self, query: Query, top_k: int = 3) -> List[Document]:
         # embed query
-        query_vector = await self.embedder.async_embed([query])
+        query_vector = await self._embedder.async_embed([query])
         query_vector = query_vector[0]
 
         # search vector store

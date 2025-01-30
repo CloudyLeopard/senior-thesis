@@ -7,7 +7,7 @@ from rag.scraper import DirectoryData
 from rag.text_splitters import RecursiveTextSplitter
 from rag.vectorstore.in_memory import InMemoryVectorStore
 from rag.document_store import MongoDBStore, AsyncMongoDBStore
-from rag.llm import OpenAIEmbeddingModel
+from rag.llm import OpenAIEmbeddingModel, OpenAILLM
 from rag.models import Query
 
 nest_asyncio.apply()
@@ -76,6 +76,10 @@ def text_splitter():
 @pytest.fixture(scope="module")
 def embedding_model():
     return OpenAIEmbeddingModel()
+
+@pytest.fixture(scope="module")
+def llm():
+    return OpenAILLM()
 
 @pytest.fixture(scope="module")
 def vector_storage(embedding_model, text_splitter, documents2):

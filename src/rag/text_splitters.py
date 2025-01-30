@@ -12,6 +12,9 @@ from rag.prompts import PROMPTS, CustomPromptFormatter
 class BaseTextSplitter(ABC, BaseModel):
     """Custom Text Splitter interface"""
 
+    chunk_size: int = 1024
+    chunk_overlap: int = 64
+
     @abstractmethod
     def split_documents(documents: List[Document]) -> List[Chunk]:
         pass
@@ -23,9 +26,6 @@ class BaseTextSplitter(ABC, BaseModel):
 
 class RecursiveTextSplitter(BaseTextSplitter):
     """langchain recursive character text splitter"""
-
-    chunk_size: int = 1024
-    chunk_overlap: int = 64
     _text_splitter = PrivateAttr()
 
     def model_post_init(self, __context):
@@ -75,8 +75,7 @@ class RecursiveTextSplitter(BaseTextSplitter):
 
 
 class ContextualTextSplitter(BaseTextSplitter):
-    chunk_size: int = 1024
-    chunk_overlap: int = 64
+    """defunct - add context using ContextualVectorStoreIndex instead"""
     llm: BaseLLM
     _text_splitter = PrivateAttr()
 
@@ -128,13 +127,14 @@ class ContextualTextSplitter(BaseTextSplitter):
             # create a Chunk object for each chunked text and link them together
             prev_chunk = None
             for i in range(0, len(chunked_texts)):
+                context_text = contexts_list[i].text
                 curr_chunk = ContextualizedChunk(
-                    text=contexts_list[i] + " " + chunked_texts[i], # NOTE: THIS STEP COMBINES CONTEXT WITH CHUNK
+                    text=context_text + " " + chunked_texts[i], # NOTE: THIS STEP COMBINES CONTEXT WITH CHUNK
                     metadata=document.metadata,
                     uuid=document.uuid,
                     db_id=document.db_id,
                     previous_chunk=prev_chunk,
-                    context=contexts_list[i],
+                    context=context_text,
                 )
 
                 # link the chunks together

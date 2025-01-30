@@ -52,6 +52,8 @@ async def handle_select_vectorstore(path: str):
     vectorstore1 = InMemoryVectorStore.load_pickle(path)
     index1 = VectorStoreIndex(vectorstore=vectorstore1)
 
+    gr.Info("Index built successfully", duration=5)
+
     return True # generating a random number to rerender the index_1_state
 
 async def handle_build_index(dataset: str) -> bool:
