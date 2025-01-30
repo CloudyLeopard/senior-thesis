@@ -1,5 +1,4 @@
 from rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
-from rag.llm import OpenAILLM
 from rag.models import Chunk
 
 CHUNK_SIZE = 1024
@@ -32,8 +31,7 @@ def test_recursive_splitter(documents):
     print("Number of unique chunks: ", len(_text_hashes))
     assert len(chunked_documents) == len(documents)
 
-def test_contextual_splitter(documents):
-    llm = OpenAILLM()
+def test_contextual_splitter(documents, llm):
     text_splitter = ContextualTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, llm=llm)
 
     # # test chunk multiple documents at once
