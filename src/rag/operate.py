@@ -2,7 +2,7 @@ import asyncio
 from tqdm import tqdm
 import os
 
-from rag.llm import BaseLLM, BaseEmbeddingModel, OpenAIEmbeddingModel
+from rag.llm import BaseLLM, BaseEmbeddingModel, NYUOpenAIEmbeddingModel, OpenAIEmbeddingModel
 from rag.scraper.ft import FinancialTimesData
 from rag.scraper.utils import WebScraper
 from rag.vectorstore.base_store import BaseVectorStore
@@ -79,8 +79,8 @@ async def built_ft_vectorstore_index(
     return index
 
 
-async def build_vectorstore_index_from_mongo_db(
-    embedding_model: BaseEmbeddingModel, vectorstore: BaseVectorStore, collection_name: str, db_name="FinancialNews"
+async def build_index_from_mongo_db(
+        index: BaseIndex, collection_name: str, db_name="FinancialNews"
 ) -> BaseIndex:
     # TODO: add document collection logic here
     # ...
@@ -92,7 +92,6 @@ async def build_vectorstore_index_from_mongo_db(
 
     # insert documents into index
     print("Indexing documents...")
-    index = VectorStoreIndex(vectorstore=vectorstore)
     await index.async_add_documents(documents)
 
     print("DONE.")
@@ -104,7 +103,7 @@ async def ask_simple_llm(query: str, llm: BaseLLM):
     prompt_formatter = SimplePromptFormatter()
     messages = prompt_formatter.format_messages(user_prompt=query)
     response = await llm.async_generate(messages)
-
+    
     return response
 
 

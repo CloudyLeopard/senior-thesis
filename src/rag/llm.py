@@ -43,7 +43,7 @@ class BaseLLM(ABC, BaseModel):
 
     @abstractmethod
     async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
-        pass
+        raise NotImplementedError
 
     async def batch_async_generate(self, messages_list: List[List[Dict]], max_tokens=2000) -> List[Response]:
         return await asyncio.gather(*(self.async_generate(messages=messages, max_tokens=max_tokens) for messages in messages_list))
@@ -100,6 +100,7 @@ class OpenAILLM(BaseLLM):
             self.messages.extend(messages)
             messages = self.messages
 
+        # TODO: add try/except for openai api key errors
         completion = await self.async_client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens
         )
@@ -107,7 +108,6 @@ class OpenAILLM(BaseLLM):
         if self.keep_history:
             self.messages.append(completion.choices[0].message)
 
-        # TODO: add logger to track openai response, token usage here
         total_tokens = completion.usage.total_tokens
         self._session_token_usage += total_tokens
         self._input_token_usage += completion.usage.prompt_tokens
@@ -118,7 +118,7 @@ class OpenAILLM(BaseLLM):
 
         return Response(text=completion.choices[0].message.content)
 
-class NYUOpenAILLM(BaseNYUModel, BaseLLM):
+class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     model: Literal["gpt-4o-mini"] = "gpt-4o-mini"
     endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT"))
 
@@ -126,9 +126,9 @@ class NYUOpenAILLM(BaseNYUModel, BaseLLM):
         if self.keep_history:
             self.messages.extend(messages)
             messages = self.messages
-
+        
         body = {
-            "message": messages,
+            "messages": messages,
             "openai_parameters": {"max_tokens": max_tokens},
         }
         # init httpx client if not initialized in the model
@@ -223,7 +223,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
         results = await asyncio.gather(*tasks)
         return [x.embedding for result in results for x in result.data]
 
-class NYUOpenAIEmbeddingModel(BaseNYUModel, BaseEmbeddingModel):
+class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
     model: Literal['api-embedding-openai-text-embed-3-small'] = 'api-embedding-openai-text-embed-3-small'
     endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_EMBEDDING"))
     
