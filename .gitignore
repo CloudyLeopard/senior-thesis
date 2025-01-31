@@ -2,6 +2,7 @@ env/
 .env
 __pycache__/
 .pytest_cache/
+.vscode/
 *.db
 .DS_Store
 .ipynb_checkpoints/
