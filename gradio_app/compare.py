@@ -11,7 +11,6 @@ from rag.index.vectorstore_index import VectorStoreIndex
 from rag.index.contextual_index import ContextualVectorStoreIndex
 
 import gradio as gr
-import asyncio
 from datetime import datetime
 from pathlib import Path
 
@@ -237,7 +236,7 @@ with gr.Blocks() as demo:
         # submit_button = gr.Button("Submit")
         # with gr.Row():
         gr.Markdown("## Simple LLM Response")
-        response_1 = gr.Textbox(label="LLM Response", interactive=False)
+        response_1 = gr.Textbox(label="LLM Response", interactive=False, lines=10)
 
         query_1.submit(
             handle_submit_1,
