@@ -28,14 +28,14 @@ async def sanity_check():
 
 @pytest.fixture(scope="session")
 def documents():
-    source = DirectoryData(path="tests/rag/data/1")
+    source = DirectoryData(path="tests/data/1")
     documents = source.fetch()
     return documents
 
 
 @pytest.fixture(scope="session")
 def documents2():
-    source = DirectoryData(path="tests/rag/data/2")
+    source = DirectoryData(path="tests/data/2")
     documents = source.fetch()
     return documents
 
