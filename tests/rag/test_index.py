@@ -1,8 +1,8 @@
 import pytest
 
-from rag.index.vectorstore_index import VectorStoreIndex
-from rag.index.contextual_index import ContextualVectorStoreIndex
-from rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.rag.index.contextual_index import ContextualVectorStoreIndex
+from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
 
 @pytest.mark.asyncio
 async def test_vectorstore_index(embedding_model, documents, documents2, query):

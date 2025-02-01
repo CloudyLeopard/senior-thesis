@@ -1,7 +1,7 @@
 # tests/test_prompts.py
 import pytest
-from rag.models import Document
-from rag.prompts import PROMPTS, SimplePromptFormatter, RAGPromptFormatter
+from kruppe.models import Document
+from kruppe.prompts import PROMPTS, SimplePromptFormatter, RAGPromptFormatter
 
 
 class TestSimplePromptFormatter:

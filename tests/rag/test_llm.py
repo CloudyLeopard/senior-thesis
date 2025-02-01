@@ -1,12 +1,12 @@
 import pytest
 
-from rag.llm import (
+from kruppe.llm import (
     OpenAIEmbeddingModel,
     NYUOpenAIEmbeddingModel,
     OpenAILLM,
     NYUOpenAILLM,
 )
-from rag.models import Response
+from kruppe.models import Response
 
 
 @pytest.fixture(params=[OpenAIEmbeddingModel, NYUOpenAIEmbeddingModel])

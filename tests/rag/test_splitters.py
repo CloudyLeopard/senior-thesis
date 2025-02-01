@@ -1,5 +1,5 @@
-from rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
-from rag.models import Chunk
+from kruppe.rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
+from kruppe.models import Chunk
 
 CHUNK_SIZE = 1024
 CHUNK_OVERLAP = 64

@@ -1,7 +1,7 @@
 import pytest
 from uuid import UUID
 
-from rag.scraper import (
+from kruppe.scraper import (
     GoogleSearchData,
     LexisNexisData,
     DirectoryData,
@@ -10,7 +10,7 @@ from rag.scraper import (
     RequestSourceException,
     NewYorkTimesData
 )
-from rag.models import Document
+from kruppe.models import Document
 import json
 
 @pytest.fixture(

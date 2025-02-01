@@ -3,12 +3,13 @@ import pytest_asyncio
 import os
 import nest_asyncio
 
-from rag.scraper import DirectoryData
-from rag.text_splitters import RecursiveTextSplitter
-from rag.vectorstore.in_memory import InMemoryVectorStore
-from rag.document_store import MongoDBStore, AsyncMongoDBStore
-from rag.llm import OpenAIEmbeddingModel, OpenAILLM
-from rag.models import Query
+from kruppe.scraper import DirectoryData
+from kruppe.rag.text_splitters import RecursiveTextSplitter
+from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.document_store import MongoDBStore, AsyncMongoDBStore
+from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM
+# from kruppe.llm import NYUOpenAIEmbeddingModel, NYUOpenAILLM
+from kruppe.models import Query
 
 nest_asyncio.apply()
 
@@ -75,10 +76,12 @@ def text_splitter():
 
 @pytest.fixture(scope="module")
 def embedding_model():
+    # return OpenAIEmbeddingModel()
     return OpenAIEmbeddingModel()
 
 @pytest.fixture(scope="module")
 def llm():
+    # return OpenAILLM()
     return OpenAILLM()
 
 @pytest.fixture(scope="module")

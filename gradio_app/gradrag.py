@@ -3,12 +3,12 @@ import asyncio
 from typing import Tuple, List
 import json
 
-from rag.prompts import SimplePromptFormatter, RAGPromptFormatter
-from rag.llm import OpenAILLM
-from rag.vector_storages import NumPyVectorStorage
-from rag.embeddings import OpenAIEmbeddingModel
-from rag.tools.searcher import NewsArticleSearcher
-from rag.tools.sources import FinancialTimesData
+from kruppe.prompts import SimplePromptFormatter, RAGPromptFormatter
+from kruppe.llm import OpenAILLM
+from kruppe.vector_storages import NumPyVectorStorage
+from kruppe.embeddings import OpenAIEmbeddingModel
+from kruppe.tools.searcher import NewsArticleSearcher
+from kruppe.tools.sources import FinancialTimesData
 
 llm = OpenAILLM()
 with open(".ft-headers.json") as f:

@@ -1,14 +1,14 @@
-from rag.operate import (
+from kruppe.operate import (
     ask_simple_llm,
     ask_simple_rag,
     build_index_from_mongo_db,
 )
-from rag.llm import OpenAIEmbeddingModel, OpenAILLM, NYUOpenAIEmbeddingModel, NYUOpenAILLM
-from rag.vectorstore.in_memory import InMemoryVectorStore
-from rag.vectorstore.chroma import ChromaVectorStore
-from rag.index.base_index import BaseIndex
-from rag.index.vectorstore_index import VectorStoreIndex
-from rag.index.contextual_index import ContextualVectorStoreIndex
+from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM, NYUOpenAIEmbeddingModel, NYUOpenAILLM
+from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.rag.vectorstore.chroma import ChromaVectorStore
+from kruppe.rag.index.base_index import BaseIndex
+from kruppe.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.rag.index.contextual_index import ContextualVectorStoreIndex
 
 import gradio as gr
 from datetime import datetime

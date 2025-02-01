@@ -1,6 +1,6 @@
 
 import pytest
-from rag.models import Document
+from kruppe.models import Document
 
 # TODO: loop through document storages using pytest parametrize
 def test_document_storage(document_storage, documents):
