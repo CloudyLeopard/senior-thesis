@@ -3,10 +3,11 @@ import httpx
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
-from typing import List, Dict
+from typing import List, Dict, AsyncGenerator
 import logging
 from pathlib import Path
 from tqdm import tqdm
+import stamina
 
 
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
@@ -28,12 +29,12 @@ class WebScraper:
         self,
         headless=True,
         html_parser: callable = None,
-        sync_client: httpx.AsyncClient = None,
+        sync_client: httpx.AsyncClient = None, # NOTE: this is not used
         async_client: httpx.AsyncClient = None,
     ):
         self.headless = headless
         self.html_parser = html_parser or self.default_html_parser
-        self.sync_client = sync_client
+        self.sync_client = sync_client # NOTE: this is not used
         self.async_client = async_client
 
     @staticmethod
@@ -114,7 +115,7 @@ class WebScraper:
 
         return driver
 
-    def _scrape_with_selenium(self, driver, url: str):
+    def _scrape_with_selenium(self, driver, url: str, **kwargs):
         """Fallback to Selenium to scrape the page."""
         logging.debug("Attempting to scrape %s with Selenium", url)
         try:
@@ -122,77 +123,73 @@ class WebScraper:
             time.sleep(2)  # Give the page time to load
             page_content = driver.page_source
             logging.info("Successfully scraped %s with Selenium", url)
-            return page_content
+
+            return self.html_parser(page_content, **kwargs) if page_content else None
         except Exception as e:
             logging.error(
                 "Error occurred while scraping %s with Selenium: %s", url, str(e)
             )
             return None
 
+    @stamina.retry(on=httpx.HTTPError, attempts=3)
+    async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, headers: Dict[str, str] = None, **kwargs):
+        r = await client.get(url)
+        r.raise_for_status()
+
+        # if the link is a pdf, return None
+        if r.headers.get("Content-Type") == "application/pdf":
+            logger.warning("Url %s is a pdf. Skipping.", url)
+            return None
+
+        html = r.text
+        return self.html_parser(html, **kwargs)
+
+
     async def async_scrape_link(
         self,
         url: str,
         driver: webdriver = None,
         headers: Dict[str, str] = None,
-        retries: int = 3,
-        backoff: int = 0.5,
         **kwargs,
     ) -> Dict[str, str] | None:
         """Async function for scraping a single link"""
-        logger.debug("Async scraping %s", url)
+        logger.info("Async scraping %s", url)
 
+        # init async client
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
-            logging.debug("Inititalized async client")
+            logging.info("Inititalized new async client")
         else:
             client = self.async_client
-        for attempt in range(retries):
-            try:
-                r = await client.get(url)
-                r.raise_for_status()
-                if r.headers.get("Content-Type") == "application/pdf":
-                    # if the link is a pdf, return None
-                    logger.warning("Url %s is a pdf. Skipping.", url)
-                    return None
+            logging.info("Using entered async client")
+        
+        # scrape
+        try:
+            result = await self._async_scrape_with_httpx(client, url, headers=headers, **kwargs)
+            return result
+        except httpx.HTTPError as exc:
+            logger.warning("Error occurred while scraping %s: %s", url, str(exc))
+            if driver:
+                logger.info("Attempting to scrape %s with Selenium", url)
+                result = self._scrape_with_selenium(driver, url, **kwargs)
 
-                html = r.text
-                logger.info("Successfully async scraped %s", url)
-                return self.html_parser(html, **kwargs)
-            except httpx.HTTPError as exc:
-                if attempt < retries - 1:
-                    await asyncio.sleep(backoff * (2**attempt))
-                    continue
-
-                logger.warning(
-                    "Async httpx request failed %s after %d attempts",
-                    exc.request.url,
-                    retries,
-                )
-                if driver:
-                    html = self._scrape_with_selenium(driver, url)
-                    if html is None:
-                        return None
-                    return self.html_parser(html, **kwargs)
-                else:
-                    logger.warning("No Selenium driver provided. Skipping.")
-                    return None
-            except httpx.ConnectTimeout as exc:
-                logger.error("Timeout error while scraping %s", exc.request.url)
+                if result is None:
+                    logger.warning("Error occurred while scraping %s with Selenium", url)
+                    raise exc
+                return result
+            else:
                 return None
-            # except Exception as exc:
-            #     logger.error("Unexpected error while scraping %s: %s", url, str(exc))
-            #     return None
-            finally:
-                if self.async_client is None:
-                    await client.aclose()
-                    logging.debug("Closed async client")
+        finally:
+            if self.async_client is None:
+                await client.aclose()
+                logging.debug("Closed async client")
 
     async def async_scrape_links(
         self,
         links: List[str],
         headers: Dict[str, str] = None,
         selenium_fallback: bool = True,
-    ) -> List[Dict[str, str]] | None:
+    ) -> AsyncGenerator[Dict[str, str], None]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works.
 
         Args:
@@ -205,21 +202,30 @@ class WebScraper:
         logger.debug("Creating Selenium driver")
         driver = self._create_selenium_driver() if selenium_fallback else None
         if self.async_client is None:
-            client = httpx.AsyncClient(headers=headers)
+            client = httpx.AsyncClient(headers=headers, limits=HTTPX_CONNECTION_LIMITS)
         else:
             client = self.async_client
 
         try:
-            results = []
             pbar = tqdm(total=len(links), desc="Async scraping links")
-            for i in range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections):
-                tasks = [
-                    self.async_scrape_link(url=link, driver=driver)
-                    for link in links[i : i + HTTPX_CONNECTION_LIMITS.max_connections]
-                ]
-                results.extend(await asyncio.gather(*tasks))
-                pbar.update(len(tasks))
-            return results
+
+            # # NOTE: I do NOT know if I need to do things in batches. 
+            # # I think httpx handles it for me, but past experience tells me now.
+            # results = []
+            # for i in range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections):
+            #     tasks = [
+            #         self.async_scrape_link(url=link, driver=driver)
+            #         for link in links[i : i + HTTPX_CONNECTION_LIMITS.max_connections]
+            #     ]
+            #     results.extend(await asyncio.gather(*tasks))
+            #     pbar.update(len(tasks))
+            # return results
+
+            tasks = [self.async_scrape_link(url=link, driver=driver) for link in links]
+            for completed in asyncio.as_completed(tasks):
+                yield await completed
+                pbar.update(1)
+
         finally:
             if self.async_client is None:
                 await client.aclose()
@@ -228,86 +234,6 @@ class WebScraper:
                 driver.quit()
                 logger.debug("Closed Selenium driver")
 
-    def scrape_link(
-        self,
-        url: str,
-        driver: webdriver = None,
-        headers: Dict[str, str] = None,
-        retries: int = 3,
-        backoff: int = 0.5,
-        **kwargs,
-    ):
-        """Try requests, fallback to Selenium if requests fail."""
-        logger.debug("Scraping %s", url)
-
-        if self.sync_client is None:
-            client = httpx.Client(headers=headers)
-        else:
-            client = self.sync_client
-
-        for attempt in range(retries):
-            try:
-                r = client.get(url)
-                r.raise_for_status()
-                if r.headers.get("Content-Type") == "application/pdf":
-                    # if the link is a pdf, return None
-                    logger.warning("Url %s is a pdf. Skipping.", url)
-                    return None
-
-                html = r.text
-                logger.info("Successfully scraped %s", url)
-                return self.html_parser(html, **kwargs)
-            except httpx.HTTPError as exc:
-                if attempt < retries - 1:
-                    time.sleep(backoff * (2**attempt))
-                    continue
-
-                logger.warning(
-                    "httpx request failed %s after %d attempts",
-                    exc.request.url,
-                    retries,
-                )
-                if driver:
-                    html = self._scrape_with_selenium(driver, url)
-                    if html is None:
-                        return None
-                    return self.html_parser(html, **kwargs)
-                else:
-                    logger.warning("No Selenium driver provided. Skipping.")
-                    return None
-            except httpx.ConnectTimeout as exc:
-                logger.error("Timeout error while scraping %s", exc.request.url)
-                return None
-            # except Exception as exc:
-            #     logger.error("Unexpected error while scraping %s: %s", url, str(exc))
-            #     return None
-            finally:
-                if self.sync_client is None:
-                    client.close()
-
-    def scrape_links(
-        self,
-        links: List[str],
-        headers: Dict[str, str] = None,
-        selenium_fallback: bool = True,
-    ) -> List[Dict[str, str]]:
-        """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
-        logger.debug("Scraping %d links", len(links))
-
-        if self.sync_client is None:
-            client = httpx.Client(headers=headers)
-        else:
-            client = self.sync_client
-
-        driver = self._create_selenium_driver() if selenium_fallback else None
-        try:
-            return [self.scrape_link(url=link, driver=driver) for link in links]
-        finally:
-            if self.sync_client is None:
-                client.close()
-            if driver:
-                driver.quit()
-                logger.debug("Closed Selenium driver")
 
 
 class NewsArticleSearcher:
