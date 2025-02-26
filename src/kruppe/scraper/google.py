@@ -3,6 +3,7 @@ import httpx
 from typing import List
 import logging
 from pydantic import Field, field_validator
+import asyncio
 
 from kruppe.scraper.base_source import (
     BaseDataSource,
@@ -33,94 +34,7 @@ class GoogleSearchData(BaseDataSource):
     def fetch(
         self, query: str, num_results: int = 10, or_terms: str = None, **kwargs
     ) -> List[Document]:
-        """Fetch links from Google Search API, scrape them, and return as a list of Documents.
-        If document store is set, save documents to document store
-
-        Args:
-            query (str): The main search query to fetch relevant links.
-            or_terms (str, optional): Additional search terms to include in the query.
-            pages (int, optional): The number of pages of search results to fetch.
-
-        Returns:
-            List[Document]: A list of Document objects containing the text and metadata
-                            of the scraped links.
-
-        Raises:
-            HTTPError: If the request to the Google Search API fails.
-            PermissionError: If the Google Search API query limit is reached.
-        """
-        # get list of links from Google Search API
-        links = []
-        with httpx.Client(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
-            params = {"key": self.api_key, "cx": self.search_engine_id}
-            params["q"] = query
-            params["orTerms"] = or_terms
-
-            for page in range(num_results // 10 + 1):
-                # not doing asyncio cuz pages is usually really small (< 50)
-
-                # 10 results per page
-                params["start"] = page * 10 + 1
-
-                try:
-                    logger.debug(
-                        "Fetching links from Google Search API (page %d)", page
-                    )
-                    response = client.get(
-                        "https://www.googleapis.com/customsearch/v1", params=params
-                    )
-                    response.raise_for_status()
-                    response_json = response.json()
-                except httpx.HTTPStatusError as e:
-                    msg = e.response.text
-                    if e.response.status_code == 429:
-                        msg = "Google Search API query limit reached"
-                    logger.error(
-                        "Google Search API HTTP Error %d: %s",
-                        e.response.status_code,
-                        msg,
-                    )
-                    raise RequestSourceException(msg)
-                except httpx.RequestError as e:
-                    logger.error("Google Search API Failed to fetch links: %s", e)
-                    raise RequestSourceException(e)
-
-                num_results = int(response_json["searchInformation"]["totalResults"])
-                raw_results = response_json["items"] if num_results != 0 else []
-
-                logger.debug("Found %d results", num_results)
-
-                # list of websites, where each website is a "title" and a "link"
-                links.extend([result["link"] for result in raw_results])
-
-            # scrape list of links
-            logger.debug("Initialize WebScraper")
-            scraper = WebScraper(sync_client=client)
-
-            logger.debug("Scraping links")
-            scraped_data = scraper.scrape_links(links)
-
-        # create List of Documents
-        logger.debug("Converting data to Document objects")
-        documents = []
-        for link, data in zip(links, scraped_data):
-            if data is None:
-                # if scraping fails, skip
-                continue
-
-            metadata = self.parse_metadata(
-                query=query,
-                url=link,
-                title=data["title"],
-                publication_time=data["time"],
-            )
-            document = Document(text=data["content"], metadata=metadata)
-            documents.append(document)
-
-        logger.debug(
-            "Successfully fetched %d documents from Google Search API", len(documents)
-        )
-        return documents
+        return asyncio.run(self.async_fetch(query=query, num_results=num_results, or_terms=or_terms, **kwargs))
 
     async def async_fetch(
         self, query: str, num_results: int = 10, or_terms: str = None, **kwargs

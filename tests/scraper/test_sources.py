@@ -49,34 +49,6 @@ def source(request):
 
 @pytest.mark.slow
 # @pytest.mark.flaky(retries=2)
-def test_fetch(source, query):
-    query = query.text
-    try:
-        documents = source.fetch(query)
-    except NotImplementedError:
-        pytest.skip(f"async_fetch not implemented for {source}")
-    except RequestSourceException as e:
-        pytest.xfail(reason=str(e))
-        raise e
-    except Exception as e:
-        pytest.xfail(reason="Failed to capture exception. " + str(e))
-        raise e
-
-    assert len(documents) > 0
-    assert any(text for text in [document.text for document in documents])
-    for document in documents:
-        assert isinstance(document, Document)
-        assert len(document.metadata) > 0
-        assert document.metadata.get("datasource") == source.__class__.__name__
-        assert document.metadata.get("query") == query
-        assert "url" in document.metadata
-        assert "title" in document.metadata
-        assert "publication_time" in document.metadata
-        assert document.uuid and isinstance(document.uuid, UUID)
-
-
-@pytest.mark.slow
-# @pytest.mark.flaky(retries=2)
 @pytest.mark.asyncio(loop_scope="session")
 async def test_fetch_async(source, query):
     query = query.text
