@@ -45,8 +45,6 @@ class NewYorkTimesData(BaseDataSource):
     
     async def async_fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> AsyncGenerator[Document, None]:
         
-        raise RequestSourceException("NYT API is currently not functioning properly, please try again later.")
-
         article_metadata = []
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
