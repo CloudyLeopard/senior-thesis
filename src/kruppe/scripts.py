@@ -18,11 +18,13 @@ async def scrape_news_feed(nyt=True, ft=True):
             nyt_headers = json.load(f)
         nyt_source = NewYorkTimesData(headers=nyt_headers)
 
-        print("Scraping New York Times...")
-        nyt_documents = await nyt_source.fetch_news_feed(num_results=250)
+        print("Scraping and saving New York Times...")
+        size = 0
+        async for nyt_document in nyt_source.fetch_news_feed(num_results=250):
+            await document_store.save_document(nyt_document)
+            size += 1
 
-        print(f"Saving New York Times... ({len(nyt_documents)} documents)")
-        await document_store.save_documents(nyt_documents)
+        print(f"Saved {size} New York Times documents")
 
     if ft:
         with open("./.ft-headers.json") as f:
@@ -31,10 +33,12 @@ async def scrape_news_feed(nyt=True, ft=True):
 
         print("Scraping Financial Times...")
         links = await ft_source.fetch_news_feed(days=30)
-        ft_documents = await ft_source.async_scrape_links(links)
+        size = 0
+        async for ft_document in ft_source.async_scrape_links(links):
+            await document_store.save_document(ft_document)
+            size += 1
 
-        print(f"Saving Financial Times... ({len(ft_documents)} documents)")
-        await document_store.save_documents(ft_documents)
+        print(f"Saved {size} Financial Times documents")
 
 async def scrape_news_search(query, nyt=True, ft=True, newsapi=True, num_results=30):
     today_date = datetime.now().date().isoformat()
@@ -45,31 +49,37 @@ async def scrape_news_search(query, nyt=True, ft=True, newsapi=True, num_results
             nyt_headers = json.load(f)
         nyt_source = NewYorkTimesData(headers=nyt_headers)
 
-        print("Scraping New York Times...")
-        nyt_documents = await nyt_source.async_fetch(query, num_results=num_results, sort="newest")
+        print("Scraping and Saving New York Times...")
+        size = 0
+        async for nyt_document in nyt_source.async_fetch(query, num_results=num_results, sort="newest"):
+            await document_store.save_document(nyt_document)
+            size += 1
 
-        print(f"Saving New York Times... ({len(nyt_documents)} documents)")
-        await document_store.save_documents(nyt_documents)
+        print(f"Saved {size} New York Times documents")
 
     if ft:
         with open("./.ft-headers.json") as f:
             ft_headers = json.load(f)
         ft_source = FinancialTimesData(headers=ft_headers)
 
-        print("Scraping Financial Times...")
-        ft_documents = await ft_source.async_fetch(query, num_results=num_results, sort="date")
+        print("Scraping and Saving Financial Times...")
+        size = 0
+        async for ft_document in ft_source.async_fetch(query, num_results=num_results, sort="date"):
+            await document_store.save_document(ft_document)
+            size += 1
 
-        print(f"Saving Financial Times... ({len(ft_documents)} documents)")
-        await document_store.save_documents(ft_documents)
+        print(f"Saved {size} Financial Times documents")
     
     if newsapi:
         newsapi_source = NewsAPIData()
 
         print("Scraping NewsAPI...")
-        newsapi_documents = await newsapi_source.async_fetch(query, num_results=num_results, sort_by="publishedAt")
+        size = 0
+        async for newsapi_documents in newsapi_source.async_fetch(query, num_results=num_results, sort_by="publishedAt"):
+            await document_store.save_document(newsapi_documents)
+            size += 1
 
-        print(f"Saving NewsAPI... ({len(newsapi_documents)} documents)")
-        await document_store.save_documents(newsapi_documents)
+        print(f"Saved {size} NewsAPI documents")
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape news feed and save to MongoDB.")

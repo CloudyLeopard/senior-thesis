@@ -1,7 +1,7 @@
 import os
 import httpx
 from pydantic import Field, field_validator
-from typing import List
+from typing import List, AsyncGenerator
 import logging
 import asyncio
 
@@ -22,10 +22,7 @@ class NewsAPIData(BaseDataSource):
             raise ValueError("News API key must be set")
         return v
     
-    def fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
-        return asyncio.run(self.async_fetch(query=query, num_results=num_results, months=months, sort_by=sort_by, **kwargs))
-    
-    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> List[Document]:
+    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> AsyncGenerator[Document, None]:
         params = {"apiKey": self.apiKey}
         params["q"] = query
         if months:
@@ -66,26 +63,24 @@ class NewsAPIData(BaseDataSource):
             scraper = WebScraper(async_client=client)
 
             logger.debug("Scraping links")
-            scraped_data = await scraper.async_scrape_links([article["url"] for article in articles])
-        
-        logger.debug("Converting data to Document objects")
-        documents = []
-        for article, data in zip(articles, scraped_data):
-            if data is None:
-                continue
+            links = [article["url"] for article in articles]
+            meta_dictionary = {link: article for link, article in zip(links, articles)}
+            
+            async for data in scraper.async_scrape_links(links):
+                if data is None:
+                    continue
 
-            metadata = self.parse_metadata(
-                query=query,
-                url=article["url"],
-                source=article["source"]["name"],
-                # title=article["title"],
-                # publication_time=article["publishedAt"],
-                # description=article["description"],
-                **data["meta"]
-            )
-            document = Document(text=data["content"], metadata=metadata)
-            documents.append(document)
+                original_meta = meta_dictionary[data["meta"]["url"]]
+                metadata = self.parse_metadata(
+                    query=query,
+                    source=original_meta["source"]["name"],
+                    # title=original_meta["title"],
+                    # publication_time=original_meta["publishedAt"],
+                    # description=original_meta["description"],
+                    **data["meta"]
+                )
 
-        logger.debug("Successfully fetched %d documents from NewsAPI API", len(documents))
-        return documents    
+                print("CONTENT:", data["content"][:10])
+
+                yield Document(text=data["content"], metadata=metadata)
 

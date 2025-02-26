@@ -1,11 +1,12 @@
 import requests
-from typing import List
+from typing import List, AsyncGenerator
 import logging
 from pydantic import Field, model_validator
 from typing import Any
 
 from lexisnexisapi import credentials, webservices
 
+from kruppe import document_store
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.scraper.utils import WebScraper
 from kruppe.models import Document
@@ -40,7 +41,7 @@ class LexisNexisData(BaseDataSource):
                 return data
         return data
 
-    def fetch(self, query: str, num_results=10, **kwargs) -> List[Document]:
+    async def async_fetch(self, query: str, num_results=10, **kwargs) -> AsyncGenerator[Document, None]:
         """
         Fetch documents from Lexis Nexis based on query
 
@@ -87,7 +88,6 @@ class LexisNexisData(BaseDataSource):
             raise RequestSourceException(e)
 
         logger.debug("Converting data to Document objects")
-        documents = []
         for result in data["value"]:
             html = result["Document"]["Content"]
             try:
@@ -106,14 +106,5 @@ class LexisNexisData(BaseDataSource):
 
             document = Document(text=text, metadata=metadata)
 
-            documents.append(document)
-
-        logger.debug(
-            "Successfully fetched %d documents from Lexis Nexis API", len(documents)
-        )
-        return documents
-
-    async def async_fetch(self, query: str, num_results=10, **kwargs) -> List[Document]:
-        """Fallback to sync fetch"""
-        return self.fetch(query, num_results)
+            yield document
 

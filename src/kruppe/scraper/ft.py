@@ -1,5 +1,5 @@
 import httpx
-from typing import List, Dict
+from typing import AsyncGenerator, List, Dict
 from bs4 import BeautifulSoup
 import asyncio
 import logging
@@ -36,7 +36,7 @@ class FinancialTimesData(BaseDataSource):
         return links
 
     @staticmethod
-    def _ft_blog_html_parser(html: str, post_id: str) -> Dict[str, str]:
+    def _ft_blog_html_parser(html: str, url: str, post_id: str) -> Dict[str, str]:
         """FT has 'blogs', which are a different format than FT's 'articles'.
         Often, multiple blog posts with very different topic can be on the same
         page. So, we use "post_id" to isolate the one we want, and this post_id
@@ -61,16 +61,14 @@ class FinancialTimesData(BaseDataSource):
             "content": content, 
             "meta": {
                 "title": title,
+                "url": url,
                 "publication_time": posted_time
             }
         }
 
-    def fetch(self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs) -> List[Document]:
-        return asyncio.run(self.async_fetch(query=query, num_results=num_results, sort=sort, months=months, **kwargs))
-
     async def async_fetch(
         self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs
-    ) -> List[Document]:
+    ) -> AsyncGenerator[Document, None]:
         """Async version of fetch. Fetches links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
@@ -143,9 +141,20 @@ class FinancialTimesData(BaseDataSource):
             logger.debug("Initialize Async WebScraper")
             scraper = WebScraper(async_client=client)
 
-            logger.debug("Async scraping %d Financial Times articles", len(links))
-            articles_data = await scraper.async_scrape_links(article_links)
+            logger.info("Async scraping %d Financial Times articles", len(links))
+            async for data in scraper.async_scrape_links(article_links):
+                if data is None:
+                    continue
 
+                metadata = self.parse_metadata(
+                    query=query,
+                    **data["meta"]
+                )
+                document = Document(text=data["content"], metadata=metadata)
+                yield document
+
+            
+            logger.info("Async scraping %d Financial Times blogs", len(blog_links))
             # scrape blogs
             # NOTE: not using the default parser. The custom parser takes an additional input
             # so i am scraping the link individually, rather than scraping the whole list
@@ -153,37 +162,23 @@ class FinancialTimesData(BaseDataSource):
 
             # NOTE: need to use asyncio.gather to scrape the blog links, since we can't call on
             # the ascrape_links method while using a custom html parser with custom input
-            blog_data = await asyncio.gather(
-                *(
-                    scraper.async_scrape_link(url=link, post_id=link.split("#")[1])
-                    for link in blog_links
+            tasks = [
+                scraper.async_scrape_link(url=link, post_id=link.split("#")[1])
+                for link in blog_links
+            ]
+            for future in asyncio.as_completed(tasks):
+                data = await future
+                if data is None:
+                    continue
+                metadata = self.parse_metadata(
+                    query=query,
+                    **data["meta"]
                 )
-            )
+                yield Document(text=data["content"], metadata=metadata)
         finally:
             await client.aclose()
-
-        # combine articles and blogs
-        logger.debug("Converting data to Document Objects")
-        documents = []
-        for link, article in zip(article_links + blog_links, articles_data + blog_data):
-            if article is None:
-                # if both selenium scrape and httpx scrape fails, article will return None
-                # in this case, we can't parse the metadata, so we skip
-                continue
-            metadata = self.parse_metadata(
-                query=query,
-                url=link,
-                **article["meta"]
-            )
-            documents.append(Document(text=article["content"], metadata=metadata))
-
-        logger.info(
-            "Successfully async fetched %d documents from Financial Times",
-            len(documents),
-        )
-        return documents
     
-    async def fetch_news_feed(self, days: int = 365):
+    async def fetch_news_feed(self, days: int = 365) -> List[str]:
         links = []
         client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
         url = "https://www.ft.com/news-feed"
@@ -243,14 +238,11 @@ class FinancialTimesData(BaseDataSource):
                         links.append("https://www.ft.com" + a_tag.get("href"))
                 except httpx.HTTPStatusError as e:
                     logger.error(
-                        "Financial Times HTTP Error %d: %s", e.response.status_code, e.response.text
+                        "Financial Times HTTP Status Error %d: %s", e.response.status_code, e.response.text
                     )
                     raise RequestSourceException(e.response.text)
                 except httpx.RequestError as e:
-                    logger.error("Error fetching Financial Times search page: %s", e)
-                    raise RequestSourceException(e)
-                except Exception as e:
-                    logger.error("Error fetching Financial Times search page: %s", e)
+                    logger.error("Financial Times Request Error: %s", e)
                     raise RequestSourceException(e)
                 finally:
                     pages += 1
@@ -269,27 +261,17 @@ class FinancialTimesData(BaseDataSource):
             scraper = WebScraper(async_client=client)
 
             logger.debug("Async scraping %d Financial Times articles", len(links))
-            articles_data = await scraper.async_scrape_links(links)
+            async for data in scraper.async_scrape_links(links):
+                if data is None:
+                    # if both selenium scrape and httpx scrape fails, article will return None
+                    # in this case, we can't parse the metadata, so we skip
+                    continue
+                metadata = self.parse_metadata(
+                    query=None,
+                    **data["meta"]
+                )
+                document = Document(text=data["content"], metadata=metadata)
+                yield document
         finally:
             await client.aclose()
         
-        documents = []
-        
-        for link, article in zip(links, articles_data):
-            if article is None:
-                # if both selenium scrape and httpx scrape fails, article will return None
-                # in this case, we can't parse the metadata, so we skip
-                continue
-            metadata = self.parse_metadata(
-                query=None,
-                url=link,
-                **article["meta"]
-            )
-            documents.append(Document(text=article["content"], metadata=metadata))
-
-        logger.info(
-            "Successfully async fetched %d documents from Financial Times",
-            len(documents),
-        )
-        return documents
-

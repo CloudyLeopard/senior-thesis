@@ -38,8 +38,11 @@ class WebScraper:
         self.async_client = async_client
 
     @staticmethod
-    def default_html_parser(html: str) -> Dict[str, str]:
+    def default_html_parser(html: str, url: str, **kwargs) -> Dict[str, str]:
         """Scrape html and return a dict with different information scraped from the site"""
+
+        if html is None:
+            return None
 
         # parse html
         soup = BeautifulSoup(html, "lxml")
@@ -75,6 +78,7 @@ class WebScraper:
         scraped_data = {
             "content": text,
             "meta": {
+                "url": url,
                 "title": title,
                 "description": description,
                 "publication_time": publication_time,
@@ -115,24 +119,24 @@ class WebScraper:
 
         return driver
 
-    def _scrape_with_selenium(self, driver, url: str, **kwargs):
+    def _scrape_with_selenium(self, driver, url: str, **kwargs) -> str | None:
         """Fallback to Selenium to scrape the page."""
         logging.debug("Attempting to scrape %s with Selenium", url)
+
         try:
             driver.get(url)
             time.sleep(2)  # Give the page time to load
             page_content = driver.page_source
             logging.info("Successfully scraped %s with Selenium", url)
 
-            return self.html_parser(page_content, **kwargs) if page_content else None
-        except Exception as e:
-            logging.error(
-                "Error occurred while scraping %s with Selenium: %s", url, str(e)
-            )
+            return page_content
+        except Exception:
+            logging.warning("Failed to scrape %s with Selenium", url)
             return None
 
+
     @stamina.retry(on=httpx.HTTPError, attempts=3)
-    async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, headers: Dict[str, str] = None, **kwargs):
+    async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
         r = await client.get(url)
         r.raise_for_status()
 
@@ -142,7 +146,7 @@ class WebScraper:
             return None
 
         html = r.text
-        return self.html_parser(html, **kwargs)
+        return html
 
 
     async def async_scrape_link(
@@ -165,24 +169,37 @@ class WebScraper:
         
         # scrape
         try:
-            result = await self._async_scrape_with_httpx(client, url, headers=headers, **kwargs)
-            return result
+            # try with httpx first (faster)
+            html = await self._async_scrape_with_httpx(client, url, **kwargs)
+            
         except httpx.HTTPError as exc:
             logger.warning("Error occurred while scraping %s: %s", url, str(exc))
+
+            # if httpx doesn't work, fallback to selenium if it exists
             if driver:
                 logger.info("Attempting to scrape %s with Selenium", url)
-                result = self._scrape_with_selenium(driver, url, **kwargs)
-
-                if result is None:
-                    logger.warning("Error occurred while scraping %s with Selenium", url)
-                    raise exc
-                return result
+                html = self._scrape_with_selenium(driver, url, **kwargs)
             else:
                 return None
         finally:
+            # close async client
             if self.async_client is None:
                 await client.aclose()
                 logging.debug("Closed async client")
+
+            # if scraping returns a non-empty document
+            kwargs["url"] = url
+            data = self.html_parser(html, **kwargs)
+
+            if data is None:
+                return None
+            else:
+                # this is for if i scrape through html but
+                # even if html has text, i didn't scrape out anything useful
+                return data if data["content"] else None
+
+
+            
 
     async def async_scrape_links(
         self,
@@ -223,7 +240,9 @@ class WebScraper:
 
             tasks = [self.async_scrape_link(url=link, driver=driver) for link in links]
             for completed in asyncio.as_completed(tasks):
-                yield await completed
+                data = await completed
+                if data is not None:
+                    yield data
                 pbar.update(1)
 
         finally:

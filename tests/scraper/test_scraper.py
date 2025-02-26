@@ -49,11 +49,11 @@ async def test_async_scrape_link(scraper, urls):
 async def test_scrape_custom_html_parser(scraper):
     """test custom html parser"""
     url = "https://en.wikipedia.org/wiki/Vector_database"
-    def custom_parser(html: str, random_str: str):
+    def custom_parser(html: str, random_str: str, **kwargs):
         return {"title": "some title", "text": html, "random_str": random_str}
     
     scraper.set_html_parser(custom_parser)
-    
+
     # test async
     data = await scraper.async_scrape_link(url, random_str = "hahahahaha")
     assert data["title"] == "some title"
@@ -68,8 +68,7 @@ def test_scrape_selenium(scraper):
     url = "https://en.wikipedia.org/wiki/Vector_database"
 
     driver = scraper._create_selenium_driver()
-    data = scraper._scrape_with_selenium(driver, url)
+    html = scraper._scrape_with_selenium(driver, url)
     driver.quit()
-    assert "content" in data
-    assert "meta" in data
-    assert len(data["meta"]) > 0
+    assert isinstance(html, str)
+    assert len(html) > 0

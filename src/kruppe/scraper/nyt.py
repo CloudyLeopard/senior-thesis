@@ -1,5 +1,5 @@
 import httpx
-from typing import List, Dict
+from typing import List, Dict, AsyncGenerator
 import logging
 from datetime import datetime, timedelta
 import os
@@ -18,35 +18,35 @@ class NewYorkTimesData(BaseDataSource):
     sources: str = "New York Times"
     apiKey: str = Field(default_factory=lambda: os.getenv("NYTIMES_API_KEY"))
 
-    async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> List[Document]:
+    async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> AsyncGenerator[Document, None]:
         urls = [article.get("web_url") or article.get("url") for article in article_metadata]
+        meta_dict = {url: article for url, article in zip(urls, article_metadata)}
 
         client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
-        scraper = WebScraper(async_client=client)
-        article_data = await scraper.async_scrape_links(urls)
+        try:
+            scraper = WebScraper(async_client=client)
+            async for data in scraper.async_scrape_links(urls):
+                if data is None:
+                    continue
 
-        documents = []
-        for article, meta in zip(article_data, article_metadata):
-            if article is None:
-                continue
-            metadata = self.parse_metadata(
-                query=query,
-                url=meta.get("url") or meta["web_url"],
-                title=meta.get("title") or meta["headline"]["main"],
-                publication_time=meta.get("published_date") or meta["pub_date"],
-                description=meta.get("abstract") or meta["snippet"],
-                section=meta.get("section") or meta.get("section_name"),
-                document_type=meta.get("item_type") or meta.get("document_type")
-            ) # NOTE: there are a lot more metadata avaiable
-            documents.append(Document(text=article["content"], metadata=metadata))
+                original_meta = meta_dict[data["meta"]["url"]]
+                metadata = self.parse_metadata(
+                    query=query,
+                    url=data["meta"]["url"],
+                    title=original_meta.get("title") or original_meta["headline"]["main"],
+                    publication_time=original_meta.get("published_date") or original_meta["pub_date"],
+                    description=original_meta.get("abstract") or original_meta["snippet"],
+                    section=original_meta.get("section") or original_meta.get("section_name"),
+                    document_type=original_meta.get("item_type") or original_meta.get("document_type")
+                )
+                yield Document(text=data["content"], metadata=metadata)
+        finally:
+            await client.aclose()
+    
+    async def async_fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> AsyncGenerator[Document, None]:
+        
+        raise RequestSourceException("NYT API is currently not functioning properly, please try again later.")
 
-        await client.aclose()
-        return documents
-    
-    def fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> List[Document]:
-        return asyncio.run(self.async_fetch(query=query, num_results=num_results, sort=sort))
-    
-    async def async_fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> List[Document]:
         article_metadata = []
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
@@ -92,9 +92,10 @@ class NewYorkTimesData(BaseDataSource):
         article_metadata = article_metadata[:num_results]
         logger.debug("Fetched %d articles", len(article_metadata))
 
-        return await self._nyt_scraper_helper(article_metadata, query=query)
+        async for document in self._nyt_scraper_helper(article_metadata, query=query):
+            yield document
     
-    async def fetch_news_feed(self, num_results: int = 20) -> List[Document]:
+    async def fetch_news_feed(self, num_results: int = 20) -> AsyncGenerator[Document, None]:
         # sections = ["business", "education", "job market", "technology", "u.s.", "world"]
         sections = ["business", "technology"]
         article_metadata = []
@@ -124,9 +125,10 @@ class NewYorkTimesData(BaseDataSource):
                     article_metadata.extend(data["results"])
                 time.sleep(13)
         
-        return await self._nyt_scraper_helper(article_metadata)
+        async for document in self._nyt_scraper_helper(article_metadata):
+            yield document
     
-    async def fetch_archive(self, months: int) -> List[Document]:
+    async def fetch_archive(self, months: int) -> AsyncGenerator[Document, None]:
         # section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
         section_names = ["Business", "Technology"]
 
@@ -175,6 +177,7 @@ class NewYorkTimesData(BaseDataSource):
                 article_metadata.extend([doc for doc in data["response"]['docs'] if doc.get("section_name") in section_names])
                 time.sleep(13)
 
-        return await self._nyt_scraper_helper(article_metadata)
+        async for document in self._nyt_scraper_helper(article_metadata):
+            yield document
         
 

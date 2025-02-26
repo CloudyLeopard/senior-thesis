@@ -1,6 +1,6 @@
 import os
 import httpx
-from typing import List
+from typing import List, AsyncGenerator
 import logging
 from pydantic import Field, field_validator
 import asyncio
@@ -30,15 +30,10 @@ class GoogleSearchData(BaseDataSource):
         if v is None or v == "":
             raise ValueError("Google Search API key and search engine ID must be set")
         return v
-
-    def fetch(
-        self, query: str, num_results: int = 10, or_terms: str = None, **kwargs
-    ) -> List[Document]:
-        return asyncio.run(self.async_fetch(query=query, num_results=num_results, or_terms=or_terms, **kwargs))
-
+    
     async def async_fetch(
         self, query: str, num_results: int = 10, or_terms: str = None, **kwargs
-    ) -> List[Document]:
+    ) -> AsyncGenerator[Document, None]:
         """
         Async version of fetch. Fetches links from Google Search API, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
@@ -104,27 +99,14 @@ class GoogleSearchData(BaseDataSource):
             scraper = WebScraper(async_client=client)
 
             logger.debug("Async scraping links")
-            scraped_data = await scraper.async_scrape_links(links)
+            async for data in scraper.async_scrape_links(links):
+                if data is None:
+                    continue
 
-        # create List of Documents
-        logger.debug("Converting data to Document objects")
-        documents = []
-        for link, data in zip(links, scraped_data):
-            if data is None:
-                # if scraping fails, skip
-                continue
+                metadata = self.parse_metadata(
+                    query=query,
+                    **data["meta"]
+                )
 
-            metadata = self.parse_metadata(
-                query=query,
-                url=link,
-                **data["meta"]
-            )
-
-            document = Document(text=data["content"], metadata=metadata)
-            documents.append(document)
-
-        logger.debug(
-            "Successfully async fetched %d documents from Google Search API",
-            len(documents),
-        )
-        return documents
+                document = Document(text=data["content"], metadata=metadata)
+                yield document

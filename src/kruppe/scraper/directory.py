@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, AsyncGenerator, Generator
 import pathlib
 import logging
 from typing import Optional
@@ -44,11 +44,10 @@ class DirectoryData(BaseDataSource):
         else:
             self._file_generator = self.input_files
 
-    def fetch(self, query: str = None, **kwargs) -> List[Document]:
+    def fetch(self, query: str = None, **kwargs) -> Generator[Document, None, None]:
         """given path to data folder, fetch text files in 
         subdirectory with name matching query"""
         
-        documents = []
         for file_path in self._file_generator:
             # if query is None, read everything
             # if query is not None, only read files with name matching query
@@ -64,7 +63,7 @@ class DirectoryData(BaseDataSource):
                     name=file_path.name,
                     path=file_path.as_posix(),
                 )
-                documents.append(Document(text=txt, metadata=metadata))
+                document = Document(text=txt, metadata=metadata)
             if file_path.suffix == ".pdf":
                 pdf_text, pdf_meta = self.simple_pdf_parser(file_path.as_posix())
                 metadata = self.parse_metadata(
@@ -74,7 +73,7 @@ class DirectoryData(BaseDataSource):
                     publication_time = pdf_meta.get("creation_date"),
                     title = pdf_meta.get("title")
                 )
-                documents.append(Document(text=pdf_text, metadata=metadata))
+                document = Document(text=pdf_text, metadata=metadata)
             if file_path.suffix == ".html":
                 html = file_path.read_text()
                 scraped_data = WebScraper.default_html_parser(html)
@@ -85,12 +84,11 @@ class DirectoryData(BaseDataSource):
                     title=scraped_data["title"],
                     publication_time=scraped_data["time"],
                 )
-                documents.append(Document(text=scraped_data["content"], metadata=metadata))
-        return documents
-
-    async def async_fetch(self, query: str, num_results: int = None, **kwargs) -> List[Document]:
-        """N/A. Calls on sync. fetch function"""
-        return self.fetch(query, num_results)
+                document =Document(text=scraped_data["content"], metadata=metadata)
+            yield document
+    async def async_fetch(self, query: str = None, **kwargs) -> AsyncGenerator[Document, None]:
+        for document in self.fetch(query, **kwargs):
+            yield document
 
     @staticmethod
     def simple_pdf_parser(pdf_path: str) -> tuple[str, Dict[str, str]]:        
