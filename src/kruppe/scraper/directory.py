@@ -50,7 +50,9 @@ class DirectoryData(BaseDataSource):
         
         documents = []
         for file_path in self._file_generator:
-            if query is not None:
+            # if query is None, read everything
+            # if query is not None, only read files with name matching query
+            if query is not None: 
                 if query not in file_path.name:
                     continue
             

@@ -12,6 +12,9 @@ from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
+# NOTE: for scraping FT, could be even easier to use
+# https://www.ft.com/sitemaps/index.xml
+
 class FinancialTimesData(BaseDataSource):
     headers: Dict[str, str]
     source: str = "Financial Times"

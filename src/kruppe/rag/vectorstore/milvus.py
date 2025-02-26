@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 class MilvusVectorStore(BaseVectorStore):
     """Custom Vector storage class for using Milvus"""
+    # TODO: enable dynamic field
+    # https://milvus.io/docs/enable-dynamic-field.md
 
     collection_name: str = "financial_context"
     uri: str = Field(default_factory = lambda x: os.getenv("ZILLIZ_URI"))
