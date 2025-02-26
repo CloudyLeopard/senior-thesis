@@ -7,7 +7,7 @@ from kruppe.scraper import (
     DirectoryData,
     FinancialTimesData,
     NewsAPIData,
-    RequestSourceException,
+    # RequestSourceException,
     NewYorkTimesData
 )
 from kruppe.models import Document

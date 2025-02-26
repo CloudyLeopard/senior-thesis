@@ -18,7 +18,7 @@ async def scrape_news_feed(nyt=True, ft=True):
         nyt_source = NewYorkTimesData(headers=nyt_headers)
 
         print("Scraping New York Times...")
-        nyt_documents = await nyt_source.fetch_news_feed(num_results=100)
+        nyt_documents = await nyt_source.fetch_news_feed(num_results=250)
 
         print(f"Saving New York Times... ({len(nyt_documents)} documents)")
         await document_store.save_documents(nyt_documents)

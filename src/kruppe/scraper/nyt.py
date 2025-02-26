@@ -19,7 +19,7 @@ class NewYorkTimesData(BaseDataSource):
     apiKey: str = Field(default_factory=lambda: os.getenv("NYTIMES_API_KEY"))
 
     async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> List[Document]:
-        urls = [article["web_url"] for article in article_metadata]
+        urls = [article.get("web_url") or article.get("url") for article in article_metadata]
 
         client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
         scraper = WebScraper(async_client=client)
@@ -31,10 +31,12 @@ class NewYorkTimesData(BaseDataSource):
                 continue
             metadata = self.parse_metadata(
                 query=query,
-                url=meta["web_url"],
-                title=meta["headline"]["main"],
-                publication_time=meta["pub_date"],
-                abstract=meta["snippet"],
+                url=meta.get("url") or meta["web_url"],
+                title=meta.get("title") or meta["headline"]["main"],
+                publication_time=meta.get("published_date") or meta["pub_date"],
+                abstract=meta.get("abstract") or meta["snippet"],
+                section=meta.get("section") or meta["section_name"],
+                document_type=meta.get("item_type") or meta["document_type"]
             ) # NOTE: there are a lot more metadata avaiable
             documents.append(Document(text=article["content"], metadata=metadata))
 
