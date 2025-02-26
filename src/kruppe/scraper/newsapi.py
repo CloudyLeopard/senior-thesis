@@ -77,10 +77,11 @@ class NewsAPIData(BaseDataSource):
             metadata = self.parse_metadata(
                 query=query,
                 url=article["url"],
-                title=article["title"],
-                publication_time=article["publishedAt"],
                 source=article["source"]["name"],
-                description=article["description"],
+                # title=article["title"],
+                # publication_time=article["publishedAt"],
+                # description=article["description"],
+                **data["meta"]
             )
             document = Document(text=data["content"], metadata=metadata)
             documents.append(document)

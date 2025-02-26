@@ -12,11 +12,14 @@ from tqdm import tqdm
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.models import Document
 
-HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=50, max_connections=400)
+HTTPX_CONNECTION_LIMITS = httpx.Limits(
+    max_keepalive_connections=50, max_connections=400
+)
 
 # TODO: timeout error
 
 logger = logging.getLogger(__name__)
+
 
 class WebScraper:
     """Scrapes list of websites using aiohttp or requests, and fallsback to selenium if aiohttp fails"""
@@ -41,21 +44,44 @@ class WebScraper:
         soup = BeautifulSoup(html, "lxml")
 
         # scrape title
+        title_tag = soup.find("meta", property="og:title")
+        title = title_tag.get("content") if title_tag else None
 
-        title = soup.title.get_text(" ", strip=True) if soup.title else ""
+        # scrape description
+        description_tag = soup.find("meta", property="og:description")
+        description = description_tag.get("content") if description_tag else None
 
         # scrape article content
         text = "\n".join([p.get_text(" ", strip=True) for p in soup.find_all("p")])
 
         # time
-        time = soup.find("time")
-        if time:
-            # get the "datetime" from the time attribute.
-            # if DNE, fall back to just the text shown
-            time = time.get("datetime") or time.get_text()
+        time_tag = soup.find("meta", property="article:published_time")
+        publication_time = time_tag.get("content") if time_tag else None
+
+        # document type
+        document_type_tag = soup.find("meta", property="og:type")
+        document_type = document_type_tag.get("content") if document_type_tag else None
+
+        # tags
+        tags_tag = soup.find("meta", property="article:tag")
+        tags = tags_tag.get("content") if tags_tag else None
+
+        # author
+        author_tag = soup.find("meta", property="article:author")
+        author = author_tag.get("content") if author_tag else None
 
         # putting all the scraped information into a dict
-        scraped_data = {"title": title, "content": text, "time": time or ""}
+        scraped_data = {
+            "content": text,
+            "meta": {
+                "title": title,
+                "description": description,
+                "publication_time": publication_time,
+                "document_type": document_type,
+                "tags": tags,
+                "author": author,
+            }
+        }
 
         return scraped_data
 
@@ -98,7 +124,9 @@ class WebScraper:
             logging.info("Successfully scraped %s with Selenium", url)
             return page_content
         except Exception as e:
-            logging.error("Error occurred while scraping %s with Selenium: %s", url, str(e))
+            logging.error(
+                "Error occurred while scraping %s with Selenium: %s", url, str(e)
+            )
             return None
 
     async def async_scrape_link(
@@ -132,10 +160,14 @@ class WebScraper:
                 return self.html_parser(html, **kwargs)
             except httpx.HTTPError as exc:
                 if attempt < retries - 1:
-                    await asyncio.sleep(backoff * (2 ** attempt))
+                    await asyncio.sleep(backoff * (2**attempt))
                     continue
 
-                logger.warning("Async httpx request failed %s after %d attempts", exc.request.url, retries)
+                logger.warning(
+                    "Async httpx request failed %s after %d attempts",
+                    exc.request.url,
+                    retries,
+                )
                 if driver:
                     html = self._scrape_with_selenium(driver, url)
                     if html is None:
@@ -156,7 +188,10 @@ class WebScraper:
                     logging.debug("Closed async client")
 
     async def async_scrape_links(
-        self, links: List[str], headers: Dict[str, str] = None, selenium_fallback: bool = True
+        self,
+        links: List[str],
+        headers: Dict[str, str] = None,
+        selenium_fallback: bool = True,
     ) -> List[Dict[str, str]] | None:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works.
 
@@ -188,7 +223,7 @@ class WebScraper:
         finally:
             if self.async_client is None:
                 await client.aclose()
-            
+
             if driver:
                 driver.quit()
                 logger.debug("Closed Selenium driver")
@@ -224,10 +259,14 @@ class WebScraper:
                 return self.html_parser(html, **kwargs)
             except httpx.HTTPError as exc:
                 if attempt < retries - 1:
-                    time.sleep(backoff * (2 ** attempt))
+                    time.sleep(backoff * (2**attempt))
                     continue
 
-                logger.warning("httpx request failed %s after %d attempts", exc.request.url, retries)
+                logger.warning(
+                    "httpx request failed %s after %d attempts",
+                    exc.request.url,
+                    retries,
+                )
                 if driver:
                     html = self._scrape_with_selenium(driver, url)
                     if html is None:
@@ -247,7 +286,10 @@ class WebScraper:
                     client.close()
 
     def scrape_links(
-        self, links: List[str], headers: Dict[str, str] = None, selenium_fallback: bool = True,
+        self,
+        links: List[str],
+        headers: Dict[str, str] = None,
+        selenium_fallback: bool = True,
     ) -> List[Dict[str, str]]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works."""
         logger.debug("Scraping %d links", len(links))
@@ -256,7 +298,6 @@ class WebScraper:
             client = httpx.Client(headers=headers)
         else:
             client = self.sync_client
-
 
         driver = self._create_selenium_driver() if selenium_fallback else None
         try:
@@ -268,39 +309,50 @@ class WebScraper:
                 driver.quit()
                 logger.debug("Closed Selenium driver")
 
+
 class NewsArticleSearcher:
-    def __init__(
-        self,
-        sources: List[BaseDataSource]
-    ):
-        """Chooses which sources to use for fetching documents """
-        self.sources = sources # TODO: do some kind of "setting" here to determine which sources to use
+    def __init__(self, sources: List[BaseDataSource]):
+        """Chooses which sources to use for fetching documents"""
+        self.sources = sources  # TODO: do some kind of "setting" here to determine which sources to use
         self.documents = []
+
     def search(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
         documents = []
         for source in self.sources:
             try:
-                fetched_documents = source.fetch(query, num_results = num_results, **kwargs)
+                fetched_documents = source.fetch(
+                    query, num_results=num_results, **kwargs
+                )
                 documents.extend(fetched_documents[:num_results])
             except RequestSourceException as e:
-                logging.error("Error occurred while fetching documents from %s: %s", source.__class__.__name__, str(e))
-        
+                logging.error(
+                    "Error occurred while fetching documents from %s: %s",
+                    source.__class__.__name__,
+                    str(e),
+                )
+
         logging.info("Fetched %d documents from sources", len(documents))
         self.documents.extend(documents)
         return documents
 
-    
-    async def async_search(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
-
+    async def async_search(
+        self, query: str, num_results: int = 10, **kwargs
+    ) -> List[Document]:
         async def _async_fetch(async_fetch: callable):
             try:
                 return await async_fetch(query, num_results=num_results, **kwargs)
             except RequestSourceException as e:
-                logging.error("Error occurred while fetching documents from %s: %s", async_fetch.__name__, str(e))
+                logging.error(
+                    "Error occurred while fetching documents from %s: %s",
+                    async_fetch.__name__,
+                    str(e),
+                )
                 return []
-        
+
         documents = []
-        results = await asyncio.gather(*[_async_fetch(source.async_fetch) for source in self.sources])
+        results = await asyncio.gather(
+            *[_async_fetch(source.async_fetch) for source in self.sources]
+        )
         for result in results:
             documents.extend(result[:num_results])
         self.documents.extend(documents)
@@ -315,19 +367,23 @@ class NewsArticleSearcher:
             if create_dir:
                 dir_path.mkdir(parents=True)
             else:
-                raise ValueError("Directory does not exist. Set create_dir=True to create it.")
+                raise ValueError(
+                    "Directory does not exist. Set create_dir=True to create it."
+                )
 
         metadata = {}
         for i, document in enumerate(self.documents):
             file_path = dir_path / f"{i}.txt"
             file_path.write_text(document.text)
             metadata[i] = document.metadata
-        
+
         import json
+
         metadata_path = dir_path / "metadata.json"
         with metadata_path.open("w") as f:
             json.dump(metadata, f, indent=4)
         return self.documents
+
 
 # Example usage
 if __name__ == "__main__":

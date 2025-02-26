@@ -9,6 +9,7 @@ from kruppe.scraper import NewYorkTimesData, FinancialTimesData, NewsAPIData
 from kruppe.document_store import AsyncMongoDBStore
 
 async def scrape_news_feed(nyt=True, ft=True):
+    """this scrapes approximately a month worth of news articles"""
     today_date = datetime.now().date().isoformat()
     document_store = await AsyncMongoDBStore.create(uri=os.getenv("MONGODB_URI"), db_name="FinancialNews", collection_name=f"news_feed_{today_date}")
 
@@ -29,7 +30,7 @@ async def scrape_news_feed(nyt=True, ft=True):
         ft_source = FinancialTimesData(headers=ft_headers)
 
         print("Scraping Financial Times...")
-        links = await ft_source.fetch_news_feed(days=1)
+        links = await ft_source.fetch_news_feed(days=30)
         ft_documents = await ft_source.async_scrape_links(links)
 
         print(f"Saving Financial Times... ({len(ft_documents)} documents)")

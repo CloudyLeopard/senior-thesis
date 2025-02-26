@@ -117,8 +117,7 @@ class GoogleSearchData(BaseDataSource):
             metadata = self.parse_metadata(
                 query=query,
                 url=link,
-                title=data["title"],
-                publication_time=data["time"],
+                **data["meta"]
             )
 
             document = Document(text=data["content"], metadata=metadata)

@@ -17,15 +17,13 @@ import json
     params=[
         # YFinanceData,
         # "lexis",
-        # NYTimesData,
         # GuardiansData,
-        # NewsAPIData,
         # ProQuestData,
         # BingsNewsData,
-        # "newsapi",
+        "newsapi",
         # pytest.param("google", marks=pytest.mark.xfail(reason="Google Cloud Project for JSON Search API is currently disabled")),
         "financial times",
-        # "nytimes"
+        "nytimes"
     ]
 )
 def source(request):
@@ -108,6 +106,8 @@ async def test_ft_scrape_links():
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
+        assert "title" in document.metadata
+        assert "description" in document.metadata
         assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.uuid and isinstance(document.uuid, UUID)
 
@@ -126,6 +126,8 @@ async def test_nyt_fetch_news_feed(caplog):
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
+        assert "title" in document.metadata
+        assert "description" in document.metadata
         assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.uuid and isinstance(document.uuid, UUID)
     

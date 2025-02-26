@@ -34,9 +34,9 @@ class NewYorkTimesData(BaseDataSource):
                 url=meta.get("url") or meta["web_url"],
                 title=meta.get("title") or meta["headline"]["main"],
                 publication_time=meta.get("published_date") or meta["pub_date"],
-                abstract=meta.get("abstract") or meta["snippet"],
-                section=meta.get("section") or meta["section_name"],
-                document_type=meta.get("item_type") or meta["document_type"]
+                description=meta.get("abstract") or meta["snippet"],
+                section=meta.get("section") or meta.get("section_name"),
+                document_type=meta.get("item_type") or meta.get("document_type")
             ) # NOTE: there are a lot more metadata avaiable
             documents.append(Document(text=article["content"], metadata=metadata))
 

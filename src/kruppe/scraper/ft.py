@@ -57,7 +57,13 @@ class FinancialTimesData(BaseDataSource):
         content = "\n".join([p.text.strip() for p in post_id_element.find_all("p")])
         posted_time = post_id_element.find("time").get("datetime")
 
-        return {"title": title, "content": content, "time": posted_time}
+        return {
+            "content": content, 
+            "meta": {
+                "title": title,
+                "publication_time": posted_time
+            }
+        }
 
     def fetch(self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs) -> List[Document]:
         return asyncio.run(self.async_fetch(query=query, num_results=num_results, sort=sort, months=months, **kwargs))
@@ -167,8 +173,7 @@ class FinancialTimesData(BaseDataSource):
             metadata = self.parse_metadata(
                 query=query,
                 url=link,
-                title=article["title"],
-                publication_time=article["time"],
+                **article["meta"]
             )
             documents.append(Document(text=article["content"], metadata=metadata))
 
@@ -278,8 +283,7 @@ class FinancialTimesData(BaseDataSource):
             metadata = self.parse_metadata(
                 query=None,
                 url=link,
-                title=article["title"],
-                publication_time=article["time"],
+                **article["meta"]
             )
             documents.append(Document(text=article["content"], metadata=metadata))
 

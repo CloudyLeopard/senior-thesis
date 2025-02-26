@@ -54,6 +54,7 @@ class BaseDataSource(ABC, BaseModel):
         query: str,
         url: str = None,
         title: str = None,
+        description: str = None,
         publication_time: str = None,
         **kwargs,
     ) -> Dict[str, str]:
@@ -62,6 +63,7 @@ class BaseDataSource(ABC, BaseModel):
             "datasource": cls.__name__,
             "url": url or "",
             "title": title or "",
+            "description": description or "",
             "publication_time": publication_time or "",
         }
         metadata.update(kwargs)
