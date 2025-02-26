@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from kruppe.llm import BaseLLM
+from kruppe.models import Document, Query, Response
+from kruppe.rag.text_splitters import BaseTextSplitter, RecursiveTextSplitter
 
-from kruppe.models import Document, Query
 
 class BaseIndex(ABC, BaseModel):
+    llm: BaseLLM
+    text_splitter: BaseTextSplitter = Field(default_factory=RecursiveTextSplitter)
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
         
     @abstractmethod
@@ -26,4 +31,14 @@ class BaseIndex(ABC, BaseModel):
     @abstractmethod
     async def async_query(self, query: Query) -> List[Document]:
         """Query the index asynchronously."""
+        pass
+
+    @abstractmethod
+    def generate(self, query: Query) -> Response:
+        """Generate a response based on the query."""
+        pass
+
+    @abstractmethod
+    async def async_generate(self, query: Query) -> Response:
+        """Generate a response based on the query asynchronously."""
         pass

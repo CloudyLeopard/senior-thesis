@@ -2,14 +2,11 @@ import logging
 from pydantic import model_validator
 
 from kruppe.rag.index.vectorstore_index import VectorStoreIndex
-from kruppe.llm import  BaseLLM
 from kruppe.rag.text_splitters import ContextualTextSplitter, RecursiveTextSplitter
 
 logger = logging.getLogger(__name__)
 
 class ContextualVectorStoreIndex(VectorStoreIndex):
-    llm: BaseLLM
-
     @model_validator(mode='after')
     def check_contextual_text_splitter(self):
         text_splitter = self.text_splitter

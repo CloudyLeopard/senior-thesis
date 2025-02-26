@@ -1,19 +1,19 @@
 from typing import List
 import logging
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
+import asyncio
 
 from kruppe.llm import BaseEmbeddingModel
 from kruppe.rag.index.base_index import BaseIndex
-from kruppe.models import Document, Query
+from kruppe.models import Document, Query, Response
 from kruppe.rag.vectorstore.base_store import BaseVectorStore
-from kruppe.rag.text_splitters import BaseTextSplitter, RecursiveTextSplitter
+from kruppe.prompts import RAGPromptFormatter
 
 logger = logging.getLogger(__name__)
 
 class VectorStoreIndex(BaseIndex):
 
     vectorstore: BaseVectorStore
-    text_splitter: BaseTextSplitter = Field(default_factory=RecursiveTextSplitter)
     _embedder: BaseEmbeddingModel = PrivateAttr(default=None) 
 
     def model_post_init(self, __context):
@@ -50,3 +50,21 @@ class VectorStoreIndex(BaseIndex):
         relevant_documents = await self.vectorstore.async_search(vector=query_vector, top_k=top_k)
 
         return relevant_documents
+    
+    async def async_generate(self, query: Query) -> Response:
+        # retrieve relevant documents
+        relevant_documents = await self.async_query(query)
+
+        # format rag prompt
+        prompt_formatter = RAGPromptFormatter()
+        prompt_formatter.add_documents(relevant_documents)
+        messages = prompt_formatter.format_messages(user_prompt=query)
+
+        # generate response and add sources
+        response = await self.llm.async_generate(messages)
+        response.sources = relevant_documents
+
+        return response
+    
+    def generate(self, query: Query) -> Response:
+        return asyncio.run(self.async_generate(query))
