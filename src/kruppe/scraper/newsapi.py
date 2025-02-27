@@ -1,9 +1,8 @@
 import os
 import httpx
 from pydantic import Field, field_validator
-from typing import List, AsyncGenerator
+from typing import AsyncGenerator
 import logging
-import asyncio
 
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS

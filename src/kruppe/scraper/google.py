@@ -1,9 +1,8 @@
 import os
 import httpx
-from typing import List, AsyncGenerator
+from typing import AsyncGenerator
 import logging
 from pydantic import Field, field_validator
-import asyncio
 
 from kruppe.scraper.base_source import (
     BaseDataSource,

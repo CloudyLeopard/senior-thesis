@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import os
 from pydantic import Field
 import time
-import asyncio
 
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS

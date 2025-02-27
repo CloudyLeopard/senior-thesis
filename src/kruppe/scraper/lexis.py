@@ -1,12 +1,11 @@
 import requests
-from typing import List, AsyncGenerator
+from typing import AsyncGenerator
 import logging
 from pydantic import Field, model_validator
 from typing import Any
 
 from lexisnexisapi import credentials, webservices
 
-from kruppe import document_store
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.scraper.utils import WebScraper
 from kruppe.models import Document

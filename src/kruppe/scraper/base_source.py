@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, AsyncGenerator, Generator
+from typing import Dict, AsyncGenerator, Generator
 import logging
 from pydantic import BaseModel, Field
 import asyncio
@@ -35,7 +35,7 @@ class BaseDataSource(ABC, BaseModel):
         async def async_consumer():
             async for item in self.async_fetch(query=query, num_results=num_results, **kwargs):
                 await queue.put(item)
-            await queue.put(None)  # Sentinel to indicate completion
+            await queue.put(False)  # Sentinel to indicate completion
 
         def run_async():
             asyncio.run(async_consumer())
@@ -46,7 +46,7 @@ class BaseDataSource(ABC, BaseModel):
 
         while True:
             item = queue.get()  # Blocks until an item is available
-            if item is None:
+            if item is False:
                 break
             yield item
 
