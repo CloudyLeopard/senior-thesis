@@ -178,7 +178,7 @@ class FinancialTimesData(BaseDataSource):
         finally:
             await client.aclose()
     
-    async def fetch_news_feed(self, days: int = 365) -> List[str]:
+    async def fetch_news_feed(self, days: int = 365, num_results: int = None) -> List[str]:
         links = []
         client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
         url = "https://www.ft.com/news-feed"
@@ -234,8 +234,11 @@ class FinancialTimesData(BaseDataSource):
                         if days and parsed_date < start_date:
                             end = True
                             break
-
-                        links.append("https://www.ft.com" + a_tag.get("href"))
+                        
+                        parsed_link = a_tag.get("href")
+                        if not parsed_link.startswith("https"):
+                            parsed_link = f"https://www.ft.com{parsed_link}"
+                        links.append(parsed_link)
                 except httpx.HTTPStatusError as e:
                     logger.error(
                         "Financial Times HTTP Status Error %d: %s", e.response.status_code, e.response.text
@@ -248,6 +251,9 @@ class FinancialTimesData(BaseDataSource):
                     pages += 1
         finally:
             await client.aclose()
+
+        if num_results:
+            links = links[:num_results]
         
         logger.info("Fetched %d links from Financial Times news feed", len(links))
     

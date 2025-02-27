@@ -12,6 +12,7 @@ async def scrape_news_feed(nyt=True, ft=True):
     """this scrapes approximately a month worth of news articles"""
     today_date = datetime.now().date().isoformat()
     document_store = await AsyncMongoDBStore.create(uri=os.getenv("MONGODB_URI"), db_name="FinancialNews", collection_name=f"news_feed_{today_date}")
+    # document_store.clear_collection()
 
     if nyt:
         with open("./.nyt-headers.json") as f:
@@ -32,7 +33,7 @@ async def scrape_news_feed(nyt=True, ft=True):
         ft_source = FinancialTimesData(headers=ft_headers)
 
         print("Scraping Financial Times...")
-        links = await ft_source.fetch_news_feed(days=30)
+        links = await ft_source.fetch_news_feed(days=30, num_results=1000)
         size = 0
         async for ft_document in ft_source.async_scrape_links(links):
             await document_store.save_document(ft_document)
@@ -43,6 +44,7 @@ async def scrape_news_feed(nyt=True, ft=True):
 async def scrape_news_search(query, nyt=True, ft=True, newsapi=True, num_results=30):
     today_date = datetime.now().date().isoformat()
     document_store = await AsyncMongoDBStore.create(uri=os.getenv("MONGODB_URI"), db_name="FinancialNews", collection_name=f"news_search_{today_date}")
+    await document_store.clear_collection()
 
     if nyt:
         with open("./.nyt-headers.json") as f:

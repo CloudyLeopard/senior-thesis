@@ -18,6 +18,7 @@ class NewYorkTimesData(BaseDataSource):
     apiKey: str = Field(default_factory=lambda: os.getenv("NYTIMES_API_KEY"))
 
     async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> AsyncGenerator[Document, None]:
+        logger.info("Scraping %s NYT article links", len(article_metadata))
         urls = [article.get("web_url") or article.get("url") for article in article_metadata]
         meta_dict = {url: article for url, article in zip(urls, article_metadata)}
 
@@ -32,9 +33,9 @@ class NewYorkTimesData(BaseDataSource):
                 metadata = self.parse_metadata(
                     query=query,
                     url=data["meta"]["url"],
-                    title=original_meta.get("title") or original_meta["headline"]["main"],
-                    publication_time=original_meta.get("published_date") or original_meta["pub_date"],
-                    description=original_meta.get("abstract") or original_meta["snippet"],
+                    title=data["meta"]["title"],
+                    publication_time=data["meta"]["publication_time"],
+                    description=original_meta.get("abstract") or original_meta.get("snippet"),
                     section=original_meta.get("section") or original_meta.get("section_name"),
                     document_type=original_meta.get("item_type") or original_meta.get("document_type")
                 )
@@ -98,6 +99,7 @@ class NewYorkTimesData(BaseDataSource):
         article_metadata = []
 
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
+            logger.info("Fetching links from newsfeed")
             for section in sections:
                 url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={num_results}"
                 try:

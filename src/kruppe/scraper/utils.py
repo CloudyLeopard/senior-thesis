@@ -13,13 +13,25 @@ import stamina
 from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
 from kruppe.models import Document
 
-HTTPX_CONNECTION_LIMITS = httpx.Limits(
-    max_keepalive_connections=50, max_connections=400
-)
+MAX_CONNECTIONS = 200
+HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=MAX_CONNECTIONS)
+DEFAULT_HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=60.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
 
 # TODO: timeout error
 
 logger = logging.getLogger(__name__)
+
+def retry_on_httpx_error(exc: Exception) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        logger.warning("HTTP ERROR %d: %s", exc.response.status_code, exc.response.text)
+        return exc.response.status_code == 429 or exc.response.status_code >= 500
+    
+    elif isinstance(exc, httpx.PoolTimeout):
+        # see my notes on "error debugging" on how to deal with this
+        logger.warning("POOL TIMEOUT")
+    else:
+        print(repr(exc)) # to see what error it is
+    return isinstance(exc, httpx.HTTPError)
 
 
 class WebScraper:
@@ -36,6 +48,9 @@ class WebScraper:
         self.html_parser = html_parser or self.default_html_parser
         self.sync_client = sync_client # NOTE: this is not used
         self.async_client = async_client
+
+        # set timeout all to the same cuz im lazy im gonna fix this later
+        self.async_client.timeout = DEFAULT_HTTPX_TIMEOUT
 
     @staticmethod
     def default_html_parser(html: str, url: str, **kwargs) -> Dict[str, str]:
@@ -134,9 +149,11 @@ class WebScraper:
             logging.warning("Failed to scrape %s with Selenium", url)
             return None
 
+    
 
-    @stamina.retry(on=httpx.HTTPError, attempts=3)
+    @stamina.retry(on=retry_on_httpx_error, attempts=3)
     async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
+        print(repr(client))
         r = await client.get(url)
         r.raise_for_status()
 
@@ -168,12 +185,13 @@ class WebScraper:
             logging.info("Using entered async client")
         
         # scrape
+        html = None
         try:
             # try with httpx first (faster)
             html = await self._async_scrape_with_httpx(client, url, **kwargs)
             
         except httpx.HTTPError as exc:
-            logger.warning("Error occurred while scraping %s: %s", url, str(exc))
+            logger.warning("Error occurred while scraping %s: %s", url, repr(exc))
 
             # if httpx doesn't work, fallback to selenium if it exists
             if driver:
@@ -188,15 +206,16 @@ class WebScraper:
                 logging.debug("Closed async client")
 
             # if scraping returns a non-empty document
-            kwargs["url"] = url
-            data = self.html_parser(html, **kwargs)
+            if html:
+                kwargs["url"] = url
+                data = self.html_parser(html, **kwargs)
 
-            if data is None:
-                return None
-            else:
-                # this is for if i scrape through html but
-                # even if html has text, i didn't scrape out anything useful
-                return data if data["content"] else None
+                if data is None:
+                    return None
+                else:
+                    # this is for if i scrape through html but
+                    # even if html has text, i didn't scrape out anything useful
+                    return data if data["content"] else None
 
 
             

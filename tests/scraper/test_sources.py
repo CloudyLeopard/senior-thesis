@@ -82,7 +82,7 @@ def test_fetch_directory():
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_ft_news_feed(caplog):
-    caplog.set_level("DEBUG")
+    caplog.set_level("INFO")
     with open(".ft-headers.json") as f:
         headers = json.load(f)
     source = FinancialTimesData(headers=headers)
@@ -95,6 +95,18 @@ async def test_ft_news_feed(caplog):
         assert len(url) > 0
 
     assert size > 0
+
+    async for document in source.async_scrape_links(links):
+        size -= 1
+        assert isinstance(document, Document)
+        assert len(document.text) > 0
+        assert len(document.metadata) > 0
+        assert "title" in document.metadata
+        assert "description" in document.metadata
+        assert document.metadata.get("datasource") == source.__class__.__name__
+        assert document.uuid and isinstance(document.uuid, UUID)
+    
+    assert size == 0   
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_ft_scrape_links():

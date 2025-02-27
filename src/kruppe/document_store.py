@@ -84,6 +84,9 @@ class MongoDBStore(BaseDocumentStore):
 
     def close(self):
         self.client.close()
+    
+    def clear_collection(self):
+        self.collection.delete_many({})
 
     def save_document(self, document: Document) -> str:
         """save Document into mongodb collection with metadata, return object id"""
@@ -230,6 +233,9 @@ class AsyncMongoDBStore(BaseDocumentStore):
             await self.db.create_collection(collection_name)
 
         return self
+    
+    async def clear_collection(self):
+        await self.collection.delete_many({})
 
     async def close(self) -> None:
         """Close the database connection."""
