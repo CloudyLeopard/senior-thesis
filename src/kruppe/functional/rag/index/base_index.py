@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from kruppe.llm import BaseLLM
 from kruppe.models import Document, Query, Response
-from kruppe.rag.text_splitters import BaseTextSplitter, RecursiveTextSplitter
+from kruppe.functional.rag.text_splitters import BaseTextSplitter, RecursiveTextSplitter
 
 
 class BaseIndex(ABC, BaseModel):

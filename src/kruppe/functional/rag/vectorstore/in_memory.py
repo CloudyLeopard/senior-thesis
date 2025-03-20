@@ -6,7 +6,7 @@ from pydantic import Field, PrivateAttr
 import pickle
 
 from kruppe.llm import OpenAIEmbeddingModel
-from kruppe.rag.vectorstore.base_store import BaseVectorStore
+from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

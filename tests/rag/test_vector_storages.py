@@ -3,9 +3,9 @@ from uuid import UUID
 import os
 
 from kruppe.models import Document
-from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
-from kruppe.rag.vectorstore.milvus import MilvusVectorStore
-from kruppe.rag.vectorstore.chroma import ChromaVectorStore
+from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.functional.rag.vectorstore.milvus import MilvusVectorStore
+from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore
 @pytest.fixture(
     params=[
         MilvusVectorStore,

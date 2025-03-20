@@ -1,6 +1,6 @@
 # retriever/custom_retriever.py
 
-from kruppe.rag.retriever.base_retriever import BaseRetriever
+from kruppe.functional.rag.retriever.base_retriever import BaseRetriever
 from kruppe.models import Query, Document
 from typing import List
 

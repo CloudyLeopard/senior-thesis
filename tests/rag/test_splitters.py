@@ -1,4 +1,4 @@
-from kruppe.rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
+from kruppe.functional.rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
 from kruppe.models import Chunk
 
 CHUNK_SIZE = 1024

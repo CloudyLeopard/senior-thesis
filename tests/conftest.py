@@ -3,10 +3,10 @@ import pytest_asyncio
 import os
 import nest_asyncio
 
-from kruppe.scraper import DirectoryData
-from kruppe.rag.text_splitters import RecursiveTextSplitter
-from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
-from kruppe.document_store import MongoDBStore, AsyncMongoDBStore
+from kruppe.data_source import DirectoryData
+from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
+from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.functional.document_store import MongoDBStore, AsyncMongoDBStore
 from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM
 # from kruppe.llm import NYUOpenAIEmbeddingModel, NYUOpenAILLM
 from kruppe.models import Query

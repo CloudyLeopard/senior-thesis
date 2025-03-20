@@ -6,7 +6,7 @@ import os
 import logging
 
 
-from kruppe.rag.vectorstore.base_store import BaseVectorStore
+from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.models import Document, OPENAI_TEXT_EMBEDDING_SMALL_DIM
 # from rag.document_store import MONGODB_OBJECTID_DIM
 

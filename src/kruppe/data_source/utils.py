@@ -10,7 +10,7 @@ from tqdm import tqdm
 import stamina
 
 
-from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
+from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
 from kruppe.models import Document
 
 MAX_CONNECTIONS = 200

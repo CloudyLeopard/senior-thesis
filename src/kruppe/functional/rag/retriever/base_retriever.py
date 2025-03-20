@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import List
 
 from kruppe.llm import BaseEmbeddingModel
-from kruppe.rag.index.base_index import BaseIndex
+from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.models import Document, Query
 
 class BaseRetriever(ABC, BaseModel):

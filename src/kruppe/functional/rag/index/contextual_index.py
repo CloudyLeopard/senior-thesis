@@ -1,8 +1,8 @@
 import logging
 from pydantic import model_validator
 
-from kruppe.rag.index.vectorstore_index import VectorStoreIndex
-from kruppe.rag.text_splitters import ContextualTextSplitter, RecursiveTextSplitter
+from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.functional.rag.text_splitters import ContextualTextSplitter, RecursiveTextSplitter
 
 logger = logging.getLogger(__name__)
 

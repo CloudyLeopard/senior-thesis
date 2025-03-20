@@ -4,9 +4,9 @@ from pydantic import PrivateAttr
 import asyncio
 
 from kruppe.llm import BaseEmbeddingModel
-from kruppe.rag.index.base_index import BaseIndex
+from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.models import Document, Query, Response
-from kruppe.rag.vectorstore.base_store import BaseVectorStore
+from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.prompts import RAGPromptFormatter
 
 logger = logging.getLogger(__name__)

@@ -4,11 +4,11 @@ from typing import AsyncGenerator
 import logging
 from pydantic import Field, field_validator
 
-from kruppe.scraper.base_source import (
+from kruppe.data_source.base_source import (
     BaseDataSource,
     RequestSourceException,
 )
-from kruppe.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS
+from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

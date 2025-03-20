@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List
 
-from kruppe.rag.index.base_index import BaseIndex
+from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.models import Document, Query, Response
 
 class QAStories(BaseModel):

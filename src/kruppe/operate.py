@@ -3,19 +3,19 @@ from tqdm import tqdm
 import os
 
 from kruppe.llm import BaseLLM, BaseEmbeddingModel, NYUOpenAIEmbeddingModel, OpenAIEmbeddingModel
-from kruppe.scraper.ft import FinancialTimesData
-from kruppe.scraper.utils import WebScraper
-from kruppe.rag.vectorstore.base_store import BaseVectorStore
-from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.data_source.ft import FinancialTimesData
+from kruppe.data_source.utils import WebScraper
+from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
+from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 
 # from rag.vectorstore.milvus import MilvusVectorStore
-from kruppe.rag.vectorstore.chroma import ChromaVectorStore
-from kruppe.rag.index.base_index import BaseIndex
-from kruppe.rag.index.vectorstore_index import VectorStoreIndex
-from kruppe.rag.retriever.simple_retriever import SimpleRetriever
+from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore
+from kruppe.functional.rag.index.base_index import BaseIndex
+from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.functional.rag.retriever.simple_retriever import SimpleRetriever
 from kruppe.prompts import RAGPromptFormatter, SimplePromptFormatter
 from kruppe.models import Query, Document
-from kruppe.document_store import AsyncMongoDBStore
+from kruppe.functional.document_store import AsyncMongoDBStore
 
 """
  # collect documents

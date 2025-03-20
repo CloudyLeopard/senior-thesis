@@ -1,7 +1,7 @@
 import pytest
 from uuid import UUID
 
-from kruppe.scraper import (
+from kruppe.data_source import (
     GoogleSearchData,
     LexisNexisData,
     DirectoryData,

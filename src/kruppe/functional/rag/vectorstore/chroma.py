@@ -5,7 +5,7 @@ from typing import Optional
 import chromadb
 import logging
 
-from kruppe.rag.vectorstore.base_store import BaseVectorStore
+from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

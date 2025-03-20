@@ -4,7 +4,7 @@ import json
 import logging
 import asyncio
 
-from kruppe.document_store import MongoDBStore
+from kruppe.functional.document_store import MongoDBStore
 from kruppe.tools.searcher import NewsArticleSearcher
 from kruppe.tools.sources import (
     LexisNexisData,

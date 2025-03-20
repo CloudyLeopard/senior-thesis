@@ -1,8 +1,8 @@
 import pytest
 
-from kruppe.rag.retriever.simple_retriever import SimpleRetriever
-from kruppe.rag.index.vectorstore_index import VectorStoreIndex
-from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.functional.rag.retriever.simple_retriever import SimpleRetriever
+from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 
 @pytest.fixture(scope="module")
 def index (embedding_model, documents):

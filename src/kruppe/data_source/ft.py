@@ -6,8 +6,8 @@ import logging
 from datetime import datetime, timedelta
 import re
 
-from kruppe.scraper.base_source import BaseDataSource, RequestSourceException
-from kruppe.scraper.utils import WebScraper, HTTPX_CONNECTION_LIMITS
+from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
+from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

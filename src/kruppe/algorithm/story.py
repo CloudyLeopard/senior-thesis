@@ -1,9 +1,9 @@
 from typing import List
 import asyncio
 from kruppe.embeddings import BaseEmbeddingModel, OpenAIEmbeddingModel
-from kruppe.rag.text_splitters import RecursiveTextSplitter
+from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
 from kruppe.vector_storages import BaseVectorStorage, NumPyVectorStorage
-from kruppe.document_store import BaseDocumentStore, MongoDBStore
+from kruppe.functional.document_store import BaseDocumentStore, MongoDBStore
 from kruppe.llm import BaseLLM, OpenAILLM
 from kruppe.prompts import SimplePromptFormatter, RAGPromptFormatter, CustomPromptFormatter
 from kruppe.tools.sources import DirectoryData

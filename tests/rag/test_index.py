@@ -1,8 +1,8 @@
 import pytest
 
-from kruppe.rag.index.vectorstore_index import VectorStoreIndex
-from kruppe.rag.index.contextual_index import ContextualVectorStoreIndex
-from kruppe.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.functional.rag.index.contextual_index import ContextualVectorStoreIndex
+from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 from kruppe.models import Response
 
 @pytest.mark.asyncio

@@ -4,8 +4,8 @@ import logging
 from typing import Optional
 from pydantic import field_validator, model_validator
 
-from kruppe.scraper.base_source import BaseDataSource
-from kruppe.scraper.utils import WebScraper
+from kruppe.data_source.base_source import BaseDataSource
+from kruppe.data_source.utils import WebScraper
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

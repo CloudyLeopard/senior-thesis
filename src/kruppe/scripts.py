@@ -5,8 +5,8 @@ import json
 import argparse
 from datetime import datetime
 
-from kruppe.scraper import NewYorkTimesData, FinancialTimesData, NewsAPIData
-from kruppe.document_store import AsyncMongoDBStore
+from kruppe.data_source import NewYorkTimesData, FinancialTimesData, NewsAPIData
+from kruppe.functional.document_store import AsyncMongoDBStore
 
 async def scrape_news_feed(nyt=True, ft=True):
     """this scrapes approximately a month worth of news articles"""
