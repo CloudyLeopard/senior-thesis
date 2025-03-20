@@ -7,7 +7,7 @@ from kruppe.llm import BaseEmbeddingModel
 from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.models import Document, Query, Response
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
-from kruppe.prompts import RAGPromptFormatter
+from kruppe.prompt_formatter import RAGPromptFormatter
 
 logger = logging.getLogger(__name__)
 

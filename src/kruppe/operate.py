@@ -13,7 +13,7 @@ from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore
 from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
 from kruppe.functional.rag.retriever.simple_retriever import SimpleRetriever
-from kruppe.prompts import RAGPromptFormatter, SimplePromptFormatter
+from kruppe.prompt_formatter import RAGPromptFormatter, SimplePromptFormatter
 from kruppe.models import Query, Document
 from kruppe.functional.document_store import AsyncMongoDBStore
 

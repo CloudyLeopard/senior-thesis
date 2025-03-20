@@ -3,7 +3,7 @@ import asyncio
 from typing import Tuple, List
 import json
 
-from kruppe.prompts import SimplePromptFormatter, RAGPromptFormatter
+from kruppe.prompt_formatter import SimplePromptFormatter, RAGPromptFormatter
 from kruppe.llm import OpenAILLM
 from kruppe.vector_storages import NumPyVectorStorage
 from kruppe.embeddings import OpenAIEmbeddingModel

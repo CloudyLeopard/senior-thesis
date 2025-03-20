@@ -6,7 +6,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from kruppe.llm import BaseLLM
 from kruppe.models import Document, Chunk, ContextualizedChunk
-from kruppe.prompts import PROMPTS, CustomPromptFormatter
+from kruppe.prompt_formatter import CustomPromptFormatter
+from kruppe.prompts.rag import SPLITTER_CONTEXTUALIZE_USER
 
 
 class BaseTextSplitter(ABC, BaseModel):
@@ -102,7 +103,7 @@ class ContextualTextSplitter(BaseTextSplitter):
         """
         # create a prompt formatter to format the messages for the llm
         prompt_formatter = CustomPromptFormatter(
-            prompt_template=PROMPTS["contextualize_chunk_prompt"]
+            prompt_template=SPLITTER_CONTEXTUALIZE_USER
         )
          
         # for document in documents:
