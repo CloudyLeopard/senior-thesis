@@ -116,7 +116,7 @@ class NewYorkTimesData(NewsSource):
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             logger.info("Fetching links from newsfeed")
             for section in sections:
-                url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={num_results}"
+                url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={max_results}"
                 try:
                     response = await client.get(url)
                     response.raise_for_status()
@@ -137,8 +137,7 @@ class NewYorkTimesData(NewsSource):
                 
                 if data["num_results"] > 0:
                     article_metadata.extend(data["results"])
-                if len(article_metadata) >= max_results:
-                    break
+
 
                 time.sleep(13)
         
