@@ -59,6 +59,9 @@ class BaseLLM(ABC, BaseModel):
     @abstractmethod
     def generate(self, messages: List[Dict], max_tokens=2000) -> Response:
         raise NotImplementedError
+    
+    async def async_tool_call(self, messages: List[Dict]):
+        raise NotImplementedError
 
     async def batch_async_generate(self, messages_list: List[List[Dict]], max_tokens=2000) -> List[Response]:
         return await asyncio.gather(*(self.async_generate(messages=messages, max_tokens=max_tokens) for messages in messages_list))

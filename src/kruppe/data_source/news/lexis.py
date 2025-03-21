@@ -1,3 +1,4 @@
+from ast import Not
 import requests
 from typing import AsyncGenerator
 import logging
@@ -6,13 +7,14 @@ from typing import Any
 
 from lexisnexisapi import credentials, webservices
 
-from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
-from kruppe.data_source.utils import WebScraper
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.data_source.utils import RequestSourceException, WebScraper, not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
-class LexisNexisData(BaseDataSource):
+
+class LexisNexisData(NewsSource):
     source: str = Field(default="LexisNexis")
     token: str = Field(default=None, exclude=True)
 
@@ -40,7 +42,13 @@ class LexisNexisData(BaseDataSource):
                 return data
         return data
 
-    async def async_fetch(self, query: str, num_results=10, **kwargs) -> AsyncGenerator[Document, None]:
+    async def news_search(
+        self,
+        query: str,
+        max_results: int =10,
+        sort = None, # doesn't do anything
+        **kwargs
+    ) -> AsyncGenerator[Document, None]:
         """
         Fetch documents from Lexis Nexis based on query
 
@@ -48,7 +56,7 @@ class LexisNexisData(BaseDataSource):
 
         Args:
             query: query to retrieve text from
-            num_results: number of results to retrieve (default: 10)
+            max_results: number of results to retrieve (default: 10)
 
         Returns:
             List of Document objects with text and metadata
@@ -64,7 +72,7 @@ class LexisNexisData(BaseDataSource):
             "$search": search_string,
             "$expand": "Document",  # "Document" to get html data
             "$top": str(
-                num_results
+                max_results
             ),  # Sets the maximum number of results to receive for this request.
             # Filter with two conditions
             "$filter": "Language eq LexisNexis.ServicesApi.Language'English' and year(Date) eq 2024",
@@ -107,3 +115,10 @@ class LexisNexisData(BaseDataSource):
 
             yield document
 
+    @not_ready
+    async def news_recent(self):
+        raise NotImplementedError
+    
+    @not_ready
+    async def news_archive(self):
+        raise NotImplementedError

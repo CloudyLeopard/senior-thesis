@@ -1,16 +1,16 @@
 import os
 import httpx
 from pydantic import Field, field_validator
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Literal
 import logging
 
-from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException, not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
-class NewsAPIData(BaseDataSource):
+class NewsAPIData(NewsSource):
     source: str = "NewsAPI"
     apiKey: str = Field(default_factory=lambda: os.getenv("NEWS_API_KEY"))
     
@@ -21,16 +21,19 @@ class NewsAPIData(BaseDataSource):
             raise ValueError("News API key must be set")
         return v
     
-    async def async_fetch(self, query: str, num_results: int = 10, months: int = None, sort_by = "publishedAt", **kwargs) -> AsyncGenerator[Document, None]:
+    async def news_search(
+        self, 
+        query: str,
+        max_results: int = 10,
+        sort: Literal["relevance", "date", "popularity"] = "date",
+        **kwargs
+    ) -> AsyncGenerator[Document, None]:
         params = {"apiKey": self.apiKey}
         params["q"] = query
-        if months:
-            pass # TODO: doesn't work right now, need premium subscription to use "month"
-            # params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
         params["language"] = "en"
-        params["sortBy"] = sort_by # valid options are: relevancy, popularity, publishedAt.
+        params["sortBy"] = {"date": "publishedAt", "relevance": "relevancy", "popularity": "popularity"}[sort] # valid options are: relevancy, popularity, publishedAt.
         params["page"] = 1 # TODO: modify this code so that we can do multiple pages
-        params["pageSize"] = num_results
+        params["pageSize"] = max_results
 
         async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             logger.debug("Fetching documents from NewsAPI API")
@@ -83,3 +86,10 @@ class NewsAPIData(BaseDataSource):
 
                 yield Document(text=data["content"], metadata=metadata)
 
+    @not_ready
+    async def news_recent(self):
+        raise NotImplementedError
+    
+    @not_ready
+    async def news_archive(self):
+        raise NotImplementedError

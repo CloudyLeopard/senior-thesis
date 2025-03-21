@@ -1,21 +1,24 @@
 import httpx
-from typing import List, Dict, AsyncGenerator
+from typing import List, Dict, AsyncGenerator, Literal
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 from pydantic import Field
 import time
 
-from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException, load_headers
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
-class NewYorkTimesData(BaseDataSource):
-    headers: Dict[str, str]
-    sources: str = "New York Times"
+class NewYorkTimesData(NewsSource):
+    headers_path: str
+    headers: Dict[str, str] = Field(default_factory=lambda data: load_headers(data["headers_path"]))
     apiKey: str = Field(default_factory=lambda: os.getenv("NYTIMES_API_KEY"))
+    source: str = "New York Times"
+    description: str = "The New York Times covers a broad spectrum of news, including domestic, national, and international events, offering opinion pieces, investigative reports, and reviews, with a focus on providing in-depth, independent journalism."
+    shorthand: str= "nyt"
 
     async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> AsyncGenerator[Document, None]:
         logger.info("Scraping %s NYT article links", len(article_metadata))
@@ -43,7 +46,13 @@ class NewYorkTimesData(BaseDataSource):
         finally:
             await client.aclose()
     
-    async def async_fetch(self, query: str, num_results: int = 20, sort: str = "newest") -> AsyncGenerator[Document, None]:
+    async def news_search(
+        self,
+        query: str,
+        max_results: int = 20,
+        sort: Literal["relevance", "date"]  = "date",
+        **kwargs
+    ) -> AsyncGenerator[Document, None]:
         
         article_metadata = []
         async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
@@ -51,11 +60,11 @@ class NewYorkTimesData(BaseDataSource):
 
             NUM_RESULTS_PER_PAGE = 10
             page = 0
-            while page * NUM_RESULTS_PER_PAGE < num_results: # Fetch until we have enough articles
+            while page * NUM_RESULTS_PER_PAGE < max_results: # Fetch until we have enough articles
                 params = {
                     "q": query,
                     "api-key": self.apiKey,
-                    "sort": sort, # newest, oldest, relevance
+                    "sort": {"date": "newest", "relevance": "relevance"}[sort], # newest, oldest, relevance
                     "fl": "web_url,headline,pub_date,snippet",
                     "page": page,
                 }
@@ -87,13 +96,19 @@ class NewYorkTimesData(BaseDataSource):
                 article_metadata.extend(data["response"]["docs"])
                 time.sleep(13)
 
-        article_metadata = article_metadata[:num_results]
+        article_metadata = article_metadata[:max_results]
         logger.debug("Fetched %d articles", len(article_metadata))
 
         async for document in self._nyt_scraper_helper(article_metadata, query=query):
             yield document
     
-    async def fetch_news_feed(self, num_results: int = 20) -> AsyncGenerator[Document, None]:
+    async def news_recent(
+        self,
+        days: int = None, # TODO: not implemented
+        max_results: int = 20,
+        filter: Dict = None, # TODO: not implemented
+        **kwargs
+    ) -> AsyncGenerator[Document, None]:
         # sections = ["business", "education", "job market", "technology", "u.s.", "world"]
         sections = ["business", "technology"]
         article_metadata = []
@@ -122,24 +137,36 @@ class NewYorkTimesData(BaseDataSource):
                 
                 if data["num_results"] > 0:
                     article_metadata.extend(data["results"])
+                if len(article_metadata) >= max_results:
+                    break
+
                 time.sleep(13)
         
+        # hard cap
+        article_metadata = article_metadata[:max_results]
         async for document in self._nyt_scraper_helper(article_metadata):
             yield document
     
-    async def fetch_archive(self, months: int) -> AsyncGenerator[Document, None]:
+    async def news_archive(
+        self,
+        start_date: str,
+        end_date: str,
+        max_results: int = 100, # TODO: not implemented
+        filter: Dict = None, # TODO: not implemented,
+        **kwargs
+    ) -> AsyncGenerator[Document, None]:
         # section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
         section_names = ["Business", "Technology"]
 
         # Get today's date
-        today = datetime.today().date()
-        start_date = today - timedelta(days=months*30)
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
         # Generate all year-month pairs from start_date to today
         year_month_pairs = set()
         current_date = start_date
 
-        while current_date <= today:
+        while current_date <= end_date:
             year_month_pairs.add((current_date.year, current_date.month))
             # Move to the next month
             if current_date.month == 12:
@@ -174,7 +201,12 @@ class NewYorkTimesData(BaseDataSource):
                     logger.error("New York Times Failed to fetch documents: %s", e)
                     raise RequestSourceException(e)
                 article_metadata.extend([doc for doc in data["response"]['docs'] if doc.get("section_name") in section_names])
+                if len(article_metadata) >= max_results:
+                    break
                 time.sleep(13)
+        
+        # hard cap
+        article_metadata = article_metadata[:max_results]
 
         async for document in self._nyt_scraper_helper(article_metadata):
             yield document

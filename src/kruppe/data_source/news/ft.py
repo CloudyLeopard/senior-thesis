@@ -1,13 +1,20 @@
 import httpx
-from typing import AsyncGenerator, List, Dict
+from typing import AsyncGenerator, List, Dict, Literal
 from bs4 import BeautifulSoup
 import asyncio
 import logging
 from datetime import datetime, timedelta
 import re
+from pydantic import Field
 
-from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.data_source.utils import (
+    RequestSourceException,
+    WebScraper,
+    HTTPX_CONNECTION_LIMITS,
+    load_headers,
+    not_ready
+)
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
@@ -15,9 +22,15 @@ logger = logging.getLogger(__name__)
 # NOTE: for scraping FT, could be even easier to use
 # https://www.ft.com/sitemaps/index.xml
 
-class FinancialTimesData(BaseDataSource):
-    headers: Dict[str, str]
+
+class FinancialTimesData(NewsSource):
+    headers_path: str
+    headers: Dict[str, str] = Field(
+        default_factory=lambda data: load_headers(data["headers_path"])
+    )
     source: str = "Financial Times"
+    shorthand: str = "ft"
+    description: str = "The Financial Times specializes in global business and economic news, with in-depth coverage of financial markets, corporate developments, and policy analysis. It is known for data-driven reporting, international perspective, and a focus on informing investors, executives, and policymakers."
 
     @staticmethod
     def _parse_search_page(html: str) -> List[str]:
@@ -58,23 +71,24 @@ class FinancialTimesData(BaseDataSource):
         posted_time = post_id_element.find("time").get("datetime")
 
         return {
-            "content": content, 
-            "meta": {
-                "title": title,
-                "url": url,
-                "publication_time": posted_time
-            }
+            "content": content,
+            "meta": {"title": title, "url": url, "publication_time": posted_time},
         }
 
-    async def async_fetch(
-        self, query: str, num_results: int = 25, sort="relevance", months: int = None, **kwargs
+    async def news_search(
+        self,
+        query: str,
+        max_results: int = 20,
+        sort: Literal["relevance", "date"] = "date",
+        months: int = None,
+        **kwargs,
     ) -> AsyncGenerator[Document, None]:
         """Async version of fetch. Fetches links from Financial Times, scrapes them, and returns as a list of Documents.
         If document store is set, save documents to document store.
 
         Args:
             query (str): The main search query to fetch relevant links.
-            num_results(int, optional): The number of search results to scrape. Defaults to 25 (or 1 page)
+            max_results(int, optional): The number of search results to scrape. Defaults to 25 (or 1 page)
             sort (str, optional): The sort order of the search results. Accepted values are "date" and "relevance". Defaults to "relevance".
 
         Returns:
@@ -85,13 +99,15 @@ class FinancialTimesData(BaseDataSource):
             HTTPError: If the request to the Financial Times API fails.
         """
         links = []
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        client = httpx.AsyncClient(
+            timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS
+        )
         try:
             # Search FT using query and scrape list of articles
             url = "https://www.ft.com/search"
 
             search_requests = []
-            pages = num_results // 25 + 1
+            pages = max_results // 25 + 1
             for page in range(1, pages + 1):
                 params = {
                     "q": query,
@@ -101,10 +117,14 @@ class FinancialTimesData(BaseDataSource):
                 }
 
                 if months:
-                    params["from"] = (datetime.now() - timedelta(days=months * 30)).date().isoformat()
-                
+                    params["from"] = (
+                        (datetime.now() - timedelta(days=months * 30))
+                        .date()
+                        .isoformat()
+                    )
+
                 search_requests.append(client.build_request("GET", url, params=params))
-            
+
             async def send_requests_for_links(search_request):
                 try:
                     response = await client.send(search_request)
@@ -113,16 +133,20 @@ class FinancialTimesData(BaseDataSource):
                     links.extend(self._parse_search_page(html))
                 except httpx.HTTPStatusError as e:
                     logger.error(
-                        "Financial Times HTTP Error %d: %s", e.response.status_code, e.response.text
+                        "Financial Times HTTP Error %d: %s",
+                        e.response.status_code,
+                        e.response.text,
                     )
                     raise RequestSourceException(e.response.text)
                 except httpx.RequestError as e:
                     logger.error("Error fetching Financial Times search page: %s", e)
                     raise RequestSourceException(e)
-            
+
             await asyncio.gather(*map(send_requests_for_links, search_requests))
 
-            logger.info("Fetched %d links from Financial Times on query %s", len(links), query)
+            logger.info(
+                "Fetched %d links from Financial Times on query %s", len(links), query
+            )
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
             # extract the relevant blog portion
@@ -146,14 +170,10 @@ class FinancialTimesData(BaseDataSource):
                 if data is None:
                     continue
 
-                metadata = self.parse_metadata(
-                    query=query,
-                    **data["meta"]
-                )
+                metadata = self.parse_metadata(query=query, **data["meta"])
                 document = Document(text=data["content"], metadata=metadata)
                 yield document
 
-            
             logger.info("Async scraping %d Financial Times blogs", len(blog_links))
             # scrape blogs
             # NOTE: not using the default parser. The custom parser takes an additional input
@@ -170,17 +190,18 @@ class FinancialTimesData(BaseDataSource):
                 data = await future
                 if data is None:
                     continue
-                metadata = self.parse_metadata(
-                    query=query,
-                    **data["meta"]
-                )
+                metadata = self.parse_metadata(query=query, **data["meta"])
                 yield Document(text=data["content"], metadata=metadata)
         finally:
             await client.aclose()
-    
-    async def fetch_news_feed(self, days: int = 365, num_results: int = None) -> List[str]:
+
+    async def news_recent(
+        self, days: int = 365, max_results: int = 20, filter: Dict = None, **kwargs
+    ) -> AsyncGenerator[Document, None]:
         links = []
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        client = httpx.AsyncClient(
+            timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS
+        )
         url = "https://www.ft.com/news-feed"
         pages = 1
         end = False
@@ -188,7 +209,11 @@ class FinancialTimesData(BaseDataSource):
         def parse_datetime(datetime_str):
             # Check if the string ends with 'Z' (UTC format)
             if datetime_str.endswith("Z"):
-                dt_format = "%Y-%m-%dT%H:%M:%S.%fZ" if "." in datetime_str else "%Y-%m-%dT%H:%M:%SZ"
+                dt_format = (
+                    "%Y-%m-%dT%H:%M:%S.%fZ"
+                    if "." in datetime_str
+                    else "%Y-%m-%dT%H:%M:%SZ"
+                )
                 dt_parsed = datetime.strptime(datetime_str, dt_format)
             else:
                 # Handle timezone offset format
@@ -198,7 +223,7 @@ class FinancialTimesData(BaseDataSource):
                 else:
                     dt_format = "%Y-%m-%dT%H:%M:%S%z"
                 dt_parsed = datetime.strptime(datetime_str, dt_format)
-            
+
             return dt_parsed
 
         if days:
@@ -225,7 +250,7 @@ class FinancialTimesData(BaseDataSource):
                     logger.debug("Found %d articles on page %d", len(a_tags), pages)
 
                     for a_tag, time_tag in zip(a_tags, time_tags):
-                        parsed_date = parse_datetime(time_tag['datetime']).date()
+                        parsed_date = parse_datetime(time_tag["datetime"]).date()
                         logger.debug("Article date: %s", parsed_date)
 
                         # filter by date
@@ -234,14 +259,20 @@ class FinancialTimesData(BaseDataSource):
                         if days and parsed_date < start_date:
                             end = True
                             break
-                        
+
                         parsed_link = a_tag.get("href")
                         if not parsed_link.startswith("https"):
                             parsed_link = f"https://www.ft.com{parsed_link}"
                         links.append(parsed_link)
+
+                        # limit to max_results
+                        if len(links) >= max_results:
+                            break;
                 except httpx.HTTPStatusError as e:
                     logger.error(
-                        "Financial Times HTTP Status Error %d: %s", e.response.status_code, e.response.text
+                        "Financial Times HTTP Status Error %d: %s",
+                        e.response.status_code,
+                        e.response.text,
                     )
                     raise RequestSourceException(e.response.text)
                 except httpx.RequestError as e:
@@ -252,15 +283,30 @@ class FinancialTimesData(BaseDataSource):
         finally:
             await client.aclose()
 
-        if num_results:
-            links = links[:num_results]
-        
+        # this shouldn't be necessary
+        if max_results:
+            links = links[:max_results]
+
         logger.info("Fetched %d links from Financial Times news feed", len(links))
-    
-        return links
-    
-    async def async_scrape_links(self, links: List[str]):
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+
+        async for document in self._async_scrape_links(links=links):
+            yield document
+
+    @not_ready
+    async def news_archive(
+        self,
+        start_date: str,
+        end_date: str,
+        max_results: int = 100,
+        filter: Dict = None,  # TODO: not implemented
+        **kwargs,
+    ) -> AsyncGenerator[Document, None]:
+        raise NotImplementedError
+
+    async def _async_scrape_links(self, links: List[str]):
+        client = httpx.AsyncClient(
+            timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS
+        )
         try:
             # scrape articles
             logger.debug("Initialize Async WebScraper")
@@ -272,12 +318,8 @@ class FinancialTimesData(BaseDataSource):
                     # if both selenium scrape and httpx scrape fails, article will return None
                     # in this case, we can't parse the metadata, so we skip
                     continue
-                metadata = self.parse_metadata(
-                    query=None,
-                    **data["meta"]
-                )
+                metadata = self.parse_metadata(query=None, **data["meta"])
                 document = Document(text=data["content"], metadata=metadata)
                 yield document
         finally:
             await client.aclose()
-        

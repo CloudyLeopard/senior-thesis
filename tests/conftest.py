@@ -3,7 +3,7 @@ import pytest_asyncio
 import os
 import nest_asyncio
 
-from kruppe.data_source import DirectoryData
+from kruppe.data_source.directory import DirectoryData
 from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
 from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 from kruppe.functional.document_store import MongoDBStore, AsyncMongoDBStore

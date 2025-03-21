@@ -3,7 +3,7 @@ from tqdm import tqdm
 import os
 
 from kruppe.llm import BaseLLM, BaseEmbeddingModel, NYUOpenAIEmbeddingModel, OpenAIEmbeddingModel
-from kruppe.data_source.ft import FinancialTimesData
+from kruppe.data_source.news.ft import FinancialTimesData
 from kruppe.data_source.utils import WebScraper
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore

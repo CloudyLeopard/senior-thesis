@@ -4,13 +4,13 @@ import logging
 from typing import Optional
 from pydantic import field_validator, model_validator
 
-from kruppe.data_source.base_source import BaseDataSource
+from kruppe.data_source.base_source import DataSource
 from kruppe.data_source.utils import WebScraper
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
-class DirectoryData(BaseDataSource):
+class DirectoryData(DataSource):
     path: Optional[pathlib.Path] = None
     input_files: Optional[List[pathlib.Path]] = None
     source: str = "Local Directory"

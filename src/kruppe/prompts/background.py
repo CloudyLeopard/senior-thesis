@@ -7,6 +7,54 @@ RESEARCH_STANDARD_SYSTEM = dedent(
     """
 )
 
+DETERMINE_INFO_QUERY_USER = dedent(
+    """\
+    -Goal-
+    Given a query, determine what additional background information you want to know to comprehensively and accurately answer the query.
+
+    -Steps-
+    1. Identify all the information you want to know about to answer the query. Be creative and specific (avoid overly general information). Each new piece of information should help build a more complete background for the user to answer the question.
+    2. Write each identified information as one paragraph (2-3 sentences) that describes 1. What you want to know, 2. Why do you want it (i.e. how does it help?). Note that your justification does not have only be "to help answer the question". Other ideas include "to gain a better background", "to double check the event's validity", etc.
+    3. Return the output in English as a single list of all the paragraphs separated by a single newline character.
+
+    -Input-
+    Query: {query}
+    
+    -Output-
+    """
+)
+
+ANALYZE_DOCUMENT_SIMPLE_USER = dedent(
+    """\
+    -Instruction-
+    Given a document, identify and summarize all elements discussed in the topic that could be relevant to the query, even if remotely. Return a concise paragraph of your analysis, which should include 1. a description of the relevant observations (be specific) and 2. an analysis of why these observations could be related to the query. Limit your analysis to 3-4 sentences.
+
+    -Input-
+    Query: {query}
+    
+    <document>
+    {document}
+    </document>
+
+    -Output-
+    """
+)
+
+COMPILE_REPORT_USER = dedent(
+    """\
+    Given a query and a list of analyses made from retrieved documented relevant to the query, build a background report of the query. Do not focus on answering the query. Focus on writing relevant background information that will be later used to help answer the query. Cite specific examples to back up your analysis whenever possible.
+
+    -Input-
+    Query: {query}
+
+    <analyses>
+    {analyses}
+    </analyses>
+
+    -Output-
+    """
+)
+
 ANALYZE_QUERY_USER_CHAIN = [
     dedent(
         """\
@@ -20,17 +68,17 @@ ANALYZE_QUERY_USER_CHAIN = [
         - entity_category: the category of the extracted entity. Should be one of the following types: {entity_categories} or others (provide your own category)
         - reasoning: your reasoning to extract this entity, or the entitiy's position in the query. For example it could be the main subject, the main cause, the big unknown, or others.
 
-        Format each entity as ("entity"|<entity_name>|<entity_category>|<reasoning>)
+        Format each entity as (entity|<entity_name>|<entity_category>|<reasoning>)
 
         3. For each entity identified in step 1, infer the background information about that entitiy that a person needs additional research on to be able to fully and accurately anser the query. Be creative and specific (avoid overly general information). Each piece of information should be absolutely necessary and adds to the overall background research process.
 
         4. For each background information from step 3, extract the following information:
-        - description: the description of the information that requires additional research
+        - information_description: the description of the information that requires additional research
         - information_category: the category of the piece of information. Should be one of the following types: {information_categories} or others (provide your own category)
         - reasoning: justification for choosing to research this area.
-        Format each information as ("info"|<description>|<information_category>|<reasoning>|<entity_name>)
+        Format each information as (info|<information_description>|<information_category>|<reasoning>|<entity_name>)
 
-        5. Return the output in English as a single list of all identified entities (from step 1) and identified information (from step 3), separated by a newline character.
+        5. Return the output in English as a single list of all identified entities (from step 1) and identified information (from step 3), separated by a single newline character.
 
         -Input-
         Query: {query}
@@ -49,7 +97,7 @@ ANALYZE_QUERY_USER_CHAIN = [
         - description: the description of the information that requires additional research
         - information_category: the category of the piece of information. Should be one of the following types: {information_categories} or others (provide your own category)
         - reasoning: justification for choosing to research this area.
-        Format each information as ("info"|<description>|<information_category>|<reasoning>)
+        Format each information as (info|<description>|<information_category>|<reasoning>)
 
         3. Return the output in English as a single list of all identified information separated by a newline character.
 
@@ -60,30 +108,3 @@ ANALYZE_QUERY_USER_CHAIN = [
         """
     )
 ]
-
-ASSIGN_TOOL_USER = dedent(
-    """\
-    -Goal-
-    Given a request for information and a list of tools, determine which tools an AI agent should use to conduct research for the request for information. 
-
-    -Steps-
-    1. For each tool, use your intuition and the tool description to infer the type of information that the tool can provide for the request.
-    For each tool, determine the following information:
-    - tool_name: the tool name in question. use the original name provided in the input
-    - research_area: the area of research that this tool can assist with to learn more about the request, and its importance.
-    - rank: the importance of using this tool, where 1 is very important and must be used, and 3 is least important and can be ignored. Minimize the number of tools assigned with a rank of 1, unless absolutely necessary.
-
-    Format each tool identification as ("tool"|<tool_name>|<research_area>|<rank>)
-
-    2. Return output in English as a single list of all the tools identified in step 1, **ordered from most important to least important**, separated by a newline character.
-
-    -Input-
-    Request for Information:
-    {info_request}
-
-    Tools Descriptions:
-    {tools_descriptions}
-
-    -Output-
-    """
-)

@@ -1,73 +1,31 @@
 from abc import ABC, abstractmethod
-from typing import Dict, AsyncGenerator, Generator
+from typing import Dict, AsyncGenerator, Generator, Literal
 import logging
-from pydantic import BaseModel, Field
+from fastapi.background import P
+from pydantic import BaseModel, Field, computed_field
 import asyncio
 import threading
+from textwrap import dedent
+from datetime import datetime
 
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
-class RequestSourceException(Exception):
-    pass
+class DataSource(ABC, BaseModel):
+    source: str
+    description: str = None # TODO: make required later
 
-# TODO: remove the "document_store" parameter. Keep entering documents into 
-# document store separate from the data source class
-class BaseDataSource(ABC, BaseModel):
-    """Custom data source class interface"""
-    source: str = Field(default="Unknown")
-
-    def fetch(self, query: str, num_results: int = 10, **kwargs) -> Generator[Document, None, None]:
-        """Fetch links relevant to the query with the corresponding data source
-
-        Returns:
-            Generator[Document]: A list of Document objects containing the text and metadata
-                            of the scraped links.
-
-        Raises:
-            RequestSourceException: If the request to the data source API fails.
-
-        """
-        # Well this is all ChatGPT code i have no idea if this works but oh well
-        queue = asyncio.Queue()
-
-        async def async_consumer():
-            async for item in self.async_fetch(query=query, num_results=num_results, **kwargs):
-                await queue.put(item)
-            await queue.put(False)  # Sentinel to indicate completion
-
-        def run_async():
-            asyncio.run(async_consumer())
-
-        # Run the async function in a separate thread
-        thread = threading.Thread(target=run_async)
-        thread.start()
-
-        while True:
-            item = queue.get()  # Blocks until an item is available
-            if item is False:
-                break
-            yield item
-
-    @abstractmethod
-    async def async_fetch(self, query: str, num_results: int = 10, **kwargs) -> AsyncGenerator[Document, None]:
-        """Async fetch links relevant to the query with the corresponding data source
-
-        Returns:
-            AsyncGenerator[Document]: A list of Document objects containing the text and metadata
-                            of the scraped links.
-
-        Raises:
-            RequestSourceException: If the request to the data source API fails.
-        """
-        pass
-
-    def process_document(document: Document):
-        # TODO: later on, perhaps use LLM on scraped text data
-        # to extract information that can be used later. Example: category
-        pass
-
+    def get_description(self) -> str:
+        return dedent(f"""\
+            Data source name: {self.source}
+            Data source description: {self.description}
+            """
+        )
+    
+    def get_schema(self, method_name: str) -> Dict:
+        return getattr(self, f"{method_name}_schema")
+    
     @classmethod
     def parse_metadata(
         cls,
@@ -88,5 +46,9 @@ class BaseDataSource(ABC, BaseModel):
         }
         metadata.update(kwargs)
         return metadata
+   
+class FinancialSource(DataSource):
+    ...
 
-
+class ForumSource(DataSource):
+    ...

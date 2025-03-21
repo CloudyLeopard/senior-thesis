@@ -4,17 +4,19 @@ from typing import AsyncGenerator
 import logging
 from pydantic import Field, field_validator
 
-from kruppe.data_source.base_source import (
-    BaseDataSource,
-    RequestSourceException,
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.data_source.utils import RequestSourceException
+from kruppe.data_source.utils import (
+    WebScraper,
+    HTTPX_CONNECTION_LIMITS,
+    not_ready
 )
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
 
-class GoogleSearchData(BaseDataSource):
+class GoogleSearchData(NewsSource):
     """Wrapper that calls on Google Search JSON API"""
 
     api_key: str = Field(default_factory=lambda: os.getenv("GOOGLE_API_KEY"))
@@ -30,8 +32,12 @@ class GoogleSearchData(BaseDataSource):
             raise ValueError("Google Search API key and search engine ID must be set")
         return v
     
-    async def async_fetch(
-        self, query: str, num_results: int = 10, or_terms: str = None, **kwargs
+    async def news_search(
+        self,
+        query: str,
+        max_results: int = 20,
+        sort = None, # doesn't do anything
+        or_terms: str = None, **kwargs
     ) -> AsyncGenerator[Document, None]:
         """
         Async version of fetch. Fetches links from Google Search API, scrapes them, and returns as a list of Documents.
@@ -59,7 +65,7 @@ class GoogleSearchData(BaseDataSource):
             params["q"] = query
             params["orTerms"] = or_terms
 
-            for page in range(num_results // 10 + 1):
+            for page in range(max_results // 10 + 1):
                 params["start"] = page * 10 + 1
 
                 try:
@@ -109,3 +115,11 @@ class GoogleSearchData(BaseDataSource):
 
                 document = Document(text=data["content"], metadata=metadata)
                 yield document
+    
+    @not_ready
+    async def news_recent(self):
+        raise NotImplementedError
+    
+    @not_ready
+    async def news_archive(self):
+        raise NotImplementedError

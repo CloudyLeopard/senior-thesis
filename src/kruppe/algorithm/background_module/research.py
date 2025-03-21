@@ -1,26 +1,123 @@
-from json import tool
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+from abc import ABC, abstractmethod
+from textwrap import dedent
+from arrow import get
+from pydantic import BaseModel, computed_field
+from typing import Callable, List, Dict, Optional
 import re
+import json
+import asyncio
+
+from tqdm import tqdm
 
 from kruppe.llm import BaseLLM
+from kruppe.models import Document, Response
 from kruppe.prompts.background import (
     RESEARCH_STANDARD_SYSTEM,
-    ANALYZE_QUERY_USER_CHAIN
+    ANALYZE_QUERY_USER_CHAIN,
+    DETERMINE_INFO_QUERY_USER,
+    ANALYZE_DOCUMENT_SIMPLE_USER,
+    COMPILE_REPORT_USER
 )
+from kruppe.data_source.news.base_news import NewsSource
+from kruppe.algorithm.utils import process_request
+from kruppe.algorithm.agents import Researcher, Librarian
+
+class BackgroundResearchTeam(BaseModel):
+    ...
 
 
-class BackgroundResearcher(BaseModel):
-    llm: BaseLLM
+class BackgroundResearcher(Researcher):
+    query: str
     system_message: str = RESEARCH_STANDARD_SYSTEM
-    query: Optional[str] = None
     history: List[Dict] = []  # research history
-    toolkits: List = []
+    librarian: Librarian
+
 
     def new_query(self, query: str):
         self.query = query
         self.history = []
 
+    async def execute(self):
+        info_requests = await self.create_info_requests()
+        await self.retrieve_and_analyze(info_requests)
+        report = await self.compile_report()
+        return report
+
+
+    async def create_info_requests(self) -> List[str]:
+        user_message = DETERMINE_INFO_QUERY_USER.format(query=self.query)
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": user_message},
+        ]
+
+        llm_response = await self.llm.async_generate(messages)
+        llm_string = llm_response.text
+
+        info_requests = re.split(r'\n+', llm_string)
+
+        return info_requests
+    
+    async def _analyze_helper(self, info_request: str):
+        doc_generator = self.librarian.execute(info_request)
+
+        async for document in doc_generator:
+            user_message = ANALYZE_DOCUMENT_SIMPLE_USER.format(
+                query=self.query,
+                document=document.text
+            )
+            messages = [
+                {"role": "system", "content": self.system_message},
+                {"role": "user", "content": user_message},
+            ]
+
+            llm_response = await self.llm.async_generate(messages)
+            llm_string = llm_response.text
+
+            research_result = {
+                "info_request": info_request,
+                "document": document.text, # TODO: make this document class later im too lazy rn
+                "analysis": llm_string
+            }
+
+            self.history.append(research_result)        
+    
+    async def retrieve_and_analyze(self, info_requests: List[str]) -> List[Dict]:
+        """For each information request, retrieve relevant documents from the libriarian.
+        Then analyze the document to extract relevant background for the query.
+
+        Args:
+            info_requests (List[str]): _description_
+
+        Returns:
+            List[Dict]: _description_
+        """
+
+        for info_request in tqdm(info_requests):
+            await self._analyze_helper(info_request)
+        
+    async def compile_report(self) -> str:
+        """Compile a research report on the relevant background pieces using the
+        research history.
+
+        Returns:
+            str: research history
+        """
+
+        user_message = COMPILE_REPORT_USER.format(
+            query=self.query,
+            analyses="\n".join([item["analysis"] for item in self.history])
+        )
+
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": user_message},
+        ]
+
+        llm_response = await self.llm.async_generate(messages)
+        llm_string = llm_response.text
+
+        return llm_string
 
     async def analyze_query(self) -> List[Dict]:
         """This function breaks down the query into areas to conduct background research.
@@ -37,16 +134,13 @@ class BackgroundResearcher(BaseModel):
         ## ===== INFO REQUEST =====
 
         # extract entities from query
-        entity_categories = [
-            "firm",
-            "industry",
-            "country",
-            "event",
-            "personnel",
-            "terminology",
-        ]
+        entity_categories = "firm, industry, country, event, personnel, terminology"
+        information_categories = "finance, economy, industry"
+
         user_message = ANALYZE_QUERY_USER_CHAIN[0].format(
-            query=self.query, entity_categories=", ".join(entity_categories)
+            query=self.query,
+            entity_categories=entity_categories,
+            information_categories=information_categories
         )
         messages = [
             {"role": "system", "content": self.system_message},
@@ -57,65 +151,21 @@ class BackgroundResearcher(BaseModel):
         messages.append({"role": "assistant", "content": response1.text})
 
         # extract additional information from query
-        information_categories = ["finance", "economy", "industry"]
         followup_message = ANALYZE_QUERY_USER_CHAIN[1].format(
-            query=self.query, information_categories=", ".join(information_categories)
+            query=self.query, information_categories=information_categories
         )
         messages.append({"role": "user", "content": followup_message})
 
         response2 = await self.llm.async_generate(messages)
         messages.append({"role": "assistant", "content": response2.text})
-
-        def _process_info_request(self, response_text: str) -> List[Dict]:
-            pattern = re.compile(
-                r'\("(?P<type>[^"]+)"\|(?P<name>[^|]*)\|(?P<category>[^|]*)\|(?P<reasoning>[^|]*)(?:\|(?P<entity_name>[^)]*))?\)'
-            )
-            
-            results = response_text.split("\n")
-            requests = [] # i call them "requests", like "info_requests" or "tool_requests"
-            for result in results:
-                match = pattern.match(response_text)
-                if match:
-                    requests.append(match.groupdict())
-            return requests
-
-        info_requests = _process_info_request(response1.text) + _process_info_request(response2.text)
-
-        # ===== TOOL REQUEST =====
         
-        return
+        response_text = response1.text + response2.text
+        info_requests = process_request(response_text)
+        
+        info_requests_sorted = sorted(info_requests, key=lambda x: (x["entity_name"], x["type"]) )
+        info_requests_string = "\n".join([json.dumps(info_request) for info_request in info_requests_sorted])
+                    
+        ...
 
-    async def _research_helper(self, tool_request: Dict) -> Dict:
-        """Helper function to "research query". Makes the individual tool request.
-        After each request finish, also determines if there is anything particularly
-        note worthy in this request's result.
-
-        Args:
-            tool_request (Dict): single tool request
-
-        Returns:
-            Dict: research history
-        """
-        return ...
-
-    async def research_query(self, tool_requests: List[Dict]) -> List[Dict]:
-        """This function takes a list of tool requests, and sends the requests to perform
-         research with each tool. After each request is done, the result is saved to the
-         "history" attribute.
-
-        Args:
-            tool_requests (List[Dict]): list of tool request
-
-        Returns:
-            List[Dict]: list of research history. This is also saved to "history" attribute
-        """
-
-        return ...
-
-    async def compile_report(self) -> str:
-        """Compile a research report on the relevant background pieces using the
-        research history.
-
-        Returns:
-            str: research history
-        """
+class DocumentResearcher(BaseModel):
+    objective: str

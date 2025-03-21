@@ -8,9 +8,11 @@ import logging
 from pathlib import Path
 from tqdm import tqdm
 import stamina
+import json
+from functools import wraps
 
 
-from kruppe.data_source.base_source import BaseDataSource, RequestSourceException
+from kruppe.data_source.news.base_news import NewsSource
 from kruppe.models import Document
 
 MAX_CONNECTIONS = 200
@@ -21,6 +23,41 @@ DEFAULT_HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=60.0, pool=60.0) # yea i hav
 
 logger = logging.getLogger(__name__)
 
+class RequestSourceException(Exception):
+    pass
+
+def not_ready(func):
+    func._not_ready = True
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        raise NotImplementedError(f"{func.__name__} is not implemented")
+    return wrapper
+
+def is_method_ready(obj, method_name: str):
+    method = getattr(obj, method_name)
+    return not getattr(method, "_not_ready", False)
+
+async def combine_async_generators(async_gens):
+    queue = asyncio.Queue()
+
+    async def producer(agen):
+        async for item in agen:
+            await queue.put(item)
+        await queue.put(None)
+
+    tasks = [asyncio.create_task(producer(agen)) for agen in async_gens]
+    finished = 0
+    total = len(async_gens)
+    
+    while finished < total:
+        item = await queue.get()
+        if item is None:
+            finished += 1
+        else:
+            yield item
+    
+    await asyncio.gather(*tasks)
+
 def retry_on_httpx_error(exc: Exception) -> bool:
     if isinstance(exc, httpx.HTTPStatusError):
         logger.warning("HTTP ERROR %d: %s", exc.response.status_code, exc.response.text)
@@ -30,9 +67,12 @@ def retry_on_httpx_error(exc: Exception) -> bool:
         # see my notes on "error debugging" on how to deal with this
         logger.warning("POOL TIMEOUT")
     else:
-        print(repr(exc)) # to see what error it is
+        print("ERROR", repr(exc)) # to see what error it is
     return isinstance(exc, httpx.HTTPError)
 
+def load_headers(header_path: str):
+    # Resolve the path to header.json which is outside of the src folder.
+    return json.loads(Path(header_path).read_text())
 
 class WebScraper:
     """Scrapes list of websites using aiohttp or requests, and fallsback to selenium if aiohttp fails"""
@@ -50,7 +90,8 @@ class WebScraper:
         self.async_client = async_client
 
         # set timeout all to the same cuz im lazy im gonna fix this later
-        self.async_client.timeout = DEFAULT_HTTPX_TIMEOUT
+        if async_client:
+            self.async_client.timeout = DEFAULT_HTTPX_TIMEOUT
 
     @staticmethod
     def default_html_parser(html: str, url: str, **kwargs) -> Dict[str, str]:
@@ -115,6 +156,11 @@ class WebScraper:
             HTML parser will be used.
         """
         if html_parser is not None:
+            # Ensure the custom HTML parser has "html" as one of its arguments
+            parser_args = html_parser.__code__.co_varnames
+            if "html" not in parser_args:
+                raise ValueError("The custom HTML parser must accept 'html' as an argument.")
+            
             self.html_parser = html_parser
         else:
             self.html_parser = self.default_html_parser
@@ -153,7 +199,6 @@ class WebScraper:
 
     @stamina.retry(on=retry_on_httpx_error, attempts=3)
     async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
-        print(repr(client))
         r = await client.get(url)
         r.raise_for_status()
 
@@ -215,7 +260,9 @@ class WebScraper:
                 else:
                     # this is for if i scrape through html but
                     # even if html has text, i didn't scrape out anything useful
-                    return data if data["content"] else None
+                    if "content" in data and not data["content"]:
+                        return None
+                    return data
 
 
             
@@ -275,7 +322,7 @@ class WebScraper:
 
 
 class NewsArticleSearcher:
-    def __init__(self, sources: List[BaseDataSource]):
+    def __init__(self, sources: List[NewsSource]):
         """Chooses which sources to use for fetching documents"""
         self.sources = sources  # TODO: do some kind of "setting" here to determine which sources to use
         self.documents = []
