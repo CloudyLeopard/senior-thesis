@@ -93,7 +93,7 @@ class BackgroundResearcher(Researcher):
             List[Dict]: _description_
         """
 
-        for info_request in tqdm(info_requests):
+        async for info_request in tqdm(info_requests):
             await self._analyze_helper(info_request)
         
     async def compile_report(self) -> str:
