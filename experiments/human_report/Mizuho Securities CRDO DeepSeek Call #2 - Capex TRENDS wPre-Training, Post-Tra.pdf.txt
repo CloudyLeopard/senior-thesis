@@ -1,0 +1,514 @@
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+TMT
+Semiconductors & Semiconductor Capital Equipment
+March 13, 2025
+U.S. Equity Research
+Price Target Change
+DeepSeek Call #2 - Capex TRENDS w/Pre-Training, Post-Training,
+Inference, Tariffs
+We hosted an industry call focused on Gen AI/Agentic, and CSP Capex trends from new
+models. Key takeaways: 1) MMLU benchmarks show parameter scaling still important
+in Pre-Training Foundation models and could drive GPU demand, but potential plateau
+in 2-3Y, 2) AI also moving to Inference/reinforcement learning (IF/RL) with new Qwen/
+DS-R1/GeminiR2/Manus though requires ~10% GPU load vs. pre-training - but IF/RL
+workloads could grow SIGNIFICANTLY driving bigger GPU ramps, 3) China Ascend 910a/
+c at 50% lower cost, unstable but improving performance, though H20 STRONG, and 4)
+TARIFFS exposure risk as ~28% of US Servers made in Mexico. Adjusting ests/PTs for
+AMD/NVDA with lower AI peer group multiples - BUT major catalyst ahead with GTC -
+Mar 18th as we see GB300 and potentially a 288-GPU GB200-NVL72 rack, with potential
+Optics-CPO/Quantum compute roadmaps from global AI leader NVDA next week.
+Key Points
+Parameter Scaling in Pre-Training KEY to Foundation Model Performance But Post-
+Training/Inference Workloads Increasing.  Despite recent headlines about Qwen 32B
+and DeepSeek, we believe core investments on Foundation models KEY requiring
+increased parameter scaling to improve model quality. As weshow in Ex-1,  MMLU perf
+to parameters has not plateaued and argues for continued parameter scaling, or larger
+Foundation models and bigger GPU clusters . However, we believe AI workloads are
+shifting increasingly to post-training (fine-tuning), and inference, now at ~50-80% of
+workloads. Though RL currently only utilize ~10% of GPU load and ~15% of time versus
+pre-training, increasing post-training/RL parameters and inference (test time scaling,
+AgenticAI) COULD require >10x more compute  driving GPU/Custom ASIC demand
+growth. We estimate a 300B parameter foundation model in pre-training could use
+10-20K GPU and 1.5 months, while post training/RL/inferencing can be done on ~10%
+the GPUs for 300B in ~7 days, but could scale over time with more RL/reasoning.
+Ascend 910a/c at 50% LOWER $/Compute, Unstable vs. Competitors BUT Improved.
+Our call noted the Ascend 910a/c GPU is 50% cheaper ($/compute) versus H100 -
+but UNSTABLE during training with daily interruptions (we estimate NVDA ~7x more
+stable vs. Ascend) driving significant pull-in demand for H20 ahead of potential future AI
+restrictions.
+US-MEX 20% ex-USMCA Tariff Could Impact Server ODMs (Ex-4) but Cost Pass
+Through. We believe DELL (Outperform, $140 PT) and SMCI (Neutral, $50 PT) could
+have potential server manufacturing in MEX, which could be subject to the new
+~20% tariffs ( LINK), BUT we see geographically dispersed/balanced supply chains
+mitigating headwinds, though we see near-term increased costs passed through to CSP/
+hyperscalers. Longer term, we see supply chains potentially repositioning to US/Asia/
+Mex, depending on investment/cost/capacity/labor tradeoff considerations.
+Adjusting estimates/PTs for AMD/NVDA, no changes for AVGO/CRDO/INTC. For AMD,
+lower estimates/PT to $120 (prior $140). For NVDA, no change to estimates, lower PT
+$168 (prior $175) with lower peer group multiples - BUT major catalyst ahead with GTC-
+Mar 18th as we see 1) GB300 launch 2) potential big 2H with GB200 restart, AprQ GMs
+bottoming 3) potentially a 288-GPU GB200-NVL72 rack and 4) potential Optics-CPO/
+Quantum compute road maps from global AI leader NVDA next week.
+MIZUHO SECURITIES USA LLC
+Connect With Our Analysts
+Vijay Rakesh | Managing Director
++1 312 294 8682 |  Vijay.Rakesh@mizuhogroup.com
+David Liu | Senior Associate
++1 201 626 1539 |  David.Liu@mizuhogroup.com
+Jesus Lopez | Senior Associate
++1 312 294 8658 |  Jesus.Gonzalezlopez@mizuhogroup.com
+Jacob Grandstaff | Associate
++1 312 294 8694 |  Jacob.Grandstaff@mizuhogroup.com
+Symbol PT (Previous) Rating (Previous) Price
+AMD
+$120.00 ($140.00) Outperform $98.11
+AVGO $250.00 Outperform $191.36
+CRDO $90.00 Outperform $44.95
+INTC $23.00 Neutral $23.70
+NVDA
+$168.00 ($175.00) Outperform $115.58
+Source: Bloomberg and Mizuho Securities USA
+Please refer to Page 7 of this report for important disclosure and analyst certification information. Mizuho Securities USA LLC does and seeks to do business
+with companies covered in its research reports. As a result, investors should be aware that the Firm may have a conflict of interest that could affect the objectivity of
+this report. Investors should consider this report as only a single factor in making their investment decision.
+1
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+Parameter Scaling in Pre-Training Key to Foundation Model
+Performance. Despite recent headlines with Qwen 32B and
+DeepSeek, we believe there will still be core investments focused
+on driving increased parameter scaling in Foundation/frontier
+models to drive increased performance as many LLMs are
+not interested in hurting progress in model development by
+buying lower quality GPUs. We believe pre-training scaling will
+remain a key driver of GPU/ASIC capex, but increasing focus
+is shifting to post-training and inference. Post-training includes
+supervised fine-tuning (SFT), reinforcement learning (RL), RL
+with human feedback (RLHF), quantized low-rank adaptation
+(QLoRA), and parameter-efficient fine-tuning (PEFT). We see the
+market shifting from 50/50 inference/training currently to closer
+to 80/20 as RL becomes more prominent, driving higher needs
+for GPUs and custom ASICs with user counts and instances
+ramping.
+Exhibit 1 - MMLU Performance Shows Parameter
+Scaling Still KEY to Perf
+Source: Epoch AI, MSUSA Estimates
+Cheaper inference GPUs to compete with NVDA but potentially only longer-term as near-term
+dynamic model architectures and immature software ensures NVDA dominance with CUDA.
+We believe our speaker noted Ascend 910 GPUs are ~50% cheaper vs. H100, with stability issues
+improving rapidly but still lagging significantly (~5-10% reliability vs. NVDA). We believe the AI/
+ML landscape continues to change rapidly, with inference workload also shifting, from supervised
+fine-tuning, to RL, test-time compute, and agentic AI, all of which continues to benefit NVDA with
+its HW-optimized software compatibility for changing workloads. In addition, pre-training scaling
+could continue to drive demand for the largest AI clusters, all of which we believe could use NVDA's
+leading edge products, with GB200 in 2025 and Rubin in 2026. In addition, there is a 36x difference
+in inference cost vs. only ~8% difference in test scores (Ex-3, o1 vs. DS R1).
+Exhibit 2 - Ascend 910 50% Lower $/TFLOPS
+Compute BUT MUCH Lower Reliability with 7x
+Interruptions
+Source: Proprietary Industry Expert Presentation, MSUSA Estimates
+Exhibit 3 - LLMs to Continue Driving Down Inference
+Costs
+Source: aider, MSUSA
+2
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+20% tariffs could impact AI Server shipments from Mexico,
+driving higher prices and supply chain disruption.  Mexico
+was the US's largest provider of "servers" (Automatic Data
+Processing machines, "ADP", HTS code 8471)  accounting for
+an average of 28% of total "servers" imported into the US.  We
+believe a 20% tariff in the near-term (3-6 months could see
+prices passed through), while longer term could force existing
+ODMs with Mexico facilities (including: Hon Hai, Quanta, Wiwynn,
+Inventec, Pegatron, Wistron, Compal) to increase investment
+into the US, likely leading to higher prices than even 25%, or
+could force a shift manufacturing to East Asia, which could take
+3-6 months to ramp capacity to meet strong customer demand.
+This could potentially be a headwind to an already slim ODM
+margin profile as costs trend up in the US with competition also
+increasing.
+Exhibit 4 - Mexico the Largest "SERVER" ADP
+Importer into the US
+26% 24%
+30% 27%
+34%
+- 5% 10% 15% 20% 25% 30% 35% 40%
+-
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+2020 2021 2022 2023 2024
+"Server" Imports from Mexico ($M)HTS 8471% of total (RHS)
+Source: USITC, MSUSA
+ASICs Driving Lower TCO as More Inference Use Cases Ramp
+We continue to see AVGO as the leading ASIC partner due to its strong relationship with GOOGL
+(Covered by James Lee, Outperform, $230PT) on TPU, META (Covered by James Lee, Outperform,
+$750PT) with MTIA and Bytedance. We would note we estimate AVGO ASIC share at ~75-80% in
+2024 with a total market SAM of $18-20B, potentially increasing ~3-5x to as much as $60-90B
+by 2027E as it continues to ramp with its 3 key customers. Recently, AVGO noted it could see
+additional ramps of 2 more hyperscale customers (we believe with Baltra and Strawberry) in 2026E,
+while also seeing strong discussions with 2 additional potential customers ( Link), none of which
+are included in its SAM estimates. We believe hyperscalers will continue to focus on ramping ASIC
+deployments to drive down TCO, specifically for inference, as they look to add more enterprise
+customers to their clouds.
+Exhibit 5 - ASICs Ramping as Inference Gains Steam
+CSP AI Chip NamePartner Technology
+(node/packagaing)
+Memory
+Type
+Single
+Chip CpctyChip QTYTotal
+Cpcty SOP
+TPU v6 InferenceAVGO N3/CoWoS-SHBM3 16 4 64 In Production
+TPU v6 Training AVGO N3/CoWoS-SHBM3 16 6 96 In Production
+TPU v7 InferenceMediatekN3/CoWoS+SoICHBM3E 24 6 144 2H26
+TPU v7 Training AVGO N3/CoWoS+SoICHBM3E 24 8 192 1H26
+TPU v8 Training AVGO N2/CoWoS+SoICTBD TBD TBD TBD 2027
+TPU v8 InferenceAVGO N2/CoWoS+SoICTBD TBD TBD TBD 2027
+Trainium v1 Alchip N7/CoWoS-SHBM2E 16 2 32 In Production
+Inferentia v2Alchip N7/CoWoS-SHBM2E 16 2 32 In Production
+Trainium v2 MRVL N5/CoWoS-RHBM3 24 4 96 2H24/2H25
+Trainium v3 Alchip N3/CoWoS-R+SoICTBD TBD TBD TBD 2026
+Maia GUC N5/CoWoS HBM2E 16 4 64 In Production
+Maia 2 GUC N3/CoWoS HBM3E 24 4 96 1H26
+MTIA v1 AVGO N5/CoWoS LPDDR5 4 16 64 In Production
+MTIA v2 AVGO N5/CoWoS LPDDR5 8 16 128 1H26
+TSLA Dojo 2 N/A N5/InFO/SoWTBD TBD TBD TBD TBD
+Apple Baltra AVGO (est) TBD TBD TBD TBD TBD 2026-27E
+OpenAI StrawberryAVGO (est) TBD TBD TBD TBD TBD 2026-27E
+Google
+AWS
+Azure
+Meta
+Source: Trendforce, Company reports, MSUSA Estimates
+Adjusting Ests/PT for AMD and NVDA PT, No Change to INTC/AVGO/CRDO
+For AMD, no change to our MarQ Rev/EPS estimates at $7.10B/$0.95 (cons. $7.10/$0.94), while
+lowering F25E from $32.2B/$5.00 to $31.9B/$4.70 (cons. $31.9B/$4.66) and F26E from $39.1B/
+$7.00 to $38.3B/$6.33 ($38.4B/$6.29). Reiterate AMD at Outperform and lower PT to $120 (prior:
+$140), 19.0x F26E P/E (prior: 20.0x) as we see continued headwinds to AMD's AI growth with it
+having trouble securing CoWoS share, while NVDA remains the dominant leader in the merchant
+GPU market, but we see share gains in traditional server and PC as key tailwinds.
+For NVDA, no change to NVDA estimates and reiterate our Outperform, but lower PT to $168,
+31.1x our F27E P/E, as we pull in our PT with multiple compression in the AI space overall due to
+3
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+fears of slowing growth, but we continue to see NVDA dominating with a superior HW/SW stack
+as it ramps Blackwell and maintains leadership with CUDA.
+No change to INTC/AVGO/CRDO estimates or PTs of $23/$250/$90, respectively as we continue
+to see INTC with share loss headwinds win PC/server end markets, but we note potential tailwinds
+from a foundry spin (Link), as well as its new CEO (Link), AVGO seeing AI tailwinds as the custom
+ASIC leader, and CRDO benefiting from both the scale up and scale out of AI clusters, while driving
+better performance with its "n-1" process.
+Exhibit 6 - Comparable Valuations as of March 13, 2025
+Company Ticker Rating Price TargetPrice Market Cap
+C26E Sales
+($M)
+C26E
+EV/EBITDA
+C26E
+EV/Sales
+C26E
+P/Sales C26E EV/FCFC26E P/E
+Advanced Micro Devices Inc AMD Outperform $120.00 $98.18 $159,099 $38,363 15.2x 4.1x 4.1x 21.9x 15.6x
+Intel Corp INTC Neutral $23.00 $23.77 $102,924 $57,349 7.4x 2.3x 1.8x N/A 20.4x
+Broadcom Inc AVGO Outperform $250.00 $192.01 $902,821 $75,551 18.9x 12.7x 11.9x 24.8x 23.6x
+NVIDIA Corp NVDA Outperform $168.00 $115.46 $2,817,224 $246,454 16.2x 11.3x 11.4x 21.2x 20.7x
+Credo Technology Group CRDO Outperform $90.00 $44.36 $7,532 $802 23.8x 8.9x 9.4x 33.3x 31.7x
+Peer Average 16.3x 7.9x 7.7x 25.3x 22.4x
+Peer Median 16.2x 8.9x 9.4x 23.4x 20.7x
+Source: Company reports, BBG, MSUSA Estimates
+Exhibit 7 - AMD Income Statement
+AMD In ($M), except per-share data2022 1Q:23 2Q:23 3Q:23 4Q:23 2023 1Q:24 2Q:24 3Q:24 4Q:24 2024 1Q:25E 2Q:25E 3Q:25E 4Q:25E 2025E 2026E
+FY Ends Dec Mar Jun Sep Dec Mar Jun Sep Dec Mar Jun Sep Dec
+3/13/2025
+Total Revenue 23,601 5,353 5,359 5,800 6,168 22,680 5,473 5,835 6,819 7,658 25,785 7,102 7,425 8,340 9,021 31,889 38,383
+Cost of Goods Sold 11,328 2678 2694 2837 3035 11,244 2612 2734 3162 3518 12,026 3270 3434 3824 4109 14,637 17,353
+R&D 5,005 1411 1443 1507 1511 5,872 1525 1583 1636 1712 6,456 1705 1730 1751 1777 6,963 7,415
+SG&A 1,025 176 162 190 216 744 189 234 325 413 1,161 369 386 400 415 1,571 1,827
+Amortization/Restructuring 293 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Other Adjustments 102 10 8 10 6 34 (14) (20) 19 11 (4) 11 11 11 11 44 44
+Operating Income 6,345 1098 1068 1276 1412 4,854 1133 1264 1715 2026 6,138 1769 1886 2375 2731 8,762 11,832
+Interest Income (Expense) (88) (25) (28) (26) (27) (106) (25) (25) (23) (19) (92) (19) (19) (19) (19) (76) (76)
+Other Income (Expense) 70 41 43 52 50 186 56 55 36 37 184 43 43 43 43 172 172
+Pre-Tax Income 6,327 1114 1083 1302 1435 4,934 1164 1294 1728 2044 6,230 1793 1910 2399 2755 8,858 11,928
+Taxes 823 145 141 170 186 642 151 168 224 267 810 233 248 312 358 1,152 1,551
+Non Controlling Interest/Other0 1 6 3 0 10 0 0 0 0 0 0 0 0 0 0 0
+Net Income 5,504 970 948 1135 1249 4,292 1013 1126 1504 1777 5,420 1560 1662 2087 2397 7,706 10,377
+Avg. Shares (000) 1,571 1611 1627 1629 1628 1,624 1639 1637 1636 1634 1,637 1640 1640 1640 1640 1,640 1,640
+Pro Forma EPS $3.53 $0.60 $0.58 $0.70 $0.77 $2.65 $0.62 $0.69 $0.92 $1.09 $3.31 $0.95 $1.01 $1.27 $1.46 $4.70 $6.33
+Street EPS Consensus $1.09 ($0.03) $0.04 $0.19 $0.43 $0.64 $0.08 $0.18 $0.49 $0.41 $1.18 $0.94 $1.02 $1.26 $1.43 $4.66 $6.29
+Street GM Consensus 52.0% 50.0% 50.0% 51.0% 51.5% 50.6% 51.0% 53.0% 53.5% 54.0% 53.3% 54.0% 53.7% 54.6% 54.9% 53.9% 54.9%
+Margin Analysis
+Gross Profit Margin 52.0% 50.0% 49.7% 51.1% 50.1% 50.4% 52.3% 53.1% 53.6% 54.3% 53.4% 54.0% 53.8% 54.1% 54.5% 54.1% 54.8%
+R&D 21.2% 26.4% 26.9% 26.0% 24.5% 25.9% 27.9% 27.1% 24.0% 22.4% 25.0% 24.0% 23.3% 21.0% 19.7% 21.8% 19.3%
+SG&A 4.3% 3.3% 3.0% 3.3% 3.5% 3.3% 3.5% 4.0% 4.8% 5.4% 4.5% 5.2% 5.2% 4.8% 4.6% 4.9% 4.8%
+Operating Margin 26.9% 20.5% 19.9% 22.0% 22.9% 21.4% 20.7% 21.7% 25.2% 26.5% 23.8% 24.9% 25.4% 28.5% 30.3% 27.5% 30.8%
+Pre-Tax Margin 26.8% 20.8% 20.2% 22.4% 23.3% 21.8% 21.3% 22.2% 25.3% 26.7% 24.2% 25.2% 25.7% 28.8% 30.5% 27.8% 31.1%
+Tax Rate 13.0% 13.0% 13.0% 13.1% 13.0% 13.0% 13.0% 13.0% 13.0% 13.1% 13.0% 13.0% 13.0% 13.0% 13.0% 13.0% 13.0%
+Net Margin 23.3% 18.1% 17.7% 19.6% 20.2% 18.9% 18.5% 19.3% 22.1% 23.2% 21.0% 22.0% 22.4% 25.0% 26.6% 24.2% 27.0%
+Qtr/Qtr Change
+Total Revenue -4.4% 0.1% 8.2% 6.3% -11.3% 6.6% 16.9% 12.3% -7.3% 4.5% 12.3% 8.2%
+Cost of Sales -2.3% 0.6% 5.3% 7.0% -13.9% 4.7% 15.7% 11.3% -7.0% 5.0% 11.4% 7.5%
+R&D 3.3% 2.3% 4.4% 0.3% 0.9% 3.8% 3.3% 4.6% -0.4% 1.5% 1.2% 1.5%
+SG&A -25.4% -8.0% 17.3% 13.7% -12.5% 23.8% 38.9% 27.1% -10.6% 4.5% 3.7% 3.7%
+Operating Income -13.0% -2.7% 19.5% 10.7% -19.8% 11.6% 35.7% 18.1% -12.7% 6.6% 25.9% 15.0%
+Pre-Tax Income -13.0% -2.8% 20.2% 10.2% -18.9% 11.2% 33.5% 18.3% -12.3% 6.5% 25.6% 14.8%
+Taxes -82.4% -2.8% 20.6% NM -76.5% 11.3% 33.3% NM -71.2% 6.5% 25.6% NM
+Net Income -12.8% -2.3% 19.7% 10.0% -18.9% 11.2% 33.6% 18.2% -12.2% 6.5% 25.6% 14.8%
+Avg Shares (000) - Diluted -0.4% 1.0% 0.1% -0.1% 0.7% -0.1% -0.1% -0.1% 0.4% 0.0% 0.0% 0.0%
+Diluted EPS Before Chgs -12.5% -3.2% 19.6% 10.1% -19.4% 11.3% 33.7% 18.3% -12.5% 6.5% 25.6% 14.8%
+Source: company reports, MSUSA estimates
+4
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+Price Target Calculation and Key Risks
+Advanced Micro Devices, Inc. (AMD)
+Investment Thesis
+We see AMD well-positioned as a second-place AI accelerator competitor after enjoying continued strength in DC compute with share
+gains as it ramps its Zen 5 Turin with missteps from its competitor. We believe AI accelerator demand remains strong as MI325x/355x
+ramp in 2025E, with a strong roadmap to MI400X and beyond driving into the ~$500B AI accelerator market by 2028E (~60% 23-28E
+CAGR), currently dominated by NVDA, with upside from an estimated ~MSD% market share. 2025E could see continued strong roadmap
+execution with Zen 6 Medusa and Venice.
+Base Case/PT
+With AMD gaining server share, a potential PC rebound and upcoming AI product launches, we see a base case PT of $120, ~19.0x
+our F26E P/E.
+Bull Case/PT
+If AMD can win significant server/DC market and capitalize on growth in AI, AMD could drive EPS to $5.60 with accretive GMs and better
+than expected Instinct ramps, implying a bull case PT of ~$160 and a 23.0x F26E P/E with a $6.96 EPS.
+Bear Case/PT
+If AMD is unable to maintain current roadmap execution momentum and loses server market share, AMD could see growth decline,
+leading to a downside EPS of $5.75, with a 15.6x F26E P/E and implying a bear case PT of ~$90.
+Risks
+AMD could see challenges with an AI slowdown into 2025 or a PC market rebound in 2025E not materializing. We also believe INTC
+proves more of a threat to AMD vs. prior years with its new product roadmap which could slow or reverse AMD’s recent share gains.
+We would also note AMD remains a distant second supplier to NVDA in the AI GPU race, with limited CoWoS allocations potentially
+limiting growth.
+NVIDIA Corporation (NVDA)
+Investment Thesis
+We see NVDA remaining the leader in the AI training and inference chips for Data Center applications (we estimate >95% share today),
+which we believe is growing at a 74% CAGR to >$400B by 2027E. Gaming GPUs (we estimate >75% PC share) are expected to remain
+healthy and stable, while NVDA’s automotive ADAS pipeline remains strong. We continue to see NVDA executing its roadmap, with
+GB200 and NVL72/36 ramping in 2025E, as well as increasing its AI server content via the Grace CPU. We believe headwinds from China
+AI chip restrictions remain muted. We also see upgrade cycle opportunity for the RTX 50-series as RTX 40-series penetration remains
+at ~10% of the PC market, as NVDA could see a >$10B/yr Gaming revenue run rate.
+Base Case/PT
+NVDA remains well positioned in the machine learning, deep learning, and AI markets. Our $168 PT reflects ~31.1x F27E P/E, still within
+its historical range ~20-65x as it retains >75-90% market share in merchant DC/AI.
+Bull Case/PT
+NVDA has significant market leading opportunities in the AI/DC, Gaming, and Automotive markets, which could drive F27E EPS to ~
+$5.94 and a share price of ~$250, ~42.1x F27E P/E.
+Bear Case/PT
+If NVDA is unable to maintain strong growth in key markets as well as fails to continue to capitalize on AI opportunities, we could see
+it trading closer to ~20.4x our bear case F27E EPS of ~$4.91, implying a share price of ~$100.
+Risks
+Escalations of export restrictions to China and other geopolitical tensions (Taiwan) or a significant pullback in AI Server spending could
+be major headwinds. We would also note limited CoWoS capacity at TSMC, and other suppliers, potential for FTC lawsuits, and growing
+competition both domestically and in China, pose additional challenges.
+5
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+Intel Corporation (INTC)
+Investment Thesis
+We believe a new CEO could provide opportunities with a vision to return the company to growth and a trajectory to catch up with key
+peers AMD/NVDA in AI, Server, and PC. INTC's market opportunities remain abundant with leading share in server CPU, strong, but
+declining, market share in PC, and a lagging AI portfolio with Gaudi/Falcon Shores. However, we see challenges with execution as its
+foundry roadmap remains weak, while its AI accelerator roadmap lags both AMD/NVDA. We do see FPGA spinoff a value-adding driver,
+but overall remain on the sidelines with multiple headwinds and lacking company vision. We continue to see the potential spin-off/sale
+of its foundry business as long-term positive.
+Base Case/PT
+While INTC has multiple potential tailwinds including AI opportunities, IFS expansion, margin improvements and the FPGA spin,
+execution in these key segments has been weak with soft AI and server traction and PC share loss. We rate INTC Neutral with a $23
+PT, ~19.5x our F26E EPS.
+Bull Case/PT
+If INTC can generate better than expected DC/AI revenues, successfully ramp IFS, or unlock value with business unit spin-offs, INTC
+could see a $29PT at ~22.4x F26E EPS.
+Bear Case/PT
+If INTC has issues with new nodes/product ramps, sees softer DC/AI, or sees foundry setbacks, we believe it could lead to share gains
+for AMD and NVDA, leading to a bear case PT at ~$17, or ~15.9x F26E EPS.
+Risks
+INTC will need to continue to execute in 2025E on its process node roadmap as well as gain traction in its Foundry business, while it
+continues its search to find new leadership. Further missteps could see it lose further share to AMD in PC and/or Server, as well as fall
+farther behind in the AI race to NVDA.
+Broadcom Inc. (AVGO)
+Investment Thesis
+AVGO remains an industry leader with strong profitability, GM/OM at ~79%/66% and FCF/year growing toward ~$33B by F25E while
+benefiting from key secular AI drive tailwinds for its networking and custom ASIC business. AVGO could benefit from accelerating AI
+tailwinds with AI revenue potentially growing to >$50B by F27E (up 4x vs. F24) with a current custom silicon SAM of ~$17.5B (AVGO
+~70% share) potentially growing to $60-90B with AI networking Tomahawk and Jericho outpaces Infiniband as 800G/1.6T transitions
+take hold. We continue to see strength in its broad semiconductor portfolio including Wireless (iPhone), Networking (Tomahawk, Jericho,
+Trident), Storage, Broadband (Wifi6/6e/7), and Software, where >90% of bookings are recurring and F25E revenue is estimated at ~
+$61.6B. We see iPhone content remaining strong, ramping into iPhone 16 with potential for further gains in 17, while VMWare integration
+trends ahead of schedule and visibility to $4B/Q run-rate.
+Base Case/PT
+We see AVGO well positioned with Networking and AI ramps, a strong position in Wireless, and margin-accretive software. We rate
+AVGO Outperform, with a $250 PT based on ~31.2x our F26E EPS estimate.
+Bull Case/PT
+If AVGO can see improved AI opportunities in custom silicon and networking we believe AVGO could see a Bull case PT of ~$350, with
+an $8.65 upside F26E EPS, indicating a ~41x F26E P/E.
+Bear Case/PT
+The company could see headwinds in key growth drivers in Networking/AI with increasing competition, representing a Bear case PT
+of ~$160, 21.6x our downside F26E EPS of $7.41.
+Risks
+AVGO competes in a cyclical, technologically intensive industry and sells to a concentrated customer base. Risks include, among other
+factor, AVGO’s continued success of its research and development efforts, and execution of its new products, dependence on contract
+manufacturing and third-party manufacturers, customer concentration, competition, and pricing pressure from possible new market
+6
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+entrants from China, Asia-Pacific, or Taiwan. We could also see changes in legal and regulatory requirements, tariffs and exchange
+rates limiting growth.
+Credo Technology Group Hldg (CRDO)
+Investment Thesis
+CRDO is a technology innovator with strength in SerDes IP, server interconnect products with its AEC (active electrical cables), Optical
+DSP, Line Card PHY, chiplets, and IP licensing. CRDO is actively engaged with all seven major hyperscalers, as well as CSP, Enterprise,
+and Networking customers and is benefiting from increased AI infrastructure spending for its Optical and AEC solutions. CRDO has
+strong GMs at ~64% (in-line with its LT 63-65%), and we believe is an attractive company with competitive advantages in SerDes IP
+that can drive materially lower TCO in Data Centers compared to the competition with a TAM potentially 20x its current AEC revenue
+run rate of $300M/yr.
+Base Case/PT
+Our $90 PT is ~24x our F26E P/S and represents our base case scenario. We view CRDO as a leader, with a full suite of products
+addressing the 400G+ market, growing 2x overall DC market.
+Bull Case/PT
+If CRDO can successfully ramp at its 3 key hyperscale customers, ramp capacity and potentially add additional hyperscale customers,
+as well as see overall faster 400G/800G ramps, it could see benefits to its top and bottom lines. Our upside case scenario implies a
+$140PT, and ~35x our upside F26E P/Sales.
+Bear Case/PT
+If CRDO sees tougher than expected competition, fails to sustain traction with AEC, or sees a slowdown in DC, we see CRDO trading
+at $50, ~15x our downside F26E P/Sales.
+Risks
+CRDO is sensitive to spending from a few large customers in the Data Center market, including US/China hyperscalers and CSPs. While
+an advantage typically, if its customers significantly pull back on buildouts and investment, then this could negatively impact CRDO’s
+growth. Competition, mainly from AVGO and MRVL, could be headwinds to CRDO, as well exposure to China customers, and TSMC as
+its sole source foundry partner.
+Companies Mentioned (prices as of 3/12/2025)
+Advanced Micro Devices, Inc. (AMD- Outperform $98.11)
+Amazon.com, Inc. (AMZN- Outperform $193.89)
+Broadcom Inc. (AVGO- Outperform $191.36)
+Intel Corporation (INTC- Neutral $23.70)
+Meta Platforms, Inc. (META- Outperform $590.64)
+NVIDIA Corporation (NVDA- Outperform $115.58)
+Alphabet, Inc. (GOOGL- Outperform $162.76)
+Apple Inc. (AAPL- Not Rated)
+Credo Technology Group Hldg (CRDO- Outperform $44.95)
+Marvell Technology Group Ltd. (MRVL- Not Rated)
+Microsoft Corporation (MSFT- Outperform $378.77)
+Important Disclosures
+The disclosures for the subject companies of this report as well as the disclosures for Mizuho Securities USA LLC entire coverage universe can be found at https://
+msusa.bluematrix.com/sellside/Disclosures.action or obtained by contacting EQSupervisoryAnalystUS@mizuhogroup.com or via postal mail at Equity Research Editorial
+Department, Mizuho Securities USA LLC, 1271 Avenue of the Americas, 2nd FL, New York NY, 10020.
+Investment Risks and Valuation Methods can be located in the following section of this research report: Base Case PT and Key Risks.
+Ownership Disclosures and Material Conflicts of Interest or Position as Officer or Director
+As of the date of this report, the research analyst listed on the cover page of this report or household member beneficially owns or has a
+financial interest in Apple Inc..
+Receipt of Compensation
+Mizuho Securities USA LLC and or its affiliates makes a market in the following securities: Advanced Micro Devices, Inc., Intel Corporation, Credo Technology Group Hldg,
+Alphabet, Inc. and Marvell Technology Group Ltd.
+Mizuho Securities USA LLC and or its affiliates has received compensation for investment banking services for Broadcom Inc. in the past 12 months.
+Mizuho Securities USA LLC and or its affiliates expects to receive or intends to seek compensation for investment banking services for Broadcom Inc. in the next 3 months.
+Mizuho Securities USA LLC and or its affiliates has managed or co-managed a public offering of securities for Broadcom Inc. in the past 12 months.
+Mizuho Securities USA LLC and or its affiliates have provided investment banking services for Broadcom Inc. who is or was a client in the past 12 months.
+Mizuho Securities USA LLC and or its affiliates have provided non-securities-related services for Apple Inc. and Amazon.com, Inc. who are or were clients in the past 12
+months.
+7
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+Regulation Analyst Certification (AC)
+I, Vijay Rakesh, hereby certify that the views expressed in this research report accurately reflect my personal views about any and all the subject companies. No part of my
+compensation was, is or will be, directly or indirectly, related to the specific recommendations or views expressed in this research report.
+Rating Definitions
+As of 6/21/2024, Mizuho Securities USA (MSUSA) uses a relative rating system in which stocks are rated as Outperform, Neutral, or Underperform (see definitions below)
+relative to other companies covered by the analyst or a team of analysts that are deemed to be in the same industry (the “relevant industry coverage universe”). Investors
+should read the research report in its entirety, including the definitions of all ratings, and not infer its contents from the rating alone.
+Investment ratings are based on the following definitions: The expected total return calculation includes anticipated dividend yield.
+Outperform (O): The stock's total return is expected to outperform the unweighted, expected total return of the analyst's industry coverage universe over the next 12
+months.
+Neutral (N): The stock’s total return is expected to perform in line with the unweighted, expected total return of the analyst’s industry coverage universe over the next
+12 months.
+Underperform (U): The stock’s total return is expected to underperform the unweighted, expected total return of the analyst’s industry coverage universe over the next
+12 months.
+Restricted (R):  In certain circumstances, MSUSA policy and/or applicable securities regulations preclude certain types of communications, including investment
+recommendations, during the course of Mizuho’s engagement in certain transactions and in certain other circumstances.
+Rating Suspended (RS) : The rating and target price have been temporarily suspended due to market events that made coverage impracticable or to comply with
+applicable regulations and/or firm policies in certain circumstances.
+Not Covered (NC): MSUSA does not cover the company.
+For disclosure purposes only (NYSE and FINRA ratings distribution requirements), our Outperform, Neutral and Underperform ratings are displayed as Buy, Hold and
+Sell, respectively.
+Prior to 6/21/24, MSUSA’s ratings were Buy, Neutral and Underperform.
+Rating Distribution
+(As of March 13 ) % of coverage IB service past 12 mo
+Buy (Outperform) 61.52% 54.49%
+Hold (Neutral) 35.81% 50.53%
+Sell (Underperform) 2.67% 21.43%
+For disclosure purposes only (NYSE and FINRA ratings distribution requirements), our Outperform, Neutral and Underperform ratings are displayed as Buy, Hold
+and Sell, respectively.
+For additional information: Please log on to http://www.mizuhosecurities.com/us or write to Mizuho Securities USA LLC 1271 Avenue of the Americas, 2nd FL, New York,
+NY 10020.
+Disclaimers
+This report has been prepared by Mizuho Securities USA LLC (“MSUSA”), a subsidiary of Mizuho Americas LLC, solely for the purpose of supplying information to the clients
+of MSUSA and/or its affiliates to whom it is distributed. This report is not, and should not be construed as, a solicitation or offer to buy or sell any securities or related
+financial products.
+This report has been prepared by MSUSA solely from publicly available information. The information contained herein is believed to be reliable but has not been independently
+verified. MSUSA makes no guarantee, representation or warranty, and MSUSA, MHSC and/or their affiliates, directors, employees or agents accept no responsibility or
+liability whatsoever as to the accuracy, completeness or appropriateness of such information or for any loss or damage arising from the use or further communication
+of this report or any part of it. Information contained herein may not be current due to, among other things, changes in the financial markets or economic environment.
+Opinions reflected in this report are subject to change without notice.
+This report does not constitute, and should not be used as a substitute for, tax, legal or investment advice. The report has been prepared without regard to the individual
+financial circumstances, needs or objectives of persons who receive it. The securities and investments related to the securities discussed in this report may not be suitable
+for all investors. Readers should independently evaluate particular investments and strategies, and seek the advice of a financial adviser before making any investment or
+entering into any transaction in relation to the securities mentioned in this report.
+MSUSA has no legal responsibility to any investor who directly or indirectly receives this material. Investment decisions are to be made by and remain as the sole responsibility
+of the investor. Investment involves risks. The price of securities may go down as well as up, and under certain circumstances investors may sustain total loss of investment.
+Past performance should not be taken as an indication or guarantee of future performance. Unless otherwise attributed, forecasts of future performance represent analysts’
+estimates based on factors they consider relevant. Actual performance may vary. Consequently, no express or implied warranty can be made regarding future performance.
+8
+Industry Report
+Semiconductors & Semiconductor Capital Equipment
+Any references in this report to Mizuho Financial Group, Inc. (“MHFG”), MHSC and/or its affiliates are based only on publicly available information. The authors of this report
+are prohibited from using or even obtaining any insider information. As a direct subsidiary of Mizuho Americas LLC and indirect subsidiary of MHFG, MSUSA does not, as
+a matter of corporate policy, cover MHFG or MHSC for investment recommendation purposes.
+MSUSA or other companies affiliated with MHFG, Mizuho Americas LLC or MHSC, together with their respective directors and officers, may have or take positions in the
+securities mentioned in this report, or derivatives of such securities or other securities issued by companies mentioned in this report, for their own account or the accounts
+of others, or enter into transactions contrary to any recommendations contained herein, and also may perform or seek to perform broking and other investment or securities
+related services for the companies mentioned in this report as well as other parties generally.
+Restrictions on Distribution
+This report is not directed to, or intended for distribution to or use by, any person who is a citizen or resident of, or entity located in, any locality, territory, state, country or
+other jurisdiction where such distribution, publication, availability or use would be contrary to or restricted by law or regulation. Persons or entities into whose possession
+this report comes should inform themselves about and observe such restrictions.
+United States: Mizuho Securities USA LLC, a subsidiary of Mizuho Americas LLC, 1271 Avenue of the Americas, 2nd Floor, New York, NY 10020, USA, contact number
++1-212-209-9300, distributes or approves the distribution of this report in the United States and takes responsibility for it. Any transaction by a US investor resulting from
+the information contained in this report may be effected only through MSUSA. Interested US investors should contact their MSUSA sales representative.
+United Kingdom/Germany/European Economic Area:  This report is distributed in the United Kingdom by Mizuho International plc (MHI), Mizuho House, 30 Old Bailey,
+London EC4M 7AU. MHI is authorised by the Prudential Regulation Authority and regulated by the Financial Conduct Authority and the Prudential Regulation Authority and
+is a member of the London Stock Exchange. This report is distributed in Germany by Mizuho Securities Europe GmbH (MHEU), Taunustor 1, 60310 Frankfurt, Germany.
+MHEU is authorised and regulated by the Bundesanstalt für Finanzdienstleistungsaufsicht (BaFin). This report may be distributed in other member states of the European
+Economic Area by MHI and MHEU. For the avoidance of doubt this report is not intended for persons who are Retail Clients within the meaning of the FCA’s or the BaFin’s
+rules. Details of organizational and administrative controls for the prevention and avoidance of conflicts of interest can be found at https://www.mizuhogroup.com/emea/
+who-we-are/governance/mizuho-international-plc-legal-and-compliance/legal-disclosures.
+Japan: This report is distributed in Japan by Mizuho Securities Co., Ltd. (“MHSC”), Otemachi First Square Otemachi 1-chome, Chiyoda-ku, Tokyo 100-0004, Japan. Registered
+Financial Instruments Firm, No. 94 (Kinsho), issued by the Director, Kanto Local Finance Bureau. MHSC is a member of the Japan Securities Dealers Association, the Japan
+Securities Investment Advisers Association and the Financial Futures Association of Japan, and the Type II Financial Instruments Firms Association.
+Singapore: This report is distributed in Singapore by Mizuho Securities (Singapore) Pte. Ltd. (“MHSS”), a holder of a capital markets services license and an exempt financial
+adviser regulated by the Monetary Authority of Singapore. MHSS may distribute analyses or reports produced by its affiliates or other foreign research houses pursuant to
+an arrangement under Regulation 32C of the Financial Advisers Regulations. This report is only intended for distribution to “institutional investors”, “accredited investors” or
+“expert investors”, as defined under the Financial Advisers Regulations. Singapore recipients of this report should contact MHSS at 12 Marina View, #10-01A Asia Square
+Tower 2, Singapore 018961, for any matter arising from, or in connection with, this report.
+Hong Kong: This report is distributed in Hong Kong by Mizuho Securities Asia Ltd. (‘MHSA’), 14 - 15/F, K11 Atelier, 18 Salisbury Road, Tsim Sha Tsui, Kowloon, Hong Kong,
+a member of MHFG. MHSA is licensed and regulated by the Hong Kong Securities and Futures Commission. This report has been prepared for “professional investors” as
+defined in the Hong Kong Securities and Futures Ordinance. This report has been prepared in accordance with MHSA’s internal conflict of interest management policies.
+Details of MHSA’s organizational and administrative controls for the prevention and avoidance of conflicts of interest are available upon request.
+Australia: This report is being distributed in Australia by MHSA, which is exempted from the requirement to hold an Australian financial services license under the Corporation
+Act 2001 (“CA”) in respect of the financial services provided to the recipients. MHSA is regulated by the Securities and Futures Commission under the laws of Hong Kong,
+which differ from Australian laws. Distribution of this report is intended only for recipients who are “wholesale clients” within the meaning of the CA.
+Dubai: Mizuho International plc (DIFC Branch) is regulated by the Dubai Financial Services Authority and is authorized to provide financial services to Professional Clients
+and Market Counterparties only as defined by the DFSA rulebook. Mizuho International plc (DIFC Branch) registered address is Unit 501, Level 5, The Gate Building, East
+Wing, Dubai International Financial Centre, Dubai, U.A.E., Tel. +971 4 279 4400.
+If you do not wish to receive our reports in the future, please contact your sales person and request to be removed from receiving this distribution.
+© Mizuho Securities USA LLC. All Rights Reserved 2025. This document may not be altered, reproduced (including for purposes of training artificial intelligence models or
+tools), redistributed, passed on to any other party or used to create derivative works, in whole or in part, without the prior written consent of Mizuho Securities USA LLC.
+9

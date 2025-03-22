@@ -1,0 +1,83 @@
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:16:44
+Geetha RanganathanTeam: MediaBI Senior Industry Analyst
+Amazon Competition Squeezing Trade Desk
+Amazon’s DSP Likely Adds to Trade Desk Woes Amid Kokai Slowdown
+(Bloomberg Intelligence) -- One of the key debates for The Trade Desk (TTD) is whether connected-
+TV ads, its main growth engine, can sustain momentum in 2025, especially as the ad-buying tech
+environment gets more competitive with Amazon's DSP. TTD is also dealing with a slower rollout of
+its Kokai platform, which puts 20% revenue growth at risk. Still, TTD will beneﬁt from the broader
+shift of dollars to CTV. (03/20/25)
+1. Hitting a Wall With Amazon’s Walled Garden?
+Contributing Analysts Raveeno Douglas
+TTD attributed its 4Q miss to a slower rollout of Kokai, its AI-powered media-buying tool, but we
+think that growing competition, especially from Amazon's demand-side platform (DSP) is also
+contributing to the souring sentiment. Though it's unlikely that Amazon is taking meaningful share
+yet, it's gaining ground. Apart from Google's DV360, Amazon is turning into a viable rival for TTD's
+open-web buys since it beneﬁts from unlimited access to ﬁrst-party data and the ability to leverage
+cross-channel campaigns that combine both e-commerce and streaming video, giving it an edge.
+Amazon's DSP is also cheaper to use, with others having higher tech fees, suggesting that TTD will
+have to lower prices.
+Still, TTD holds an advantage in terms of independence, reach and access to inventory. (03/20/25)
+The Programmatic Supply Chain
+2. But Prime Video, Sports Accelerating CTV Shift
+Contributing Analysts Raveeno Douglas
+Though the exact impact of Amazon's CTV-ad push on TTD is hard to pinpoint, we think it will lift
+the overall market. The emergence of an ad-supported Amazon Prime Video tier last year
+supercharged CTV ads with the medium set to rise 17% to $34 billion in 2025. A large, built-in
+audience of around 200 million Prime Video subscribers and lower CPMs is accelerating spending to
+trusted digital outlets and away from linear-TV channels. And as live-sports rights move to
+streaming, it's creating more ad inventory, driving a shift of dollars to connected from traditional
+TV. Momentum will extend beyond 2025 as Netﬂix likely makes a bigger thrust into live
+programming.
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:16:44
+CTV is TTD's fastest-growing channel representing about 45% of revenue. CTV ads are online-video
+advertisements on large-screen connected-TV devices. (03/20/25)
+US Connected-TV Advertising ($B)
+3. Amazon Squeezing CTV-Ad Pricing
+Contributing Analysts Raveeno Douglas
+Amazon Prime Video's advertising launch instantly created a top player in the streaming market,
+and the increased competition has caused CPMs to fall across streaming services, resulting in
+lower costs for advertisers. Though that's attracting a greater portion of marketing budgets, it's
+depressing overall ad spending due to a race to the bottom as the ﬂood of inventory from Amazon
+puts more pressure on prices. Netﬂix's ad prices are projected to have dropped 26% since 1Q24,
+while Disney+ will likely slump by around 27-28%. That could eventually mean lower revenue for
+TTD given its new partnerships, which grant access to more ad inventory from Disney, Netﬂix, Roku
+and Tubi.
+TTD said that average CTV CPMS are around $20 given the one-to-one targeting vs. $10 for
+traditional TV. (03/20/25)
+US Streaming-Ad Prices by Platform
+4. Positive Levers Still in Place
+The biggest question for TTD will be visibility for a recovery in 2025. We believe that TTD's scale,
+transparency, independence, and interoperability are core diﬀerentiators that give it an edge. The
+company continues to have a long runway across high-growth areas including CTV, retail media
+and digital audio. The key trend and growth driver is the ongoing shift to programmatic ad
+spending in CTV, and we think that supply-path optimization will also contribute to accelerating
+expansion in 2025. TTD's foray into the TV OS market with Ventura also represents an opportunity
+for it to improve the CTV supply path and increase data transparency and eﬃciency.
+The company will also beneﬁt from share gains from DV360, especially as advertiser distrust in
+Google grows and the company deprioritizes its own ad-tech business. (02/13/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:16:44
+Breakdown of TTD’s Ad Spending
+To contact the analyst for this research:
+Geetha Ranganathan at granganathan@bloomberg.net

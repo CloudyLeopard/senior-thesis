@@ -16,6 +16,7 @@ from kruppe.data_source.utils import (
     not_ready
 )
 from kruppe.models import Document
+from kruppe.utils import log_io
 
 logger = logging.getLogger(__name__)
 

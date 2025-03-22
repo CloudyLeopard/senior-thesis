@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
 import httpx
 
 from kruppe.models import Embeddable, Response
+from kruppe.utils import log_io
 
 HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=50, max_connections=400)
 HTTPX_TIMEOUT = httpx.Timeout(5.0, read=60.0) # high read timeout cuz nyu api is slow (i keep getting read timeout error)
@@ -80,6 +81,7 @@ class OpenAILLM(BaseLLM):
     sync_client: OpenAI = Field(default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     async_client: AsyncOpenAI = Field(default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     
+    @log_io
     def generate(
         self, messages: List[Dict], max_tokens=2000
     ) -> Response:
@@ -109,6 +111,7 @@ class OpenAILLM(BaseLLM):
 
         return Response(text=completion.choices[0].message.content)
 
+    @log_io
     async def async_generate(
         self, messages: List[Dict], max_tokens=2000
     ) -> Response:
@@ -140,6 +143,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     model: Literal["gpt-4o-mini"] = "gpt-4o-mini"
     endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT"))
 
+    @log_io
     async def async_generate(self, messages: List[Dict], max_tokens=2000, retries=3, backoff_factor=0.3) -> Response:
         if self.keep_history:
             self.messages.extend(messages)

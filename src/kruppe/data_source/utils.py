@@ -11,7 +11,7 @@ import stamina
 import json
 from functools import wraps
 
-
+from kruppe.utils import log_io
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.models import Document
 
@@ -211,6 +211,7 @@ class WebScraper:
         return html
 
 
+    @log_io
     async def async_scrape_link(
         self,
         url: str,
@@ -272,6 +273,7 @@ class WebScraper:
         links: List[str],
         headers: Dict[str, str] = None,
         selenium_fallback: bool = True,
+        progress_bar: bool = False,
     ) -> AsyncGenerator[Dict[str, str], None]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works.
 
@@ -289,8 +291,9 @@ class WebScraper:
         else:
             client = self.async_client
 
-        try:
+        if progress_bar: 
             pbar = tqdm(total=len(links), desc="Async scraping links")
+        try:
 
             # # NOTE: I do NOT know if I need to do things in batches. 
             # # I think httpx handles it for me, but past experience tells me now.
@@ -306,10 +309,11 @@ class WebScraper:
 
             tasks = [self.async_scrape_link(url=link, driver=driver) for link in links]
             for completed in asyncio.as_completed(tasks):
+                if progress_bar:
+                    pbar.update(1)
                 data = await completed
                 if data is not None:
                     yield data
-                pbar.update(1)
 
         finally:
             if self.async_client is None:
@@ -318,6 +322,9 @@ class WebScraper:
             if driver:
                 driver.quit()
                 logger.debug("Closed Selenium driver")
+            
+            if progress_bar:
+                pbar.close()
 
 
 

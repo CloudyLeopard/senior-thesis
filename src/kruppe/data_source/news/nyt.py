@@ -9,6 +9,7 @@ import time
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException, load_headers
 from kruppe.models import Document
+from kruppe.utils import log_io
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ class NewYorkTimesData(NewsSource):
         async for document in self._nyt_scraper_helper(article_metadata, query=query):
             yield document
     
+    @log_io
     async def news_recent(
         self,
         days: int = None, # TODO: not implemented

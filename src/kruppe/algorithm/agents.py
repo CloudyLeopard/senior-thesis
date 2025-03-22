@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Callable, List, Dict
 import json
 import asyncio
 
+from kruppe.utils import log_io
 from kruppe.llm import BaseLLM
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.data_source.utils import is_method_ready, combine_async_generators
@@ -66,12 +67,10 @@ class Librarian(Researcher):
 
         return "\n".join(desc_lists)
     
+    @log_io
     async def execute(self, information_desc: str) -> AsyncGenerator[Document, None]:
-        print("Librarian choosing resources...")
         resource_requests = await self.choose_resource(information_desc)
         
-        print(f"Librarian retrieved {len(resource_requests)} resources")
-        print("Librarian retrieving resources...")
         async for doc in self.retrieve(resource_requests):
             yield doc
 
@@ -112,6 +111,9 @@ class Librarian(Researcher):
         func = self.library[func_name]["func"]  # NOTE: warning, may not be safe
         parameters = resource_request["parameters"]
 
+        # TODO: remove later - right now, i'm putting a cap on number of documents that can be retrieved
+        parameters["max_results"] = 10
+
         result = func(**parameters)
         if hasattr(result, "__aiter__"):  # some functions return async iterators
             async for document in result:
@@ -122,7 +124,7 @@ class Librarian(Researcher):
                 yield document
 
     async def retrieve(
-        self, resource_requests: List[Dict], num_resources: int = 3
+        self, resource_requests: List[Dict], num_resources: int = 1
     ) -> AsyncGenerator[Document, None]:
         # limit to num_resources
         resource_requests = resource_requests[:num_resources]

@@ -8,9 +8,12 @@ __pycache__/
 .ipynb_checkpoints/
 data/
 tmp/
+logs/
 
 bash/
 .ft-headers.json
 .nyt-headers.json
 exports/
 .gradio/
+
+*.pdf

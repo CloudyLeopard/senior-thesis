@@ -1,0 +1,356 @@
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+Kunjan SobhaniTeam: TechnologyBI Senior Industry Analyst
+Woo Jin HoTeam: TechnologyBI Senior Industry Analyst
+Key Topics
+AI-Chip Valuations NEW
+Midcap AI Semis Valuation NEW
+Hardware, Networking PE's NEW
+AI Hardware's Perfect Storm NEW
+Table of Contents
+AI-Semiconductor & Hardware Valuation
+1. AI Infrastructure Spending Resilient Despite Market Pullback
+Contributing Analysts Jake Silverman (Technology)
+(Bloomberg Intelligence) -- AI semiconductor stocks have pulled
+back sharply, but fundamentals suggest this is more of a valuation
+reset than a structural decline. Hyperscaler AI capital spending
+continues to rise, supporting demand for GPUs, custom ASICs and
+networking products, even as margin forecasts face compression.
+Meanwhile, AI-hardware vendors and networking chipmakers are
+navigating near-term uncertainty from tariﬀs and product cycles but remain positioned for long-
+term growth. Small- and midcap AI semis have faced multiple compression on capex and economic
+fears, though earnings outlooks remain stable. If AI infrastructure spending sustains its
+momentum, these segments could post a strong recovery. (03/20/25)
+Key Topics
+AI-Chip Valuations
+AI Semi Stocks' Retreat Seems More Recalibration Than Breakdown
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+AI semiconductor stocks' sharp pullback may be driven more by a recalibration than a structural
+decline, with rising hyperscaler spending fueling demand for GPUs, custom ASICs and networking
+solutions raising revenue consensus for AI-chip makers, despite margin pressure and competitive
+shifts. Though valuations have compressed, AI infrastructure spending remains strong, positioning
+the sector for long-term growth. (03/17/25)
+2. Fundamentals Check – Has Anything Changed?
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+AI compute chipmakers' revenue consensus in the past six months indicates rising projections as
+GPU, custom compute and AI network-demand continues to climb. Some outliers like Intel, AMD
+and Nvidia's Data Center networking show declines due to market-share loss (Intel, Inﬁniband) and
+company-speciﬁc growth issues (Intel, AMD) rather than end-market weakness. Custom compute
+and networking participants like Broadcom, Marvell and Astera Labs have seen signiﬁcant upward
+revisions, reﬂecting hyperscaler AI investment beyond GPUs.
+Though some AI-spending headwinds exist (including DeepSeek, trade restrictions and tariﬀs), data
+suggests these haven't aﬀected estimates on a quantitative level, but have impacted those
+valuations driven by qualitative perspectives. (03/17/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+AI Segment Revenue Forecast (6 mo ago vs. today)
+3. Valuation Reset – Cheap or Justiﬁed?
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+P/E multiples for AI peers were trading at a 100% premium to SOX (39x vs. 17x), before narrowing
+to 57% (27x vs. 17x). Previously, names like Astera Labs (82x), ARM (51x) and Marvell (29x)
+commanded hefty valuation premiums, but these have signiﬁcantly retreated. Nvidia's has fallen to
+20x from 25x, Marvell's has dropped to 19x vs. 31x, and AMD now trades at just 16-17x.
+Though AI fundamentals remain strong with revenue estimates boosted for Nvidia, Broadcom and
+others, margin projections have been cut, largely due to company-speciﬁc headwinds rather than
+economic weakness. The compression appears more tied to geopolitical risk and near-term
+uncertainty than a deterioration in AI demand. If fundamentals remain strong and AI capex
+continues rising, this could just be a near-term correction. (03/17/25)
+AI Semi Valuations Changes YTD
+4. Drop in Semis Echoes Recession Playbook
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+A recent downturn in fundamentals and corresponding semiconductor-valuation contractions
+provide a framework for possible recessionary scenarios and implications for current multiples, our
+analysis suggests. Though the computing semis outlook doesn't suggest a fundamental
+recessionary downturn, the recent valuation contraction (minus 26% 2024 peak to YTD 2025)
+suggests concerns about being priced in. A current SOX multiple of 17x -- at ﬁve-year average
+levels -- suggests a limited downside scenario, unless 2025-26 fundamentals get readjusted
+signiﬁcantly (about 15% below 2024's sales levels).
+Despite volatility, computing semiconductor revenue (driven by AI) is projected to grow at a 9.5%
+CAGR, reinforcing long-term demand. (03/17/25)
+Computing Sales Forecast & SOX PE Compression
+5. AI Compute Companies Face Margin Compression
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+Gross-margin estimates for AI compute companies have been pared for calendar 2025-26, with
+Nvidia, AMD and Intel's declines largely driven by new product ramp-ups and supply-chain costs.
+Nvidia's Blackwell and AMD's MI300x -- both new oﬀerings -- are fueling near-term margin
+weakness, while Intel faces more rivalry and higher manufacturing costs. Marvell's drop is driven
+by its custom-silicon push, which is a gross-margin headwind but may boost operating margin
+longer term as hyperscalers shift toward custom AI silicon. Networking and ASIC companies like
+Broadcom and Astera Labs are expanding proﬁtability on rising average selling prices and content.
+Despite this, AI peers still lead the semi industry, with a 2025 consensus gross margin of 73%, on
+average, vs. the SOX at around 50%, underscoring AI’s premium positioning. (03/17/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+AI Peers Gross Margin Forecast (6 mo ago vs Today)
+6. 2025-26 View – AI-Spending Outlook
+Contributing Analysts Oscar Hernandez Tejada (Technology)
+Despite concerns around DeepSeek and fears of a slowdown, AI demand keeps rising, with
+hyperscalers aggressively increasing capex. In the past year, Microsoft, Meta, AWS and Google
+have all made major AI investments, with 2025-26 capex forecasts up sharply. Though a slowing
+economy could hurt spending, past cycles suggest hyperscalers adjust selectively rather than
+retreat entirely. Additionally, the DeepSeek fallout may push hyperscalers to invest more in custom
+silicon for reasoning-based models, which could further beneﬁt Broadcom, Marvell and networking
+providers like Astera Labs.
+Competition is increasing for Nvidia but so will overall demand given AI spending is no longer
+discretionary but a fundamental pillar of cloud growth, and despite external pressures, AI capex
+will accelerate, not slow in the next two years. (03/17/25)
+Hyperscaler Capex Increases for CY25 & CY26
+Midcap AI Semis Valuation
+AI-Networking Chip Multiples Compress on Capex, Economic Fears
+Contributing Analysts Jake Silverman (Technology)
+Fears of hyperscaler capital spending cuts and economic weakness have reduced valuations for
+small- and midcap makers of AI and networking chips in the past three months, even as
+fundamentals improved with AI infrastructure buildouts. Memory chipmakers' increased data
+center exposure remains uncorrelated to AI infrastructure. (03/19/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+7. AI Chip Valuations, Fundamentals Diverge
+Contributing Analysts Jake Silverman (Technology)
+Consensus for 2026 earnings of small- and midcap chipmakers for AI and networking have been
+about ﬂat on average for the past three months after being up 16% for the past six months. Yet
+returns dropped 29% over the past three months and rose 21% over the past six, suggesting that
+fundamentals and valuations have decoupled on concerns over DeepSeek, capex cuts by AI
+hyperscalers and an uncertain 2025 economy that could pressure IT expenditures. Assuming that
+2025 hyperscaler spending doesn't decline and grows even modestly next year, small- and midcap
+semiconductor earnings could continue to climb.
+Fundamentals for companies including Credo, Astera Labs, Coherent and Lumentum have
+increased recently. Semtech is an outlier, as an architectural change at Meta sent estimates lower.
+(03/19/25)
+Earnings Estimate Revisions vs. Stock Price
+8. Smaller Multiples Tie to Data Center Exposure
+Contributing Analysts Jake Silverman (Technology)
+Sales growth for AI and networking chipmakers could remain strong as infrastructure expansion
+requires more GPUs and AI clusters, and might be agnostic regarding which particular chips
+hyperscalers or AI clouds use. Revaluation of small- and midcaps exposed to data centers has likely
+hinged on fears that capital spending will be cut by hyperscalers. They had been driving robust
+revenue growth for AI networking chips, spurring premium valuations that are now being tested.
+Multiples have contracted for companies with data center exposure above 20%. Micron’s valuation
+has expanded slightly as memory spot prices have stabilized and customer inventories have
+improved. (03/19/25)
+P/E Multiple Change vs. Data Center Exposure
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+9. Memory Stocks Remain Uncorrelated Spot Pricing
+Contributing Analysts Jake Silverman (Technology)
+Earnings revisions for two top memory suppliers, Micron and SK Hynix, have diverged, likely
+because the latter's heavier exposure to high-bandwidth memory shields it somewhat from weak
+NAND trends. Though data center exposure for memory suppliers has increased amid growing HBM
+and LPDDR5 demand for AI servers, Micron's still nascent HBM sales left it vulnerable to recent
+memory cycles as excess inventory built up at PC and smartphone customers. Neither company's
+shares have been highly correlated to spot pricing in the past year, suggesting that secular trends
+such as HBM have been important catalysts for stocks.
+That said, near-term stabilization of NAND and DRAM spot prices have likely driven recent stock
+movements for Micron, Sandisk and SK Hynix. (03/19/25)
+Spot Pricing, Earnings Revisions
+Hardware, Networking PE's
+Hardware, Networking AI Premium Derisked After Valuation Reset
+Arista, Dell, Celestica and US AI-hardware and networking peers' share retreat may have addressed
+intermediate AI spending concerns. Forward price-to-earnings for 2026 fell 20-30% for the group
+from Jan. 6's peak to a 14.6x average, consistent with the 3-5 year equivalent prior to 2024's AI
+spike, but the outlook remains intact. Fundamentals are poised to ramp up in 2H and into 2026,
+and may drive better earnings growth. (03/20/25)
+10. AI No Longer a Premium Following PE Reset
+Shares of US hardware and networking companies with meaningful AI exposure have dropped 21%,
+on average, since Nvidia's peak valuation on Jan. 6, or "peak AI." Non-AI issues exist, such as HPE's
+poor operational execution in its server business and the potential for fallout from tariﬀs on
+hardware margin and earnings. But in many cases, concerns about intermediate-term AI-
+infrastructure spending have sharply lowered the appetite for risk, narrowing group valuations.
+The concerns may lie more on the durability of 2026 expectations, as P/E plus two years has fallen
+20-30% for the group to a 14.6x average. The current PE plus two years is largely consistent with
+the three-year and ﬁve-year averages for the group, implying much of the valuation related to the
+AI opportunity has been erased. (03/20/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+AI Networking, Hardware Valuation Dynamic
+11. Bloomberg Intelligence Webinar: Ins and Outs of Optical
+Contributing Analysts Jake Silverman (Technology)
+Bloomberg Intelligence analysts Woo Jin Ho and Jake Silverman host Cignal AI analysts Andrew
+Schmitt, Scott Wilkinson and Kyle Hollasch to untangle the complexities of optical technologies.
+Provider innovations are taking optical technologies deeper into the infrastructure stack, with AI
+emerging as the demand and growth catalyst. The webinar will aim to simplify the layers of
+technologies and the vendor landscape. Topics covered include optical transport equipment (Ciena,
+Nokia), pluggable optics (Cisco-Acacia, Coherent, Lumentum, Marvell-Inphi), Silicon Photonics, co-
+packaged optics (Broadcom). (03/20/25)
+Click to REGISTER
+12. Networking Steady; AI Demand Could Still Drive EPS
+The underlying fundamental drivers for AI networking remain robust, which has supported a steady
+stream of upward revisions to Arista's and Celestica's 2025-26 EPS consensus, while Ciena raised
+its three-year growth proﬁle to 8-11% from 5-8%. But the ramp-up may be more 2H-loaded and is
+dependent on the timing or readiness of other pieces of the AI data center, such as the GPU,
+cooling or the physical structure.
+The steady planned increase in the number of 100,000 GPU clusters, plus Nvidia’s GPU updated
+product roadmap at the GTC conference, led by the Rubin chip and NVL144, are encouraging signs
+that the demand for network capacity will only go up in terms of volume and higher-priced gear,
+which would only support further EPS gains. (03/20/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+AI Networking Forward EPS vs. Share Price
+13. Hardware’s Non-AI Tariﬀ Issue Compounds Weak AI Margin
+In contrast, recession and tariﬀ fears compound weak AI-server margins for traditional IT vendors
+Dell and HPE, which has driven the recent slide in valuations. Though we expect AI-server sales to
+increase in 2H, along with the Blackwell GPU ramp-up, margin expansion and EPS growth may be
+more reliant on improved corporate-IT spending and whether companies can work around tariﬀs.
+Leading AI-server providers Dell and Super Micro are likely to remain aggressive in pursuing large
+AI deals, which could keep AI-server margin tempered through 2026. But with the Blackwell
+product cycle in full swing, companies will be exposed to more 10-ﬁgure deals vs. 2025, and
+sentiment may be driven more by the lift in operating income and the impact on proﬁt vs. margin.
+(03/20/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+U.S. Server Vendor Segment Margin
+14. Large Deals, Client Concentration Are AI Fact of Life
+Customer concentration and exposure to large deals are unavoidable for server and networking
+companies since hyperscale-cloud providers and emerging prominent neocloud vendors, such as
+xAI, OpenAI and Coreweave are driving much of the AI-infrastructure demand. We acknowledge
+that the onus is on company management to reliably provide sales guidance, but deals slip or are
+delayed for numerous reasons, and one dropped transaction raises companies' quarterly sales-
+execution risk proﬁle.
+Displacement risks exist, especially with networkers. But we believe providers with leading edge,
+diﬀerentiated technologies, or with deep implementation and services expertise, should continue
+to navigate the rapidly shifting technology landscape. (03/20/25)
+Arista Sales by End Market
+AI Hardware's Perfect Storm
+AI Hardware, Networking Can Overcome Uncertainty Perfect Storm
+The AI hardware and networking sector's demand fundamentals are intact despite a perfect storm
+of uncertainty. With little evidence of a spending slowdown, we expect server vendors Dell and
+Super Micro and networkers Arista and Celestica to beneﬁt from the rollout of a rising number of
+100,000-plus GPU cluster deployments in 2025 and beyond. (03/19/25)
+15. Deepseek, Tariﬀs, GPU Air Pocket Create Doubt
+AI hardware and networking vendors are navigating intermediate-term spending uncertainty as
+tariﬀs, the timing of AI deployments and the impact of eﬃcient-language models, such as
+Deepseek, weigh on investors' risk appetites. Shares are down 12% year to date on average for
+BI's hardware and networking peers.
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+However, the generative AI build-out remains in the early stages, and there’s little evidence that
+hyperscale and neo-cloud providers or sovereign entities are scaling back planned 2025-27 AI
+data-center investments, which we think would trigger estimate cuts. Though tariﬀs may weigh
+more on networking vendors than AI servers, Arista and Celestica have resilience and ﬂexibility in
+their supply chains to help mitigate the risk. (03/19/25)
+BI Hardware/Networking 1H25 AI Impact Matrix
+16. AI Data-Center Plans Suggest Fundamentals Intact
+The AI data-center build-out by hyperscale and neo-cloud providers is well underway based on
+companies' planned capital investments. We count 2.7 gigawatts of planned US AI data-center
+construction committed by cloud and neocloud providers that's slated to be open and operational
+in 2025-26. For networking and hardware vendors, precise sales visibility is limited due to the
+uncertain timing on completing the projects.
+Multiple 100,000-plus GPU clusters are planned in 2025, including xAI’s 200,000-GPU cluster.
+Looking out to 2026, neo-cloud providers, such as Crusoe, and others are bringing 200-megawatt
+data-center facilities online, which would be enough to house 100,000 Blackwell GPU clusters.
+Ultimately, this bodes well for equipment vendors in terms of volume and higher-priced gear.
+(03/19/25)
+Summary of US AI-Scale Data-Center Projects
+17. Blackwell's Air Pocket to Ease in 2H
+Dell, Super Micro and HPE's stalled server-sales momentum from Nvidia's choppy GPU product
+transition to Blackwell from Hopper should be resolved in 2H by better production, as conﬁrmed at
+Nvidia's GTC conference. Blackwell has been anticipated for a year, and leading cloud providers
+have conﬁgured their data-center power and cooling needs for the latest-generation GPU.
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+Though Super Micro and Dell delivered good sales execution during the Hopper product cycle, AI
+server vendors should get a meaningful boost when the Blackwell cycle ramps up in 2H. We expect
+$1-$3 billion AI server deals to be common in 2025-26 due to the growing number of 100,000-GPU
+clusters, along with more 32,000- and 64,000-GPU deals, complementing a 2-3-fold price increase
+per server rack to $3-$4 million each. (03/19/25)
+US AI Server Sales Trend, Estimates
+18. Deepseek Fuels AI Adoption, Not Burst Bubble
+There's little evidence that Deepseek and other eﬃcient foundational models have led to curtailed
+spending on servers and networking gear in the near term. The rising number of 100,000-plus GPU
+buildouts, paired with increased cloud-spending plans for 2025-26, supports this. However, we
+believe the eﬃciency of these models will drive down the cost of their output -- a trend that isn't
+unique to Deepseek and is already happening in the industry.
+Two views on the impact on inference infrastructure exist: fewer servers will be needed to do more,
+or the falling cost to run AI models will spark greater adoption and workloads, therefore requiring
+more gear. Vertically integrated AI compute vendor Cerebras is an example of the latter, since it's
+building 20x token-production capacity in 2025 to support anticipated demand. (03/19/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:23:59
+Cerebras AI Inference Capacity
+19. Tariﬀs Challenges Appear Manageable
+The impact of tariﬀs might be more pronounced for networkers than for AI server vendors, but
+supply-chain ﬂexibility may help the group navigate around the levies. Super Micro, Dell and HPE's
+AI servers could be insulated from tariﬀs, since they're largely produced domestically. Though
+Mexico has emerged as a key manufacturing hub for networking vendors such as Arista and Cisco,
+contract manufacturers may have enough ﬂexibility to maneuver and mitigate much of the tariﬀ
+impact.
+Fierce pricing competition will likely remain an overhang on server margin. Given the growing
+volume of large neo-cloud and sovereign deals, we expect sever vendors to price aggressively,
+which could keep AI server margin in the mid- to upper-single digits over the near-to-intermediate
+term. (03/19/25)
+Server-Vendor Manufacturing Locations
+To contact the analyst for this research:
+Kunjan Sobhani at ksobhani@bloomberg.net

@@ -9,6 +9,8 @@ import asyncio
 
 from tqdm import tqdm
 
+from kruppe.utils import log_io
+from kruppe.data_source.utils import combine_async_generators
 from kruppe.llm import BaseLLM
 from kruppe.models import Document, Response
 from kruppe.prompts.background import (
@@ -22,8 +24,6 @@ from kruppe.data_source.news.base_news import NewsSource
 from kruppe.algorithm.utils import process_request
 from kruppe.algorithm.agents import Researcher, Librarian
 
-class BackgroundResearchTeam(BaseModel):
-    ...
 
 
 class BackgroundResearcher(Researcher):
@@ -38,12 +38,23 @@ class BackgroundResearcher(Researcher):
         self.history = []
 
     async def execute(self):
+        print("Creating info requests...")
         info_requests = await self.create_info_requests()
-        await self.retrieve_and_analyze(info_requests)
+        print(f"Created {len(info_requests)} info requests")
+
+        # NOTE: if this breaks, its ok because partial results will be saved in self.history
+        try:
+            # Set a timeout (in seconds) for retrieve_and_analyze
+            await asyncio.wait_for(self.retrieve_and_analyze(info_requests), timeout=360)
+        except asyncio.TimeoutError:
+            print("retrieve_and_analyze took too long; proceeding with partial results...")
+
+        print("Compiling report...")
         report = await self.compile_report()
         return report
 
 
+    @log_io
     async def create_info_requests(self) -> List[str]:
         user_message = DETERMINE_INFO_QUERY_USER.format(query=self.query)
         messages = [
@@ -58,30 +69,29 @@ class BackgroundResearcher(Researcher):
 
         return info_requests
     
-    async def _analyze_helper(self, info_request: str):
-        doc_generator = self.librarian.execute(info_request)
+    async def _analyze_helper(self, document: Document):
+        user_message = ANALYZE_DOCUMENT_SIMPLE_USER.format(
+            query=self.query,
+            document=document.text
+        )
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": user_message},
+        ]
 
-        async for document in doc_generator:
-            user_message = ANALYZE_DOCUMENT_SIMPLE_USER.format(
-                query=self.query,
-                document=document.text
-            )
-            messages = [
-                {"role": "system", "content": self.system_message},
-                {"role": "user", "content": user_message},
-            ]
+        llm_response = await self.llm.async_generate(messages)
+        llm_string = llm_response.text
 
-            llm_response = await self.llm.async_generate(messages)
-            llm_string = llm_response.text
+        research_result = {
+            # "info_request": info_request, # NOTE: the hypothesis exp version should be different here
+            "document": document.text, # TODO: make this document class later im too lazy rn
+            "analysis": llm_string
+        }
 
-            research_result = {
-                "info_request": info_request,
-                "document": document.text, # TODO: make this document class later im too lazy rn
-                "analysis": llm_string
-            }
+        self.history.append(research_result)
 
-            self.history.append(research_result)        
-    
+
+    @log_io
     async def retrieve_and_analyze(self, info_requests: List[str]) -> List[Dict]:
         """For each information request, retrieve relevant documents from the libriarian.
         Then analyze the document to extract relevant background for the query.
@@ -93,9 +103,19 @@ class BackgroundResearcher(Researcher):
             List[Dict]: _description_
         """
 
-        async for info_request in tqdm(info_requests):
-            await self._analyze_helper(info_request)
+        async_generators = []
+        for info_request in info_requests:
+            async_generators.append(self.librarian.execute(info_request))
+
+        combined_generator = combine_async_generators(async_generators)
+
+        tasks = []
+        async for doc in combined_generator:
+            tasks.append(asyncio.create_task(self._analyze_helper(doc)))
+
+        await asyncio.gather(*tasks)
         
+    @log_io
     async def compile_report(self) -> str:
         """Compile a research report on the relevant background pieces using the
         research history.

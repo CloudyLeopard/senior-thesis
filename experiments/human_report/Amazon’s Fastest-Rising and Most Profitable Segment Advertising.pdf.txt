@@ -1,0 +1,233 @@
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+Geetha RanganathanTeam: MediaBI Senior Industry Analyst
+Key Topics
+A $100 Billion Ad Powerhouse
+Dominating Retail Media NEW
+Big Picture With Connected TV NEW
+Table of Contents
+Amazon Now An Ad Giant
+1. Amazon’s Fastest-Rising and Most Proﬁtable Segment? Advertising
+(Bloomberg Intelligence) -- Advertising is Amazon.com's fastest-
+growing revenue stream, surging at a 51% compound annual
+rate from 2015-23, and could surpass $100 billion by 2027. Ads
+are also likely the company's most proﬁtable segment, with
+operating margins of 40-50%. The company's vertically
+integrated ad platform and data from its Prime memberships position it uniquely, giving it better
+targeting and attribution capabilities than competitors. Though Prime Video is starting small, highly
+coveted sports content like the NFL and the NBA will support increased ad loads and higher ad
+prices as viewing hours increase and engagement deepens. That could drive 20%-plus ad gains in
+2025. (09/25/24)
+Key Topics
+A $100 Billion Ad Powerhouse
+Amazon’s $100 Billion in Ads Sets Up Triopoly With Google, Meta
+Contributing Analysts Poonam Goyal (Retail)
+Amazon.com's $50 billion-plus advertising revenue run rate makes it the third-largest ad platform
+after Google and Meta. Levers include retail media, but Prime Video in particular sets it up for high-
+teens growth into 2025 and $100 billion by 2028. Prime Video ads provide a monetization
+opportunity given Amazon's big bet on live sports with the NFL and NBA. (02/19/25)
+2. Amazon Theatrical Ambitions Supercharged With James Bond Deal
+Contributing Analysts Kevin Near (Media)
+With its purchase of creative control of the "James Bond" franchise for around $1 billion, as
+reported by Deadline, Amazon/MGM is well on its way to ramping up its theatrical output. The
+studio has been planning to signiﬁcantly increase the number of ﬁlms to around 16 per year by
+2027 from 5-6, putting it on a level playing ﬁeld with other Hollywood majors like Warner and
+Universal. This year, the studio will release "A Working Man" in March, starring Jason Statham, and
+"The Accountant 2" in April with Ben Aﬄeck.
+Amazon paid $8.5 billion for MGM in 2021, but was a passive partner in the artistic direction for the
+Bond franchise. "James Bond" is one of the biggest movie franchises, taking in nearly $8 billion at
+the global box oﬃce. The last movie “No Time to Die” came out in 2021. The next release is “Bond
+26.” (02/21/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+Amazon's Recent Theatrical Releases
+3. To $100 Billion From Zero
+Contributing Analysts Kevin Near (Media)
+Ads are Amazon's fastest-growing business, surging to $56.2 billion revenue in 2024 vs. 2015's
+$1.7 billion, or 48% compounded annual growth, getting a boost with the introduction of ads on
+Prime Video. Though gains has decelerated slightly, we still expect high-teen increases, taking it to
+over $100 billion by 2028. Ads are very proﬁtable, with 90% gross and 50% operating margin. A
+conservative 45% margin to $56 billion in ad revenue yields $25 billion in 2024 Ebit, making it
+second to Amazon Web Services' $27 billion and 25% margin.
+Amazon's ad business is made up of three units: sponsored products, brands and display. In 2023,
+we calculate about 90% of its ads were from retail (search and display). The rest were mostly video
+ads on Prime, Fire TV, Freevee and Twitch. Sponsored ads are roughly 80-85% of the total. (02/19/25)
+Amazon Advertising Revenue ($B)
+4. Prime Video Will Move the Ad, Proﬁt Needle
+Amazon's decision to launch ads on Prime Video was a bold move since advertisements were an
+opt-out unless customers paid $2.99 a month for the ad-free version. The opt-out oﬀered
+advertisers a massive reach of 115 million US viewers. In 2025, we expect Prime Video to bring in
+nearly $5 billion in ads for Amazon given a solid slate of content oﬀerings including an NFL Wild-
+Card playoﬀ and 66 NBA games in the 2025-26 season. Even as product search (retail media)
+makes up most ads, we expect Prime Video to drive incremental upside and to fuel acceleration in
+ad gains to over 20% in 2025.
+The introduction of advertising also boosted Prime’s subscription revenue on the opt-out model.
+Assuming 85% of US viewers watched ads suggests just over $600 million in incremental annual
+subscription revenue. (09/25/24)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+Connected-TV Ad Market Share (2025 Estimate)
+Source: The Information, Magna Global, Bloomberg Intelligence
+5. Narrowing Gap With Google, Meta
+Contributing Analysts Poonam Goyal (Retail)
+Amazon's advertising business has expanded quickly, becoming among the top three global
+players along with Google and Meta. Yet with a 9% share of the global digital-ad market, we think
+there's a lot of room to grow. The e-commerce giant has a competitive edge with its ability to close
+the loop between an advertisement and purchase transaction. In a relatively concentrated US
+online-ad market, Amazon has narrowed the gap with the digital duopoly with a 15% share vs.
+Meta's 21% and Google's 26%. As the torchbearer for the retail-media industry, Amazon is
+expected to account for 19% of US digital ads in 2025, according to Emarketer. We calculate that
+at around $100 billion, Amazon could be over 25% of the market by 2027. (09/25/24)
+2024 Digital-Ad Market Share
+Source: eMarketer, Magna Global, Bloomberg Consensus MODL, Company Filings,
+Bloomberg Intelligence
+6. Amazon Broadband Plan Trades Short-Term Pain for Long-Term Gain
+Contributing Analysts Kevin Near (Media)
+Amazon's plan to increase global broadband access through a constellation of over 3,000 satellites
+with Project Kuiper is an ambitious initiative that will involve heavy upfront costs with the company
+committing to at least a $10 billion investment. That will probably go higher. With its FCC licenses
+requiring that at least half of the constellation is deployed and operational by July 2026, we expect
+a sizable ﬁnancial impact to Amazon in 2025-26, creating a drag on operating income. While Kuiper
+will face competition from SpaceX's Starlink, it could become proﬁtable at scale in the long run.
+The satellite network will oﬀer internet speeds of up to 400 Mbps, targeting markets without well-
+developed, ﬁxed or mobile broadband infrastructure. There are about 2.5 billion people globally
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+who lack broadband access. (10/30/24)
+Kuiper Vs. Starlink Broadband Access
+Dominating Retail Media
+Amazon Racks Up $60 Billion in Retail Ads, Gets 35% Market Share
+Amazon.com is the biggest retail media-advertising provider, with about $60 billion in 2025 ads,
+accounting for 90% of its total advertising revenue and 35% of the global retail media market.
+Excluding China, it makes up two-thirds of the market. With retail media among the fastest-growing
+online ad categories, we think Amazon will double its retail ads to $120 billion by 2030. (03/11/25)
+7. Retail Media Bedrock of Amazon Ads
+Retail media, among the fastest-growing online ad channels, is the core of Amazon's ad-services
+business, making up roughly 90% of total ad revenue. Retail media could generate about $50
+billion in 2024 ads and $60 billion by 2025, our analysis shows, accounting for around 7% of its
+gross merchandise value (GMV). By 2030, we believe the company's retail media-ad business will
+double to roughly $120 billion.
+The pandemic accelerated e-commerce penetration, leading to an explosion in retail-media
+advertising. That, combined with the limited availability of data for targeting -- especially with new
+privacy regulations -- will be a tailwind for the category, given the huge amount of rich retailer
+data sets. Amazon has three main ad units on its properties: Sponsored Brands, Sponsored
+Products and Sponsored Product Display ads. (03/11/25)
+Amazon's Retail Media, Total Ads ($ Billion)
+Source: Company Filings, Consensus, BI
+8. Top Retail-Ad Provider
+Retail media is a large, growing opportunity where brands can leverage a top-quality, ﬁrst-party
+data trove for targeting in a safe environment with closed-loop measurement. For retailers, digital
+advertising is lucrative, given its high margins (an average 50%) vs. razor-thin ones in their core
+retail business, which could be as low as 2% for grocery stores. Amazon is well positioned as the
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+third-largest digital-ad platform after Google and Meta. Its breadth of customer purchase history
+lets it close the loop between an ad and buying a product.
+The biggest retail-media provider is Amazon. Excluding China, the company makes up about two-
+thirds of all retail media ads, according to Magna Global. It accounts for over 75% of the $55 billion
+US retail-media ad market, eMarketer data show. (03/11/25)
+Global, Amazon Retail Media Ads ($ Billion)
+Source: Magna Global, Consensus, BI
+Big Picture With Connected TV
+Amazon Fights Disney for Top Connected-TV Ad Spot With NFL, NBA
+Amazon.com is narrowing the connected-TV advertising gap with leading US content owner Disney
+that operates Hulu, Disney+ and ESPN+. We calculate Amazon will more than triple its CTV-ad haul
+to nearly $5 billion vs. 2023, thanks to its Prime Video ad launch. Prime beneﬁts from a large
+viewer base and a low advertising cost. Sports, especially the NFL and the NBA, can supercharge
+ads. (03/11/25)
+9. Channeling Nearly $5 Billion in 2025
+As pressures mount on linear-TV ads, the focus has shifted to CTV (video streamed on a big
+screen), with elevated cord-cutting and a mass migration to streaming. US CTV-ad revenue was
+about $21 billion in 2022, and we calculate it will be $29 billion in 2024 and nearly $34 billion in
+2025, thanks in part to ad tiers from Netﬂix and Disney+. More importantly, Amazon turned into a
+catalyst, expanding the total CTV pie with ads on Prime Video. Though Disney will be dominant via
+Hulu, Disney+ and ESPN+, with $5.4 billion in 2025 CTV ads, Amazon could narrow the gap with its
+Prime advertising push, especially with the NBA and NFL.
+CTV includes premium-video content (Hulu, Netﬂix), free-TV services (Pluto, Tubi) and user-
+generated content (YouTube, TikTok). CTV is more attractive than linear because ads are easier to
+target. (03/11/25)
+Connected-TV Ads by Platform ($M)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+10. Prime Push Powers Up CTV
+Ads on Prime Video, which began Jan. 29 in the US, may have generated about $2 billion in
+advertising revenue in 2024, based on our calculations, with a viewer base of 100 million watching
+roughly 35 minutes of content a day. With about four minutes of ads an hour and a mid-$20 cost
+per 1,000 impressions, monthly ad revenue could reach about $180 million.
+Amazon hasn't disclosed the number of Prime Video subscribers, but said that 180 million have
+used it. The company predicted an audience of 115 million at the launch of its ad tier and had 200
+million monthly users in April. We assume 80-90% will stick with the ad-supported service since it's
+opt-out. If 10% select the ad-free service at $2.99 a month, that would yield around $400 million in
+incremental subscription revenue. (03/11/25)
+Calculating 2024 Prime Video Ad Revenue ($000)
+11. Sports Can Be Game Changer
+Contributing Analysts Kevin Near (Media)
+Amazon has been steadily expanding its presence in live sports, setting it up to grab a greater
+portion of the growing connected-TV ad pie. With its latest deal for NBA and WNBA games, Amazon
+is home to the two most popular North American leagues: the NFL and the NBA. We calculate that
+Amazon will be paying over $4 billion in 2025 for sports rights, putting it ahead of old media
+companies including Fox, Paramount and Warner Bros. Discovery. The growing investment in sports
+leaves Amazon ample room to raise advertisement loads as well as ad prices over time, especially
+as viewing hours increase.
+Warner Bros. Discovery has ﬁled a lawsuit against the NBA alleging that the league breached its
+contract by rejecting its matching oﬀer and instead signing a deal with Amazon. (03/11/25)
+This document is being provided for the exclusive use of DANIEL LIU at NEW YORK UNIVERSITY BOBST LIBRARY. Not for redistribution.
+This report may not be modiﬁed or altered in any way. The BLOOMBERG PROFESSIONAL service and BLOOMBERG Data are owned and
+distributed locally by Bloomberg Finance LP ("BFLP") and its subsidiaries in all jurisdictions other than Argentina, Bermuda, China, India,
+Japan and Korea (the ("BFLP Countries"). BFLP is a wholly-owned subsidiary of Bloomberg LP ("BLP"). BLP provides BFLP with all the global
+marketing and operational support and service for the Services and distributes the Services either directly or through a non-BFLP subsidiary
+in the BLP Countries. BFLP, BLP and their aﬃliates do not provide investment advice, and nothing herein shall constitute an oﬀer of
+ﬁnancial instruments by BFLP, BLP or their aﬃliates.
+Bloomberg® 03/21/2025 15:15:21
+Big Tech Is Chasing Sports
+Source: Company Filings, SBJ, NYT, WSJ, Sportico, Front Oﬃce Sports, Bloomberg
+Intelligence
+12. Playing for $800 Million in NFL Ads
+Though Amazon is paying around $1.4-$1.5 billion for NFL games for the 2024-2025 season, it
+could easily generate around $800 million in advertising revenue. Prices for commercials during
+"Thursday Night Football" cost about $440,000 for a 30-second spot in 2023, as reported by Ad
+Age. With an estimated $44 million in advertising revenue per game, we calculate about $660
+million in ad revenue for regular season games. Including the Black Friday game (ads selling for
+$650,000-$750,000 a spot) and a wild-card game, Amazon may bring in $800 million in total ad
+sales from its NFL investment.
+"Thursday Night Football" averaged 11.86 million viewers per game during the 2023 season, 24%
+higher vs. the 9.58 million in its ﬁrst year of streaming the games, according to Nielsen. (09/10/24)
+Amazon's NFL Ad Haul (2024 Season)
+To contact the analyst for this research:
+Geetha Ranganathan at granganathan@bloomberg.net
