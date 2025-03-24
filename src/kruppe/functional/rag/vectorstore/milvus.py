@@ -1,7 +1,8 @@
+from calendar import c
 from pydantic import field_validator, Field
 from pymilvus import MilvusClient, DataType
 from uuid import UUID
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 import os
 import logging
 
@@ -115,14 +116,17 @@ class MilvusVectorStore(BaseVectorStore):
         """Fall back to synchronous insert_documents"""
         return self.insert_documents(documents)
 
-    def search(self, vector: List[float], top_k: int = 3) -> List[Document]:
+    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+        
+        milvus_filter = convert_filter_to_milvus(filter) if filter else ""
+
         retrieved_data = self.client.search(
             collection_name=self.collection_name,
             data=[vector],
             limit=top_k,
             search_params={"metric_type": "IP", "params": {}},
-            output_fields=["id", "text", "uuid", "datasource"] # + ["db_id"],
-            # filter=f'source == "{source}"' # filter by metadata
+            output_fields=["id", "text", "uuid", "datasource"], # + ["db_id"],
+            filter=milvus_filter
         )
         top_results = retrieved_data[0]
 
@@ -144,10 +148,10 @@ class MilvusVectorStore(BaseVectorStore):
 
         return top_documents
 
-    async def async_search(self, query: str, top_k=3):
-        """Milvus does not support async search, so this falls back to
-        synchronous similarity_search"""
-        return self.search(query, top_k)
+    def async_search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+        """falls back to synchronous similarity_search"""
+        # TODO: use async client for async search
+        return self.search(vector=vector, top_k=top_k, filter=filter)
 
     
     def remove_documents(self, ids: List[Any]) -> int:
@@ -168,3 +172,108 @@ class MilvusVectorStore(BaseVectorStore):
     # def close(self):
     #     """exit milvus client. not necessary"""
     #     self.client.close()
+
+
+def convert_filter_to_milvus(filter_rule: dict) -> str:
+    """
+    Converts a metadata filter from a Pinecone/Chroma style (JSON-like) format
+    into a Milvus boolean expression string.
+
+    Example:
+        Input: {
+            "age": {"$gte": 18},
+            "country": "USA",
+            "$or": [
+                {"score": {"$gt": 80}},
+                {"verified": True}
+            ]
+        }
+        Output:
+            "age >= 18 and country == 'USA' and ((score > 80) or (verified == True))"
+
+    Supported operators:
+      - Equality: Direct values or "$eq"
+      - "$ne"  -> "!="
+      - "$gt"  -> ">"
+      - "$gte" -> ">="
+      - "$lt"  -> "<"
+      - "$lte" -> "<="
+      - "$in"  -> "in" (expects a list)
+      - "$nin" -> "not in" (expects a list)
+      - Logical operators: "$and", "$or", "$not"
+    """
+    def format_value(val):
+        """Format a value for Milvus expression (e.g., add quotes for strings)."""
+        if isinstance(val, str):
+            return f"'{val}'"
+        elif isinstance(val, list):
+            # Recursively format each element in the list
+            return "[" + ", ".join(format_value(v) for v in val) + "]"
+        else:
+            return str(val)
+
+    def parse_operator(field: str, op_dict: dict) -> str:
+        """Parse a dictionary of operators for a given field."""
+        expressions = []
+        for operator, value in op_dict.items():
+            if operator == "$eq":
+                expressions.append(f"{field} == {format_value(value)}")
+            elif operator == "$ne":
+                expressions.append(f"{field} != {format_value(value)}")
+            elif operator == "$gt":
+                expressions.append(f"{field} > {format_value(value)}")
+            elif operator == "$gte":
+                expressions.append(f"{field} >= {format_value(value)}")
+            elif operator == "$lt":
+                expressions.append(f"{field} < {format_value(value)}")
+            elif operator == "$lte":
+                expressions.append(f"{field} <= {format_value(value)}")
+            elif operator == "$in":
+                expressions.append(f"{field} in {format_value(value)}")
+            elif operator == "$nin":
+                expressions.append(f"{field} not in {format_value(value)}")
+            else:
+                raise ValueError(f"Unsupported operator: {operator}")
+        return " and ".join(expressions)
+
+    def parse_filter(filt: dict) -> str:
+        """Recursively parse the filter dictionary."""
+        expressions = []
+        for key, value in filt.items():
+            if key == "$and":
+                # Expect value to be a list of filter dicts
+                sub_exprs = [f"({parse_filter(sub)})" for sub in value]
+                expressions.append(" and ".join(sub_exprs))
+            elif key == "$or":
+                sub_exprs = [f"({parse_filter(sub)})" for sub in value]
+                expressions.append(" or ".join(sub_exprs))
+            elif key == "$not":
+                expressions.append(f"not ({parse_filter(value)})")
+            else:
+                # key is assumed to be a field name
+                if isinstance(value, dict):
+                    # Use the operator parser for multiple operators on the same field
+                    expressions.append(parse_operator(key, value))
+                else:
+                    # Direct equality check
+                    expressions.append(f"{key} == {format_value(value)}")
+        return " and ".join(expressions)
+
+    return parse_filter(filter_rule)
+
+
+# Example usage:
+if __name__ == "__main__":
+    # Example filter (Pinecone/Chroma style)
+    pinecone_filter = {
+        "age": {"$gte": 18},
+        "country": "USA",
+        "$or": [
+            {"score": {"$gt": 80}},
+            {"verified": True}
+        ]
+    }
+
+    milvus_expression = convert_filter_to_milvus(pinecone_filter)
+    print("Milvus filter expression:")
+    print(milvus_expression)

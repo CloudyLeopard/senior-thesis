@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import List
+from typing import List, Dict, Any
 from pydantic import Field
 from typing import Optional
 import chromadb
@@ -96,10 +96,11 @@ class ChromaVectorStore(BaseVectorStore):
 
         return data["ids"]
 
-    def search(self, vector: List[float], top_k: int = 3):
+    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
         results = self.collection.query(
             query_embeddings=[vector],
             n_results=top_k,
+            where=filter
         )
 
         documents = [
@@ -115,9 +116,9 @@ class ChromaVectorStore(BaseVectorStore):
 
         return documents
     
-    async def async_search(self, vector: List[float], top_k=3):
+    async def async_search(self, vector: List[float], top_k=3, filter: Dict[str, Any] = None):
         """Falls back to synchronous search"""
-        return self.search(vector, top_k)
+        return self.search(vector=vector, top_k=top_k, filter=filter)
 
     def remove_documents(self, ids):
         # TODO: update text hashes
