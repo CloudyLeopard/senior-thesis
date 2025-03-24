@@ -82,8 +82,6 @@ class NewsAPIData(NewsSource):
                     **data["meta"]
                 )
 
-                print("CONTENT:", data["content"][:10])
-
                 yield Document(text=data["content"], metadata=metadata)
 
     @not_ready
