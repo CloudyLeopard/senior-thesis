@@ -8,7 +8,7 @@ import asyncio
 import logging
 
 from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError, BulkWriteError, OperationFailure
+from pymongo.errors import DuplicateKeyError, BulkWriteError, OperationFailure, WriteError
 from pymongo.collection import Collection
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 
@@ -169,7 +169,7 @@ class MongoDBStore(BaseDocumentStore):
         
         return result.deleted_count
 
-    def save_document(self, document: Document) -> int:
+    def save_document(self, document: Document) -> Document | None:
         """save Document into mongodb collection with metadata, return number of documents saved"""
         if self.use_async:
             raise ValueError("Using async client, please use `asave_document`")
@@ -183,12 +183,12 @@ class MongoDBStore(BaseDocumentStore):
         
         try:
             result = self._collection.insert_one(data)
-            return 1
-        except DuplicateKeyError:
-            logger.warning(f"Duplicate document (uuid={document.id}")
-            return 0
+            return document
+        except DuplicateKeyError as dke:
+            logger.warning(f"Duplicate document (uuid={document.id}): {dke}")
+            return None
 
-    async def asave_document(self, document: Document) -> int:
+    async def asave_document(self, document: Document) -> Document | None:
         """save Document into mongodb collection with metadata, return number of documents saved"""
         if not self.use_async:
             raise ValueError("Using sync client, please use `save_document`")
@@ -202,13 +202,22 @@ class MongoDBStore(BaseDocumentStore):
 
         try:
             result = await self._acollection.insert_one(data)
-            return 1
-        except DuplicateKeyError:
-            logger.warning(f"Duplicate document (uuid={document.id}")
-            return 0
+            return document
+        except DuplicateKeyError as dke:
+            logger.warning(f"Duplicate document (uuid={document.id}): {dke}")
+            return None
 
-    def save_documents(self, documents: List[Document]) -> int:
-        """save Documents into mongodb collection with metadata, return number of documents saved"""
+    def save_documents(self, documents: List[Document]) -> List[Document]:
+        """Saves multiple Documents into mongodb collection with metadata, unordered.
+        Returns all the documents that were saved in a list, unordered. If a document
+        fails to save, it will not be included in the return list.
+
+        Args:
+            documents (List[Document]): List of Documents to save
+
+        Returns:
+            List[Document, None]: List of Documents that were saved
+        """
         if self.use_async:
             raise ValueError("Using async client, please use `asave_documents`")
         
@@ -228,13 +237,21 @@ class MongoDBStore(BaseDocumentStore):
             # insert_many with ordered=False will insert documents in parallel
             # and will not stop even if one document fails
             result = self._collection.insert_many(datas, ordered=False)
-            return len(result.inserted_ids)
+            return documents
         except BulkWriteError as bwe:
+            # documentation: https://pymongo.readthedocs.io/en/stable/examples/bulk.html
             details = bwe.details
-            logger.warning(f"Partial success with inserted count: {details['nInserted']}, write errors: {details['writeErrors']}")
-            return details['nInserted']
+            logger.warning(f"Partial success with inserted count: {details['nInserted']}")
 
-    async def asave_documents(self, documents: List[Document]) -> int:
+            err_indices = []
+            for we in details['writeErrors']:
+                err_indices.append(we['index']) # pymongo is kind enough to tell us the positioin fo the failed document(s)
+                logger.warning(f"Write error: {we}")
+            
+            # remove failed documents from return list
+            return [documents[i] for i in range(len(documents)) if i not in err_indices]
+
+    async def asave_documents(self, documents: List[Document]) -> List[Document]:
         """save Documents into mongodb collection with metadata, return number of documents saved"""
         if not self.use_async:
             raise ValueError("Using sync client, please use `save_documents`")
@@ -255,11 +272,19 @@ class MongoDBStore(BaseDocumentStore):
             # insert_many with ordered=False will insert documents in parallel
             # and will not stop even if one document fails
             result = await self._acollection.insert_many(datas, ordered=False)
-            return len(result.inserted_ids)
+            return documents
         except BulkWriteError as bwe:
+            # documentation: https://pymongo.readthedocs.io/en/stable/examples/bulk.html
             details = bwe.details
-            logger.warning(f"Partial success with inserted count: {details['nInserted']}, write errors: {details['writeErrors']}")
-            return details['nInserted']
+            logger.warning(f"Partial success with inserted count: {details['nInserted']}")
+
+            err_indices = []
+            for we in details['writeErrors']:
+                err_indices.append(we['index']) # pymongo is kind enough to tell us the positioin fo the failed document(s)
+                logger.warning(f"Write error: {we}")
+            
+            # remove failed documents from return list
+            return [documents[i] for i in range(len(documents)) if i not in err_indices]
 
     def get_document(self, uuid: UUID = None, db_id: str = None) -> Document | None:
         """Retrieve Document from mongodb collection by either db_id or uuid.
@@ -372,7 +397,7 @@ class MongoDBStore(BaseDocumentStore):
         return documents
 
 
-    def remove_document(self, uuid: UUID = None, db_id: str = None) -> int:
+    def remove_document(self, uuid: UUID = None, db_id: str = None) -> bool:
         """Remove Document from mongodb collection by either db_id or uuid.
         If both are provided, db_id will be used. If neither are provided, raise ValueError.
         """
@@ -384,10 +409,9 @@ class MongoDBStore(BaseDocumentStore):
         else:
             raise ValueError("Either db_id or uuid must be provided.")
         
-        logger.info("Removed document with id %s", db_id)
-        return 1 if result.acknowledged else 0
+        return result.acknowledged
 
-    async def aremove_document(self, uuid: UUID = None, db_id: str = None) -> int:
+    async def aremove_document(self, uuid: UUID = None, db_id: str = None) -> bool:
         """Remove Document from mongodb collection by either db_id or uuid.
         If both are provided, db_id will be used. If neither are provided, raise ValueError.
         """
@@ -402,5 +426,5 @@ class MongoDBStore(BaseDocumentStore):
         else:
             raise ValueError("Either db_id or uuid must be provided.")
         
-        logger.info("Removed document with id %s", db_id)
-        return 1 if result.acknowledged else 0
+        return result.acknowledged
+

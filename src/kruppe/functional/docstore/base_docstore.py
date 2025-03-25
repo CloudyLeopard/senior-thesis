@@ -13,25 +13,26 @@ class BaseDocumentStore(BaseModel, ABC):
 
     @abstractmethod
     def clear_collection(self) -> int:
+        """clear all documents in the collection, return number of documents cleared"""
         ...
     
     async def aclear_collection(self) -> int:
         ...
 
     @abstractmethod
-    def save_document(self, document: Document) -> int:
-        """save Document into database, return number of documents saved"""
+    def save_document(self, document: Document) -> Document | None:
+        """save Document into database, return the saved Document"""
         ...
     
-    async def asave_document(self, document: Document) -> int:
+    async def asave_document(self, document: Document) -> Document | None:
         ...
 
     @abstractmethod
-    def save_documents(self, document: List[Document]) -> int:
-        """save Documents into database, return number of documents saved"""
+    def save_documents(self, document: List[Document]) -> List[Document]:
+        """save Documents into database, return list of saved Documents"""
         ...
     
-    async def asave_documents(self, document: List[Document]) -> int:
+    async def asave_documents(self, document: List[Document]) -> List[Document]:
         ...
 
     @abstractmethod
@@ -50,9 +51,9 @@ class BaseDocumentStore(BaseModel, ABC):
         ...
 
     @abstractmethod
-    def remove_document(self, uuid: UUID = None, db_id: str = None) -> int:
-        """delete Document from database"""
+    def remove_document(self, uuid: UUID = None, db_id: str = None) -> bool:
+        """delete Document from database, return True if successful"""
         ...
 
-    async def aremove_document(self, uuid: UUID = None, db_id: str = None) -> int:
+    async def aremove_document(self, uuid: UUID = None, db_id: str = None) -> bool:
         ...

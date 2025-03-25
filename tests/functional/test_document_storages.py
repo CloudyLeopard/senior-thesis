@@ -18,13 +18,13 @@ def test_document_storage(documents, documents3):
     )
     
     # insert document
-    num_saved = docstore.save_document(documents[0])
-    assert num_saved == 1
-    inserted_docs_count += num_saved
+    saved_doc = docstore.save_document(documents[0])
+    assert saved_doc == documents[0]
+    inserted_docs_count += 1
 
-    num_saved = docstore.save_documents(documents[1:])
-    assert num_saved == len(documents) - 1
-    inserted_docs_count += num_saved
+    saved_docs = docstore.save_documents(documents[1:])
+    assert len(saved_docs) == len(documents) - 1
+    inserted_docs_count += len(saved_docs)
     
     # test getting documents using uuid
     uuids = [doc.id for doc in documents]
@@ -35,9 +35,9 @@ def test_document_storage(documents, documents3):
         assert res.id == documents[i].id
     
     # insert some customized data
-    num_saved = docstore.save_documents(documents3)
-    assert num_saved == len(documents3)
-    inserted_docs_count += num_saved
+    saved_docs = docstore.save_documents(documents3)
+    assert len(saved_docs) == len(documents3)
+    inserted_docs_count += len(saved_docs)
 
     # test get all documents
     ret_docs = docstore.get_all_documents()
@@ -66,14 +66,15 @@ def test_document_storage(documents, documents3):
     assert documents3[2].id in uuids
     
     # test duplicate insert (on uuid)
-    num_saved = docstore.save_document(documents3[0])
-    assert num_saved == 0
-    inserted_docs_count += num_saved
+    saved_doc = docstore.save_document(documents3[0])
+    assert saved_doc is None
+    inserted_docs_count += 0
     assert len(docstore.get_all_documents()) == inserted_docs_count
 
     # test duplicate bulk insert
-    num_saved = docstore.save_documents(documents3)
-    assert num_saved == 0
+    saved_docs = docstore.save_documents(documents3)
+    assert len(saved_docs) == 0
+    inserted_docs_count += len(saved_docs)
     assert len(docstore.get_all_documents()) == inserted_docs_count
 
     # test duplicate insert (on unique index)
@@ -81,32 +82,32 @@ def test_document_storage(documents, documents3):
     dupe_doc_ok = documents3[2].model_copy(deep=True)
     dupe_doc_ok.id = uuid4()
     dupe_doc_ok.metadata['datasource'] = "datasource C"
-    num_saved = docstore.save_document(dupe_doc_ok)
-    assert num_saved == 1
-    inserted_docs_count += num_saved
+    saved_doc = docstore.save_document(dupe_doc_ok)
+    assert saved_doc == dupe_doc_ok
+    inserted_docs_count += 1
     assert len(docstore.get_all_documents()) == inserted_docs_count
 
     # # document C but this time its a full duplicate
     dupe_doc_bad = documents3[2].model_copy(deep=True)
     dupe_doc_bad.id = uuid4()
-    num_saved = docstore.save_document(dupe_doc_bad)
-    assert num_saved == 0
-    inserted_docs_count += num_saved
+    saved_doc = docstore.save_document(dupe_doc_bad)
+    assert saved_doc is None
+    inserted_docs_count += 0
     assert len(docstore.get_all_documents()) == inserted_docs_count
 
     # test remove 
     del_doc_1 = documents3[0]
-    num_rem = docstore.remove_document(uuid=del_doc_1.id)
-    assert num_rem == 1
-    inserted_docs_count -= num_rem
+    rem_doc_bool = docstore.remove_document(uuid=del_doc_1.id)
+    assert rem_doc_bool
+    inserted_docs_count -= 1
     assert len(docstore.get_all_documents()) == inserted_docs_count
     assert docstore.get_document(uuid=del_doc_1.id) is None
 
     # test remove by uuid
     del_doc_2 = docstore.get_all_documents()[0]
-    num_rem = docstore.remove_document(uuid=del_doc_2.id)
-    assert num_rem == 1
-    inserted_docs_count -= num_rem
+    rem_doc_bool = docstore.remove_document(uuid=del_doc_2.id)
+    assert rem_doc_bool
+    inserted_docs_count -= 1
     assert len(docstore.get_all_documents()) == inserted_docs_count
     assert docstore.get_document(uuid=del_doc_2.id) is None
 
@@ -132,13 +133,13 @@ async def test_async_document_storage(documents, documents3):
     )
     
     # insert document
-    num_saved = await docstore.asave_document(documents[0])
-    assert num_saved == 1
-    inserted_docs_count += num_saved
+    saved_doc = await docstore.asave_document(documents[0])
+    assert saved_doc == documents[0]
+    inserted_docs_count += 1
 
-    num_saved = await docstore.asave_documents(documents[1:])
-    assert num_saved == len(documents) - 1
-    inserted_docs_count += num_saved
+    saved_docs = await docstore.asave_documents(documents[1:])
+    assert len(saved_docs) == len(documents) - 1
+    inserted_docs_count += len(saved_docs)
     
     # test getting documents using uuid
     uuids = [doc.id for doc in documents]
@@ -149,9 +150,9 @@ async def test_async_document_storage(documents, documents3):
         assert res.id == documents[i].id
     
     # insert some customized data
-    num_saved = await docstore.asave_documents(documents3)
-    assert num_saved == len(documents3)
-    inserted_docs_count += num_saved
+    saved_docs= await docstore.asave_documents(documents3)
+    assert len(saved_docs) == len(documents3)
+    inserted_docs_count += len(saved_docs)
 
     # test get all documents
     ret_docs = await docstore.aget_all_documents()
@@ -180,16 +181,16 @@ async def test_async_document_storage(documents, documents3):
     assert documents3[2].id in uuids
 
     # test duplicate insert (on uuid)
-    num_saved = await docstore.asave_document(documents3[0])
-    assert num_saved == 0
-    inserted_docs_count += num_saved
+    saved_doc = await docstore.asave_document(documents3[0])
+    assert saved_doc is None
+    inserted_docs_count += 0
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
 
     # test duplicate bulk insert
-    num_saved = await docstore.asave_documents(documents3)
-    assert num_saved == 0
-    inserted_docs_count += num_saved
+    saved_docs = await docstore.asave_documents(documents3)
+    assert saved_docs == []
+    inserted_docs_count += len(saved_docs)
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
 
@@ -198,26 +199,26 @@ async def test_async_document_storage(documents, documents3):
     dupe_doc_ok = documents3[2].model_copy(deep=True)
     dupe_doc_ok.id = uuid4()
     dupe_doc_ok.metadata['datasource'] = "datasource C"
-    num_saved = await docstore.asave_document(dupe_doc_ok)
-    assert num_saved == 1
-    inserted_docs_count += num_saved
+    saved_doc = await docstore.asave_document(dupe_doc_ok)
+    assert saved_doc == dupe_doc_ok
+    inserted_docs_count += 1
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
 
     # # document C but this time its a full duplicate
     dupe_doc_bad = documents3[2].model_copy(deep=True)
     dupe_doc_bad.id = uuid4()
-    num_saved = await docstore.asave_document(dupe_doc_bad)
-    assert num_saved == 0
-    inserted_docs_count += num_saved
+    saved_doc = await docstore.asave_document(dupe_doc_bad)
+    assert saved_doc is None
+    inserted_docs_count += 0
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
 
     # test remove
     del_doc_1 = documents3[0]
-    num_rem = await docstore.aremove_document(del_doc_1.id)
-    assert num_rem == 1
-    inserted_docs_count -= num_rem
+    rem_doc_bool = await docstore.aremove_document(del_doc_1.id)
+    assert rem_doc_bool
+    inserted_docs_count -= 1
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
     ret_doc = await docstore.aget_document(uuid=del_doc_1.id)
@@ -226,9 +227,9 @@ async def test_async_document_storage(documents, documents3):
     # test remove by uuid
     all_docs = await docstore.aget_all_documents()
     del_doc_2 = all_docs[0]
-    num_rem = await docstore.aremove_document(uuid=del_doc_2.id)
-    assert num_rem == 1
-    inserted_docs_count -= num_rem
+    rem_doc_bool = await docstore.aremove_document(uuid=del_doc_2.id)
+    assert rem_doc_bool
+    inserted_docs_count -= 1
     all_docs = await docstore.aget_all_documents()
     assert len(all_docs) == inserted_docs_count
     ret_doc = await docstore.aget_document(uuid=del_doc_2.id)
