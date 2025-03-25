@@ -10,6 +10,7 @@ request_mapping = {
 
 def process_request(llm_response: str) -> List[Dict]:
     # TODO: there's probably a better way to do this
+    # NOTE: maybe use pydantic with type validation??
 
     pattern = re.compile(r'(?<=\(|\|)([^|()]+)(?=\||\))')
     results = llm_response.splitlines()

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from kruppe.llm import BaseLLM
-from kruppe.models import Document, Query, Response
+from kruppe.models import Document, Chunk, Query, Response
 from kruppe.functional.rag.text_splitters import BaseTextSplitter, RecursiveTextSplitter
 
 
@@ -19,26 +19,26 @@ class BaseIndex(ABC, BaseModel):
         pass
 
     @abstractmethod
-    async def async_add_documents(self, documents: List[Document]):
+    async def async_add_documents(self, documents: List[Document]) -> None:
         """Add documents to the index asynchronously."""
         pass
 
     @abstractmethod
-    def query(self, query: Query) -> List[Document]:
+    def query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         """Query the index."""
         pass
 
     @abstractmethod
-    async def async_query(self, query: Query) -> List[Document]:
+    async def async_query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         """Query the index asynchronously."""
         pass
 
     @abstractmethod
-    def generate(self, query: Query) -> Response:
+    def generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
         """Generate a response based on the query."""
         pass
 
     @abstractmethod
-    async def async_generate(self, query: Query) -> Response:
+    async def async_generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
         """Generate a response based on the query asynchronously."""
         pass

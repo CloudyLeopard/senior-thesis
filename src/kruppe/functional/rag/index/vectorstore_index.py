@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 import logging
 from pydantic import PrivateAttr
 import asyncio
@@ -32,28 +32,36 @@ class VectorStoreIndex(BaseIndex):
         # insert documents into vector store
         await self.vectorstore.async_insert_documents(chunked_documents)
 
-    def query(self, query: Query, top_k: int = 3) -> List[Document]:
+    def query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
         # embed query
         query_vector = self._embedder.embed([query])[0]
 
         # search vector store
-        relevant_documents = self.vectorstore.search(vector=query_vector, top_k=top_k)
+        relevant_documents = self.vectorstore.search(
+            vector=query_vector,
+            top_k=top_k,
+            filter=filter
+        )
 
         return relevant_documents
 
-    async def async_query(self, query: Query, top_k: int = 3) -> List[Document]:
+    async def async_query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
         # embed query
         query_vector = await self._embedder.async_embed([query])
         query_vector = query_vector[0]
 
         # search vector store
-        relevant_documents = await self.vectorstore.async_search(vector=query_vector, top_k=top_k)
+        relevant_documents = await self.vectorstore.async_search(
+            vector=query_vector,
+            top_k=top_k,
+            filter=filter
+        )
 
         return relevant_documents
     
-    async def async_generate(self, query: Query) -> Response:
+    async def async_generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
         # retrieve relevant documents
-        relevant_documents = await self.async_query(query)
+        relevant_documents = await self.async_query(query, top_k=top_k, filter=filter)
 
         # format rag prompt
         prompt_formatter = RAGPromptFormatter()
@@ -66,5 +74,5 @@ class VectorStoreIndex(BaseIndex):
 
         return response
     
-    def generate(self, query: Query) -> Response:
-        return asyncio.run(self.async_generate(query))
+    def generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
+        return asyncio.run(self.async_generate(query, top_k=top_k, filter=filter))
