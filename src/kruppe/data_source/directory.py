@@ -60,7 +60,7 @@ class DirectoryData(DataSource):
 
                 metadata = self.parse_metadata(
                     query="NA",
-                    name=file_path.name,
+                    title=file_path.name,
                     path=file_path.as_posix(),
                 )
                 document = Document(text=txt, metadata=metadata)
@@ -68,10 +68,9 @@ class DirectoryData(DataSource):
                 pdf_text, pdf_meta = self.simple_pdf_parser(file_path.as_posix())
                 metadata = self.parse_metadata(
                     query="NA",
-                    name=file_path.name,
                     path=file_path.as_posix(),
                     publication_time = pdf_meta.get("creation_date"),
-                    title = pdf_meta.get("title")
+                    title = pdf_meta.get("title") or file_path.name
                 )
                 document = Document(text=pdf_text, metadata=metadata)
             if file_path.suffix == ".html":
@@ -79,9 +78,8 @@ class DirectoryData(DataSource):
                 scraped_data = WebScraper.default_html_parser(html)
                 metadata = self.parse_metadata(
                     query="NA",
-                    name=file_path.name,
                     path=file_path.as_posix(),
-                    title=scraped_data["title"],
+                    title=scraped_data["title"] or file_path.name,
                     publication_time=scraped_data["time"],
                 )
                 document =Document(text=scraped_data["content"], metadata=metadata)

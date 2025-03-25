@@ -1,3 +1,4 @@
+from calendar import c
 import pytest
 import pytest_asyncio
 import os
@@ -6,7 +7,7 @@ import nest_asyncio
 from kruppe.data_source.directory import DirectoryData
 from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
 from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
-from kruppe.functional.document_store import MongoDBStore, AsyncMongoDBStore
+from kruppe.functional.docstore.mongo_store import MongoDBStore
 from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM
 # from kruppe.llm import NYUOpenAIEmbeddingModel, NYUOpenAILLM
 from kruppe.models import Query, Document
@@ -68,7 +69,7 @@ def documents3():
             text="This is document C!",
             metadata={
                 "query": "query C",
-                "datasource": "datasource C",
+                "datasource": "datasource A",
                 "url": "url C",
                 "title": "title C",
                 "description": "description C",
@@ -88,7 +89,10 @@ def query():
 def document_storage(documents2):
     uri = os.getenv("MONGODB_URI")
     db_name = "test"
-    doc_storage = MongoDBStore(uri=uri, db_name=db_name, reset_db=True)
+    collection_name = "global"
+    doc_storage = MongoDBStore.create_db(
+        uri=uri, db_name=db_name, collection_name=collection_name, reset_db=True
+    )
 
     doc_storage.save_documents(documents2)
 
@@ -100,13 +104,16 @@ def document_storage(documents2):
 async def async_document_storage(documents2):
     uri = os.getenv("MONGODB_URI")
     db_name = "test_motor"
-    doc_storage = await AsyncMongoDBStore.create(uri=uri, db_name=db_name, reset_db=True)
+    collection_name="global"
+    doc_storage = await MongoDBStore.acreate_db(
+        uri=uri, db_name=db_name, collection_name=collection_name, reset_db=True
+    )
 
     await doc_storage.save_documents(documents2)
 
     yield doc_storage
 
-    await doc_storage.close()
+    await doc_storage.aclose()
 
 @pytest.fixture(scope="module")
 def text_splitter():

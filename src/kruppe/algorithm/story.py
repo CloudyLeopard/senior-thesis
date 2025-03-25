@@ -3,7 +3,7 @@ import asyncio
 from kruppe.embeddings import BaseEmbeddingModel, OpenAIEmbeddingModel
 from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
 from kruppe.vector_storages import BaseVectorStorage, NumPyVectorStorage
-from kruppe.functional.document_store import BaseDocumentStore, MongoDBStore
+from kruppe.functional.docstore.mongo_store import BaseDocumentStore, MongoDBStore
 from kruppe.llm import BaseLLM, OpenAILLM
 from kruppe.prompt_formatter import SimplePromptFormatter, RAGPromptFormatter, CustomPromptFormatter
 from kruppe.tools.sources import DirectoryData
