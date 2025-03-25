@@ -41,8 +41,11 @@ class Document(Embeddable):
 
     def __hash__(self) -> int:
         return hash(self.text)
+    
     def __str__(self):
-        return f"Text: {self.text}\nMetadata: {json.dumps(self.metadata, indent=2)}"
+        doc_dict = self.model_dump(exclude={'text'})
+        doc_dict['text'] = self.text[:25]
+        return f"<{self.__class__.__name__} {json.dumps(doc_dict, indent=None)}>"
 
     def set_db_id(self, id: str):
         self.db_id = id
