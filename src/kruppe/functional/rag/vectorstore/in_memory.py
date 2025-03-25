@@ -28,14 +28,6 @@ class InMemoryVectorStore(BaseVectorStore):
         return asyncio.run(self.async_insert_documents(documents))
 
     async def async_insert_documents(self, documents: List[Document]):
-        # remove duplicate documents
-        documents = [
-            doc
-            for doc in documents
-            if (doc_hash := hash(doc)) not in self._text_hashes
-            and not self._text_hashes.add(doc_hash)
-        ]
-
         embeddings = await self.embedding_model.async_embed(documents)
         if self._embeddings_matrix is None:
             self._embeddings_matrix = np.array(embeddings)

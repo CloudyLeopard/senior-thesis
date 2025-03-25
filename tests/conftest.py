@@ -9,7 +9,7 @@ from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 from kruppe.functional.document_store import MongoDBStore, AsyncMongoDBStore
 from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM
 # from kruppe.llm import NYUOpenAIEmbeddingModel, NYUOpenAILLM
-from kruppe.models import Query
+from kruppe.models import Query, Document
 
 nest_asyncio.apply()
 
@@ -29,16 +29,55 @@ async def sanity_check():
 @pytest.fixture(scope="session")
 def documents():
     source = DirectoryData(path="tests/data/1")
-    documents = source.fetch()
+    documents = [doc for doc in source.fetch()]
     return documents
 
 
 @pytest.fixture(scope="session")
 def documents2():
     source = DirectoryData(path="tests/data/2")
-    documents = source.fetch()
+    documents = [doc for doc in source.fetch()]
     return documents
 
+@pytest.fixture(scope="session")
+def documents3():
+    documents = [
+        Document(
+            text="This is document A!",
+            metadata={
+                "query": "query A",
+                "datasource": "datasource A",
+                "url": "url A",
+                "title": "title A",
+                "description": "description A",
+                "publication_time": "2021-01-01",
+            }
+        ),
+        Document(
+            text="This is document B!",
+            metadata={
+                "query": "query B",
+                "datasource": "datasource B",
+                "url": "url B",
+                "title": "title B",
+                "description": "description B",
+                "publication_time": "2021-02-02",
+            }
+        ),
+        Document(
+            text="This is document C!",
+            metadata={
+                "query": "query C",
+                "datasource": "datasource C",
+                "url": "url C",
+                "title": "title C",
+                "description": "description C",
+                "publication_time": "2021-03-03",
+            }
+        ),
+    ]
+
+    return documents
 
 @pytest.fixture(scope="session")
 def query():

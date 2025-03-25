@@ -6,7 +6,7 @@ import chromadb
 import logging
 
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
-from kruppe.models import Document
+from kruppe.models import Document, Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,6 @@ class ChromaVectorStore(BaseVectorStore):
         self.collection = self.client.get_or_create_collection(self.collection_name)
 
     def insert_documents(self, documents: List[Document]):
-        # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
-
         data = {
             "ids": [],
             "metadatas": [],
@@ -41,16 +38,22 @@ class ChromaVectorStore(BaseVectorStore):
         }
 
         for document in documents:
-            data["ids"].append(str(hash(document)))
+            # unique id for each document/chunk
+            data["ids"].append(str(document.id))
 
+           # metadata for each document/chunk
             metadata = document.metadata
-            metadata["uuid"] = str(document.uuid)
+            if isinstance(document, Chunk):
+                metadata["document_id"] = str(document.document_id)
+                metadata["prev_chunk_id"] = str(document.prev_chunk_id)
+                metadata["next_chunk_id"] = str(document.next_chunk_id)
             data["metadatas"].append(document.metadata)
 
+            # add text for each document/chunk
             data["documents"].append(document.text)
 
-        # insert data into chromadb       
-        logger.info("Inserting documents into ChromaDB")
+        # insert data into chromadb    
+        logger.info("Inserting documents into ChromaDB")   
         self.collection.upsert(
             ids=data["ids"],
             metadatas=data["metadatas"],
@@ -61,9 +64,6 @@ class ChromaVectorStore(BaseVectorStore):
         return data["ids"]
     
     async def async_insert_documents(self, documents):
-        # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
-
         embeddings = await self.embedding_model.async_embed(
             [document.text for document in documents]
         )
@@ -77,12 +77,18 @@ class ChromaVectorStore(BaseVectorStore):
         }
 
         for document in documents:
-            data["ids"].append(str(hash(document)))
+            # unique id for each document/chunk
+            data["ids"].append(str(document.id))
 
+            # metadata for each document/chunk
             metadata = document.metadata
-            metadata["uuid"] = str(document.uuid)
+            if isinstance(document, Chunk):
+                metadata["document_id"] = str(document.document_id)
+                metadata["prev_chunk_id"] = str(document.prev_chunk_id)
+                metadata["next_chunk_id"] = str(document.next_chunk_id)
             data["metadatas"].append(document.metadata)
 
+            # add text for each document/chunk
             data["documents"].append(document.text)
 
         # insert data into chromadb       
@@ -96,25 +102,31 @@ class ChromaVectorStore(BaseVectorStore):
 
         return data["ids"]
 
-    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         results = self.collection.query(
             query_embeddings=[vector],
             n_results=top_k,
             where=filter
         )
 
-        documents = [
-            Document(
-                text=document,
-                uuid=UUID(metadata.pop("uuid")),
-                metadata=metadata,
-            )
-            for document, doc_id, metadata in zip(
-                results["documents"][0], results["ids"][0], results["metadatas"][0]
-            )
-        ]
+        retrieved_docs = [] # chunks, really - im treating docs like chunks
+        for res_text, res_id, res_metadata in zip(results["documents"][0], results["ids"][0], results["metadatas"][0]):
+            document_id = res_metadata.pop("document_id", res_id) # if no document_id, then chunk_id is document_id
+            prev_chunk_id = res_metadata.pop("prev_chunk_id", None)
+            next_chunk_id = res_metadata.pop("next_chunk_id", None)
 
-        return documents
+            retrieved_chunk = Chunk(
+                text=res_text,
+                id=UUID(res_id),
+                metadata=res_metadata,
+                document_id=UUID(document_id) ,
+                prev_chunk_id=UUID(prev_chunk_id) if prev_chunk_id else None,
+                next_chunk_id=UUID(next_chunk_id) if next_chunk_id else None,
+            )
+
+            retrieved_docs.append(retrieved_chunk)
+
+        return retrieved_docs
     
     async def async_search(self, vector: List[float], top_k=3, filter: Dict[str, Any] = None):
         """Falls back to synchronous search"""

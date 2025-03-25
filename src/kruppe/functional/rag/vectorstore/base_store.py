@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, ConfigDict
 from typing import List, Dict, Any
 
-from kruppe.models import Document
+from kruppe.models import Document, Chunk
 from kruppe.llm import BaseEmbeddingModel
 
 
@@ -31,12 +31,12 @@ class BaseVectorStore(ABC, BaseModel):
         pass
 
     @abstractmethod
-    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         """given vector, return top_k relevant results"""
         pass
 
     @abstractmethod
-    async def async_search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+    async def async_search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         """given query, asynchronously return top_k relevant results"""
         pass
 

@@ -5,7 +5,7 @@ from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from kruppe.llm import BaseLLM
-from kruppe.models import Document, Chunk, ContextualizedChunk
+from kruppe.models import Document, Chunk
 from kruppe.prompt_formatter import CustomPromptFormatter
 from kruppe.prompts.rag import SPLITTER_CONTEXTUALIZE_USER
 
@@ -58,14 +58,13 @@ class RecursiveTextSplitter(BaseTextSplitter):
                 curr_chunk = Chunk(
                     text=chunked_texts[i],
                     metadata=document.metadata,
-                    uuid=document.uuid,
-                    db_id=document.db_id,
-                    previous_chunk=prev_chunk,
+                    document_id=document.id,
+                    prev_chunk_id=prev_chunk.id if prev_chunk is not None else None,
                 )
 
                 # link the chunks together
                 if prev_chunk is not None:
-                    prev_chunk.next_chunk = curr_chunk
+                    prev_chunk.next_chunk_id = curr_chunk.id
                 prev_chunk = curr_chunk
                 new_chunks.append(curr_chunk)
 
@@ -87,7 +86,7 @@ class ContextualTextSplitter(BaseTextSplitter):
 
     async def async_split_documents(
         self, documents: List[Document]
-    ) -> List[ContextualizedChunk]:
+    ) -> List[Chunk]:
         """
         Split the given documents into chunks of text according to the recursive character text splitter
         and generate a context for each chunk using the llm.
@@ -108,7 +107,7 @@ class ContextualTextSplitter(BaseTextSplitter):
          
         # for document in documents:
         
-        async def split_document_helper(document: Document) -> List[ContextualizedChunk]:
+        async def split_document_helper(document: Document) -> List[Chunk]:
             document_chunks = []  # list of Chunk objects, each representing a chunk of the document
 
             chunked_texts = self._text_splitter.split_text(document.text)
@@ -129,18 +128,16 @@ class ContextualTextSplitter(BaseTextSplitter):
             prev_chunk = None
             for i in range(0, len(chunked_texts)):
                 context_text = contexts_list[i].text
-                curr_chunk = ContextualizedChunk(
-                    text=context_text + " " + chunked_texts[i], # NOTE: THIS STEP COMBINES CONTEXT WITH CHUNK
+                curr_chunk = Chunk(
+                    text= "-CONTEXT-\n"+context_text+"\n-TEXT-\n"+chunked_texts[i], # NOTE: THIS STEP COMBINES CONTEXT WITH CHUNK
                     metadata=document.metadata,
-                    uuid=document.uuid,
-                    db_id=document.db_id,
-                    previous_chunk=prev_chunk,
-                    context=context_text,
+                    document_id=document.id,
+                    prev_chunk_id=prev_chunk.id if prev_chunk is not None else None,
                 )
 
                 # link the chunks together
                 if prev_chunk is not None:
-                    prev_chunk.next_chunk = curr_chunk
+                    prev_chunk.next_chunk_id = curr_chunk.id
                 prev_chunk = curr_chunk
                 document_chunks.append(curr_chunk)
             return document_chunks
@@ -150,5 +147,5 @@ class ContextualTextSplitter(BaseTextSplitter):
         new_chunks = [chunk for sublist in new_chunks for chunk in sublist] # flatten the list of lists
         return new_chunks
     
-    def split_documents(self, documents: List[Document]) -> List[ContextualizedChunk]:
+    def split_documents(self, documents: List[Document]) -> List[Chunk]:
         return asyncio.run(self.async_split_documents(documents))

@@ -11,11 +11,13 @@ from kruppe.data_source.utils import is_method_ready, combine_async_generators
 from kruppe.algorithm.utils import process_request
 from kruppe.models import Document, Response
 from kruppe.prompts.librarian import LIBRARIAN_STANDARD_SYSTEM, LIBRARIAN_STANDARD_USER
+from kruppe.functional.rag.index.base_index import BaseIndex
 
 
 class Researcher(BaseModel, ABC):
     llm: BaseLLM
     system_message: str
+
 
     @abstractmethod
     async def execute(self):
