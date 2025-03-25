@@ -40,15 +40,44 @@ LIBRARIAN_STANDARD_USER = dedent(
 LIBRARIAN_TIME_USER = dedent(
     """\
     -Instruction-
-    You are given a query, or essentially a description of the information that the user is seeking. This query will be used to query a vector storage system to retrieve relevant contexts. I want you to analyze the query, and determine the time period that the user is interested in. The time period should be as specific as possible, and should be in the format of a start date and an end date.
+    You are given a query, or essentially a description of the information that the user is seeking. This query will be used to query a vector storage system to retrieve relevant contexts. I want you to analyze the query, and determine 1. if the retrieved contexts should be restricted to a specific time period, and 2. if yes, then determine the time period that the user is interested in. The time period should be as specific as possible, and should be in the format of a start date and an end date.
 
-    Output the format like follow:
+    If you determined that the retrieved contexts should not be restricted to a specific time period, then you should return "no" as the answer.
+
+    If you determined that the retrieved contexts should be restricted to a specific time period, then you should return "yes" as the answer, followed by the start date and the end date in the format of "YYYY-MM-DD".
+
+    -Output Structure-
+    Output 1:
+    no
+
+    Output 2:
+    yes
     start_date: <start_date>
     end_date: <end_date>
 
     -Input-
     Description of the information that the user wants to know:
     {information_desc}
+
+    -Output-
+    """
+)
+
+LIBRARIAN_CONTEXT_CONFIDENCE_USER = dedent(
+    """\
+    -Instruction-
+    Given a description of the information that the user is seeking, determine how relevant the contexts are to the information description. Suppose 0 is highly irrelevant, 5 is moderately relevant, and 10 is highly relevant. You should provide one confidence score for the relevance of all the contexts to the information description. Write a short and succint explanation of why you chose this confidence score, then a single newline characterh, then the confidence score.
+
+    -Output Structure-
+    <explanation>
+    <confidence_score>
+
+    -Input-
+    Description of the information that the user wants to know:
+    {information_desc}
+
+    Contexts:
+    {contexts}
 
     -Output-
     """

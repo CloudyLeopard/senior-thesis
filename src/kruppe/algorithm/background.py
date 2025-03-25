@@ -20,10 +20,9 @@ from kruppe.prompts.background import (
     ANALYZE_DOCUMENT_SIMPLE_USER,
     COMPILE_REPORT_USER
 )
-from kruppe.data_source.news.base_news import NewsSource
 from kruppe.algorithm.utils import process_request
-from kruppe.algorithm.agents import Researcher, Librarian
-
+from kruppe.algorithm.agents import Researcher
+from kruppe.algorithm.librarian import Librarian
 
 
 class BackgroundResearcher(Researcher):
