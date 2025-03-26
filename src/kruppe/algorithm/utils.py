@@ -27,6 +27,7 @@ def process_request(llm_response: str) -> List[Dict]:
         if request_type == "resc":
             # convert parameters from string to dict
             request["parameters"] = json.loads(request["parameters"])
+            request["rank"] = int(request["rank"])
 
         requests.append(request)
 

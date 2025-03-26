@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import List, Dict, Any
-from pydantic import Field
+from pydantic import Field, PrivateAttr, model_validator
 from typing import Optional
 import chromadb
 import logging
@@ -16,16 +16,26 @@ class ChromaVectorStore(BaseVectorStore):
     collection_name: str = Field(default="financial_context")
     persist_path: Optional[str] = None
     client: Optional[chromadb.ClientAPI] = None
-    collection: Optional[chromadb.Collection] = None
+    _collection: chromadb.Collection = PrivateAttr()
 
-    def model_post_init(self, __context):
+    @model_validator(mode="after")
+    def validate_client_and_collection(self):     
+        # three options for clients   
         if self.client is None:
             if self.persist_path:
+                # option 1: persistent client
                 self.client = chromadb.PersistentClient(path=self.persist_path)
             else:
+                # option 2: in-memory client
                 self.client = chromadb.Client()
+            # option 3: client passed in
 
-        self.collection = self.client.get_or_create_collection(self.collection_name)
+        self._collection = self.client.get_or_create_collection(self.collection_name)
+        return self
+    
+    def clear(self) -> None:
+        self.client.delete_collection(self.collection_name)
+        self._collection = self.client.get_or_create_collection(self.collection_name)
 
     def insert_documents(self, documents: List[Document]):
         data = {
@@ -54,7 +64,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         # insert data into chromadb    
         logger.info("Inserting documents into ChromaDB")   
-        self.collection.upsert(
+        self._collection.upsert(
             ids=data["ids"],
             metadatas=data["metadatas"],
             documents=data["documents"],
@@ -84,8 +94,10 @@ class ChromaVectorStore(BaseVectorStore):
             metadata = document.metadata
             if isinstance(document, Chunk):
                 metadata["document_id"] = str(document.document_id)
-                metadata["prev_chunk_id"] = str(document.prev_chunk_id)
-                metadata["next_chunk_id"] = str(document.next_chunk_id)
+                # need to handle None values for prev_chunk_id and next_chunk_id... 
+                # AHHHH this screwed me over for a while
+                metadata["prev_chunk_id"] = str(document.prev_chunk_id) if document.prev_chunk_id else ""
+                metadata["next_chunk_id"] = str(document.next_chunk_id) if document.next_chunk_id else ""
             data["metadatas"].append(document.metadata)
 
             # add text for each document/chunk
@@ -93,7 +105,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         # insert data into chromadb       
         logger.info("Inserting documents into ChromaDB")
-        self.collection.upsert(
+        self._collection.upsert(
             ids=data["ids"],
             metadatas=data["metadatas"],
             documents=data["documents"],
@@ -103,7 +115,7 @@ class ChromaVectorStore(BaseVectorStore):
         return data["ids"]
 
     def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
-        results = self.collection.query(
+        results = self._collection.query(
             query_embeddings=[vector],
             n_results=top_k,
             where=filter
@@ -112,9 +124,14 @@ class ChromaVectorStore(BaseVectorStore):
         retrieved_docs = [] # chunks, really - im treating docs like chunks
         for res_text, res_id, res_metadata in zip(results["documents"][0], results["ids"][0], results["metadatas"][0]):
             document_id = res_metadata.pop("document_id", res_id) # if no document_id, then chunk_id is document_id
+            
+            # get prev_chunk_id and next_chunk_id if they exist
+            # NOTE: either the data doesn't have a "prev_chunk_id" or "next_chunk_id" field
+            # OR it is the first/last chunk, and its field's value is ""
             prev_chunk_id = res_metadata.pop("prev_chunk_id", None)
             next_chunk_id = res_metadata.pop("next_chunk_id", None)
 
+            # create a Chunk object for each chunked text
             retrieved_chunk = Chunk(
                 text=res_text,
                 id=UUID(res_id),
@@ -135,11 +152,11 @@ class ChromaVectorStore(BaseVectorStore):
     def remove_documents(self, ids):
         # TODO: update text hashes
 
-        self.collection.delete(ids=ids)
+        self._collection.delete(ids=ids)
         return len(ids) # cheating here cuz chroma deletes doesn't return anything
 
     # def clear(self):
     #     super().clear()
-    #     return self.collection.delete()
+    #     return self._collection.delete()
 
     

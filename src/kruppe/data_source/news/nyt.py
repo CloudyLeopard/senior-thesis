@@ -65,7 +65,7 @@ class NewYorkTimesData(NewsSource):
                 params = {
                     "q": query,
                     "api-key": self.apiKey,
-                    "sort": {"date": "newest", "relevance": "relevance"}[sort], # newest, oldest, relevance
+                    "sort": "newest", # only newest matters
                     "fl": "web_url,headline,pub_date,snippet",
                     "page": page,
                 }
@@ -159,7 +159,7 @@ class NewYorkTimesData(NewsSource):
         # section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
         section_names = ["Business", "Technology"]
 
-        # Get today's date
+        # Get start and end date
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.strptime(end_date, "%Y-%m-%d")
 

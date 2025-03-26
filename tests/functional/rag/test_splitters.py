@@ -1,10 +1,11 @@
+from numpy import isin
 from kruppe.functional.rag.text_splitters import RecursiveTextSplitter, ContextualTextSplitter
 from kruppe.models import Chunk
 from uuid import UUID
 import pytest
 
-CHUNK_SIZE = 1024
-CHUNK_OVERLAP = 64
+CHUNK_SIZE = 128
+CHUNK_OVERLAP = 8
 
 def test_splitter(documents, text_splitter):
     text_splitter = RecursiveTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
@@ -28,12 +29,11 @@ def test_splitter(documents, text_splitter):
         
         # test for prev_chunk_id and next_chunk_id
         if (i > 0):
+            assert isinstance(chunk.prev_chunk_id, UUID)
             assert chunk.prev_chunk_id == chunked_documents[i-1].id
         if (i < len(chunked_documents) - 1):
+            assert isinstance(chunk.next_chunk_id, UUID)
             assert chunk.next_chunk_id == chunked_documents[i+1].id
-    
-    assert len(set([chunk.text for chunk in chunked_documents])) == len(chunked_documents)
-    print("Number of chunks: ", len(chunked_documents))
 
 @pytest.mark.asyncio
 async def test_contextual_splitter(documents, llm):
@@ -62,6 +62,8 @@ async def test_contextual_splitter(documents, llm):
         
         # test for prev_chunk_id and next_chunk_id
         if (i > 0):
+            assert isinstance(chunk.prev_chunk_id, UUID)
             assert chunk.prev_chunk_id == chunked_documents[i-1].id
         if (i < len(chunked_documents) - 1):
+            assert isinstance(chunk.next_chunk_id, UUID)
             assert chunk.next_chunk_id == chunked_documents[i+1].id

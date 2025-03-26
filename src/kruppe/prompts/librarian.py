@@ -9,10 +9,10 @@ LIBRARIAN_STANDARD_SYSTEM = dedent(
 LIBRARIAN_STANDARD_USER = dedent(
     """\
     -Goal-
-    Given a description of the information that the user is seeking, the list of resources/functions that can be used to gather the information, and a history of past resources/functions call that were already made, determine the functions that should be used to find the information and the parameters needed to execute the function. You should *not* repeat function calls with the same or very similar parameters.
+    Given a description of the information that the user is seeking, the list of resources/functions that can be used to gather the information, and a history of past resources/functions call that were already made, determine the functions that should be used to find the information and the parameters needed to execute the function. Make sure you examine the past resources/functions calls, and make new function calls and parameters that are *completely different* from those.
 
     -Steps-
-    1. For each resource/function, use your intuition and the function description to infer the type of information that the function can provide for the request, and determine the parameters needed to execute the function. Make sure that you are not making funtion calls that have already been made in the past.
+    1. For each resource/function, use your intuition and the function description to infer the type of information that the function can provide for the request, and determine the parameters needed to execute the function. Make sure that you are making *new* function calls and parameters that are completely different from those used in the past.
     For each resource, determine the following information:
     - func_name: the function name in question. use the original name provided in the input
     - parameters: the parameters that will be entered to the function. It should be a stringified object.
@@ -40,6 +40,26 @@ LIBRARIAN_STANDARD_USER = dedent(
 LIBRARIAN_TIME_USER = dedent(
     """\
     -Instruction-
+    You are given a query, or essentially a description of the information that the user is seeking. This query will be used to query a vector storage system to retrieve relevant contexts. I want you to analyze the query, and determine the time period that the user is interested in. The time period should be as specific as possible, and should be in the format of a start date and an end date.
+
+    Start date and the end date should be in the format of "YYYY-MM-DD".
+
+    -Output Structure-
+    start_date: <start_date>
+    end_date: <end_date>
+
+    -Input-
+    Description of the information that the user wants to know:
+    {information_desc}
+
+    -Output-
+    """
+)
+
+# this is not being used rn
+LIBRARIAN_TIME_USER_2 = dedent(
+    """\
+    -Instruction-
     You are given a query, or essentially a description of the information that the user is seeking. This query will be used to query a vector storage system to retrieve relevant contexts. I want you to analyze the query, and determine 1. if the retrieved contexts should be restricted to a specific time period, and 2. if yes, then determine the time period that the user is interested in. The time period should be as specific as possible, and should be in the format of a start date and an end date.
 
     If you determined that the retrieved contexts should not be restricted to a specific time period, then you should return "no" as the answer.
@@ -63,14 +83,17 @@ LIBRARIAN_TIME_USER = dedent(
     """
 )
 
-LIBRARIAN_CONTEXT_CONFIDENCE_USER = dedent(
+LIBRARIAN_CONTEXT_RELEVANCE_USER = dedent(
     """\
     -Instruction-
-    Given a description of the information that the user is seeking, determine how relevant the contexts are to the information description. Suppose 0 is highly irrelevant, 5 is moderately relevant, and 10 is highly relevant. You should provide one confidence score for the relevance of all the contexts to the information description. Write a short and succint explanation of why you chose this confidence score, then a single newline characterh, then the confidence score.
+    Given a description of the information that the user is seeking, and a list of retrieved contexts, determine if the contexts are relevant to the information description and how relevant they are. First, I want you to think out loud and analyze if any of the contexts are relevant. Then, determine how relevant the contexts are using one of the following three categories: "highly relevant", "somewhat relevant", or "not relevant".
+    - highly relevant: the context is significantly related to the information description
+    - somewhat relevant: at least one piece of the context is related to the information description
+    - not relevant: the context is not related to the information description
 
     -Output Structure-
-    <explanation>
-    <confidence_score>
+    <thought process>
+    relevance: <relevance>
 
     -Input-
     Description of the information that the user wants to know:

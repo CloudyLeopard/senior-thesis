@@ -2,7 +2,8 @@ from pydantic import BaseModel, Field, AfterValidator, computed_field
 from typing import Dict, Any, Optional, List, Annotated
 import json
 from uuid import uuid4, UUID
-from dateutil.parser import parse
+from dateutil.parser import parse, ParserError
+from datetime import datetime
 
 OPENAI_TEXT_EMBEDDING_SMALL_DIM = 1536
 
@@ -22,8 +23,15 @@ def validate_metadata(v: Dict[str, Any]):
         
         # convert publication_time to unix
         dt = v.get('publication_time')
-        if isinstance(dt, str) and dt:
-            v['publication_time'] = int(parse(dt).timestamp())
+        try:
+            if not dt:
+                v['publication_time'] = None
+            elif isinstance(dt, str):
+                v['publication_time'] = int(parse(dt).timestamp())
+            elif isinstance(dt, int) or isinstance(dt, float):
+                v['publication_time'] = int(dt)
+        except ParserError:
+            v['publication_time'] = None
 
         # convert all None values to empty string
         for key in v:
@@ -44,7 +52,12 @@ class Document(Embeddable):
     
     def __str__(self):
         doc_dict = self.model_dump(exclude={'text'})
-        doc_dict['text'] = self.text[:25]
+        doc_dict['text'] = self.text[:50] + "..."
+
+        # making it json dumpable
+        for k in doc_dict:
+            if isinstance(doc_dict[k], UUID):
+                doc_dict[k] = str(doc_dict[k])
         return f"<{self.__class__.__name__} {json.dumps(doc_dict, indent=None)}>"
 
     def set_db_id(self, id: str):

@@ -1,10 +1,9 @@
-from pydantic import computed_field
-from typing import AsyncGenerator, Callable, List, Dict, Any, Set
+from pydantic import computed_field, PrivateAttr
+from typing import AsyncGenerator, Callable, List, Dict, Literal, Set, Tuple
 import json
 import asyncio
 import re
 from datetime import datetime
-
 
 from kruppe.algorithm.agents import Researcher
 from kruppe.utils import log_io
@@ -16,22 +15,32 @@ from kruppe.prompts.librarian import (
     LIBRARIAN_STANDARD_SYSTEM,
     LIBRARIAN_STANDARD_USER,
     LIBRARIAN_TIME_USER,
-    LIBRARIAN_CONTEXT_CONFIDENCE_USER
+    LIBRARIAN_CONTEXT_RELEVANCE_USER
 )
 from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.functional.docstore.base_docstore import BaseDocumentStore
 
-
+MAX_RANK_THRESHOLD = 3 # rank threshold that llm determines during _choose_library
 CONFIDENCE_THRESHOLD = 5
 
 class Librarian(Researcher):
+    """
+    Used to help users or agents find information. Given a description of the information that the user wants,
+    it will either consult its index or its library of online sources to retrieve the information.
+    
+    Note: the goal of the Librarian is *not* to make huge creative leaps - that is the job of the other, 
+    more dedicated "researcher". The goal of the librarian is that, given a specific piece of information
+    that we want to find, the librarian finds it. The librarian is not meant to be creative, but rather
+    to be efficient and accurate.
+    """
+
     system_message: str = LIBRARIAN_STANDARD_SYSTEM
     news_source: NewsSource
     # fin_source:
     # forum_source:
     index: BaseIndex # for retrieve_from_index
-    docstore: BaseDocumentStore # to avoid duplicates
-    executed_funcs: Set[Dict[str, Any]] = set()
+    docstore: BaseDocumentStore # NOTE: NEED TO DEFINE A UNIQUE INDEX!
+    _executed_funcs: Set[Tuple[str]] = PrivateAttr(default_factory=set)
 
     @computed_field
     @property
@@ -67,7 +76,13 @@ class Librarian(Researcher):
         return registry
     
     @log_io
-    async def execute(self, information_desc: str, retries=2) -> List[Document]:
+    async def execute(
+        self,
+        information_desc: str,
+        retries: int = 2,
+        relevance_score_threshold: Literal[1, 2, 3] | None = 2,
+        **kwargs
+    ) -> List[Document]:
         """Given a description of the information that the user wants, the Librarian will
         retrieve relevant contexts to the information description and return them to the user.
         
@@ -82,40 +97,58 @@ class Librarian(Researcher):
         Args:
             information_desc (str): description of the information that the user wants to know
             retries (int): number of retries to get relevant contexts from index
+            kwargs: additional arguments, defined by `retrieve_from_library` and `retrieve_from_index`
 
         Returns:
             List[Document]: list of documents, empty if confidence score is low
         """
 
-        while retries > 0:
+        current_try = 1
+        while current_try <= retries:
             ret_chunks = await self.retrieve_from_index(
                 information_desc=information_desc,
-                top_k=10,
+                **kwargs
             )
 
-            # calculate confidence
-            confidence_score = 0
+            need_new_documents = False
 
-            user_message = LIBRARIAN_CONTEXT_CONFIDENCE_USER.format(
-                information_desc=information_desc,
-                contexts = "\n".join(chunk.text for chunk in ret_chunks)
-            )
-            messages = [
-                {"role": "system", "content": self.system_message},
-                {"role": "user", "content": user_message},
-            ]
+            if len(ret_chunks) == 0:
+                need_new_documents = True
+            elif relevance_score_threshold is not None:
+                # use LLM to determine relevance
+                
+                if relevance_score_threshold not in [1, 2, 3]:
+                    raise ValueError(f"relevance_score_threshold must be 1, 2, or 3, not {relevance_score_threshold}")
 
-            llm_response = await self.llm.async_generate(messages)
-            llm_string = llm_response.text
-            confidence_score = int(llm_string.split("\n")[-1])
-
-            if confidence_score < CONFIDENCE_THRESHOLD:
-                scraped_doc = await self.retrieve_from_library(
+                user_message = LIBRARIAN_CONTEXT_RELEVANCE_USER.format(
                     information_desc=information_desc,
-                    num_resources=1 # only retrieve from one resource
+                    contexts = "\n".join(chunk.text for chunk in ret_chunks)
                 )
-                retries -= 1 # decrement retries
+                messages = [
+                    {"role": "system", "content": self.system_message},
+                    {"role": "user", "content": user_message},
+                ]
+
+                llm_response = await self.llm.async_generate(messages)
+                llm_string = llm_response.text
+
+                # high relevance: 1, somewhat relevant: 2, not relevant: 3
+                relevance = llm_string.split("relevance: ")[-1].strip()
+                relevance_score_map = {"highly relevant": 1, "somewhat relevant": 2, "not relevant": 3}
+                relevance_score = relevance_score_map.get(relevance, 0)
+
+                if relevance_score > relevance_score_threshold:
+                    need_new_documents = True
+            
+            if need_new_documents:
+                # low relevance, try again
+                await self.retrieve_from_library(
+                    information_desc=information_desc,
+                    **kwargs
+                )
+                current_try += 1 # decrement retries
             else:
+                # high relevance, return
                 return ret_chunks
             
         return []
@@ -126,7 +159,8 @@ class Librarian(Researcher):
             top_k: int = 10,
             llm_restrict_time: bool = False,
             start_time: str = None,
-            end_time: str = None
+            end_time: str = None,
+            **kwargs
         ) -> List[Chunk]:
         """Generates a list of queries based on the information description, then retrieves the chunks
         from the index.
@@ -170,21 +204,20 @@ class Librarian(Researcher):
             llm_response = await self.llm.async_generate(messages)
             llm_string = llm_response.text
 
-            if llm_string.startswith("yes"):
-                pattern = r'start_date:\s*(?P<start_date>\S+).*?end_date:\s*(?P<end_date>\S+)'
-                match = re.search(pattern, llm_string)
-                if match:
-                    start_date_str = match.group("start_date")
-                    end_date_str = match.group("end_date")
-                    start_date_unix = int(datetime.strptime(start_date_str, "%Y-%m-%d").timestamp())
-                    end_date_unix = int(datetime.strptime(end_date_str, "%Y-%m-%d").timestamp())
+            pattern = r'start_date:\s*(?P<start_date>\S+).*?end_date:\s*(?P<end_date>\S+)'
+            match = re.search(pattern, llm_string)
+            if match:
+                start_date_str = match.group("start_date")
+                end_date_str = match.group("end_date")
+                start_date_unix = int(datetime.strptime(start_date_str, "%Y-%m-%d").timestamp())
+                end_date_unix = int(datetime.strptime(end_date_str, "%Y-%m-%d").timestamp())
 
-                    filter = {
-                        "$and": [
-                            {"publication_time": {"$gte": start_date_unix}},
-                            {"publication_time": {"$lte": end_date_unix}},
-                        ]
-                    }
+                filter = {
+                    "$and": [
+                        {"publication_time": {"$gte": start_date_unix}},
+                        {"publication_time": {"$lte": end_date_unix}},
+                    ]
+                }
 
         # query index and retrieve documents
         query = Query(text=information_desc)
@@ -192,13 +225,21 @@ class Librarian(Researcher):
         return relevant_documents
 
     async def retrieve_from_library(
-        self, information_desc: str, num_resources: int = 1
+        self,
+        information_desc: str,
+        num_resources: int = 1,
+        rank_threshold: Literal[1, 2, 3] = 2,
+        **kwargs
     ) -> List[Document]:
+        
+        if (rank_threshold > MAX_RANK_THRESHOLD):
+            raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
+
         # get resource requests, and limit to num_resources
         resource_requests = await self._choose_resource(information_desc)
         resource_requests = resource_requests[:num_resources]
 
-        combined_generator = combine_async_generators([self._retrieve_helper(request) for request in resource_requests])
+        combined_generator = combine_async_generators([self._retrieve_helper(request, rank_threshold=rank_threshold) for request in resource_requests])
 
         running_save_tasks = set()
         async for doc in combined_generator:
@@ -231,7 +272,7 @@ class Librarian(Researcher):
         resource_desc = "\n".join(desc_lists)
 
         # get past function calls
-        funcs_past = "\n".join(self.executed_funcs)
+        funcs_past = "\n".join(f"func_name: {tup[0]}, parameters: {tup[1]}" for tup in self._executed_funcs)
 
         # format librarian user message
         user_message = LIBRARIAN_STANDARD_USER.format(
@@ -256,7 +297,7 @@ class Librarian(Researcher):
 
         return resource_requests
 
-    async def _retrieve_helper(self, resource_request: Dict) -> AsyncGenerator[Document, None]:
+    async def _retrieve_helper(self, resource_request: Dict, rank_threshold: Literal[1, 2, 3] = 2) -> AsyncGenerator[Document, None]:
         """Executes the function specified in the resource request and yields the documents.
         If the function has already been executed, it will not be executed again.
 
@@ -276,24 +317,27 @@ class Librarian(Researcher):
         # TODO: remove later - right now, i'm putting a cap on number of documents that can be retrieved
         parameters["max_results"] = 10
 
-        # TODO: add function filter by rank later
-        # ...
+        # check if rank is higher than lowest rank
+        if rank_threshold > MAX_RANK_THRESHOLD:
+            raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
+        if resource_request["rank"] > rank_threshold:
+            return
 
-        new_func = {"func_name": func_name, "parameters": parameters}
-        
-        # do not execute the same function twice
-        if new_func in self.executed_funcs:
+        # check for duplicates.
+        # we do not want to execute the same function twice
+        new_func = (func_name, json.dumps(parameters))
+        if new_func in self._executed_funcs:
             return
         
-        # add to executed_funcs
-        self.executed_funcs.add(new_func)
+        # if we do not find a duplicate, add to _executed_funcs
+        self._executed_funcs.add(new_func)
 
         result = func(**parameters)
         if hasattr(result, "__aiter__"):  # some functions return async iterators
-            async for document in result:
+            async for document in result: # if it is an async gen
                 yield document
         else:
-            result = await result
+            result = await result # if it is not an async gen, await it
             for document in result:
                 yield document
     

@@ -45,6 +45,11 @@ class BaseVectorStore(ABC, BaseModel):
         """remove documents by their ids"""
         pass
 
+    @abstractmethod
+    def clear(self) -> None:
+        """clear the vector storage"""
+        ...
+
     # @abstractmethod
     # def clear(self) -> None:
     #     self._texts_hashes = set()

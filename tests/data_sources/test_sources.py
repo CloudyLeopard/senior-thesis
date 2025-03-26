@@ -40,7 +40,7 @@ async def test_news_search(source, query):
         assert "url" in document.metadata
         assert "title" in document.metadata
         assert "publication_time" in document.metadata
-        assert document.uuid and isinstance(document.uuid, UUID)
+        assert document.id and isinstance(document.id, UUID)
     
     assert size > 0
 
@@ -58,7 +58,7 @@ async def test_news_recent(source):
         assert "title" in document.metadata
         assert "description" in document.metadata
         assert document.metadata.get("datasource") == source.__class__.__name__
-        assert document.uuid and isinstance(document.uuid, UUID)
+        assert document.id and isinstance(document.id, UUID)
     
     assert size > 0
 
@@ -76,7 +76,7 @@ async def test_news_archive(source):
         assert len(document.text) > 0
         assert len(document.metadata) > 0
         assert document.metadata.get("datasource") == source.__class__.__name__
-        assert document.uuid and isinstance(document.uuid, UUID)
+        assert document.id and isinstance(document.id, UUID)
     
     assert size > 0
 
@@ -90,5 +90,5 @@ def test_fetch_directory():
         assert len(document.text) > 0
         assert len(document.metadata) > 0
         assert document.metadata.get("datasource") == source.__class__.__name__
-        assert document.uuid and isinstance(document.uuid, UUID)
+        assert document.id and isinstance(document.id, UUID)
     assert size > 0
