@@ -4,6 +4,7 @@ import json
 import asyncio
 import re
 from datetime import datetime
+import logging
 
 from kruppe.algorithm.agents import Researcher
 from kruppe.utils import log_io
@@ -23,6 +24,8 @@ from kruppe.functional.docstore.base_docstore import BaseDocumentStore
 MAX_RANK_THRESHOLD = 3 # rank threshold that llm determines during _choose_library
 CONFIDENCE_THRESHOLD = 5
 
+logger = logging.getLogger(__name__)
+
 class Librarian(Researcher):
     """
     Used to help users or agents find information. Given a description of the information that the user wants,
@@ -38,6 +41,7 @@ class Librarian(Researcher):
     news_source: NewsSource
     # fin_source:
     # forum_source:
+    # llm_expert_source: 
     index: BaseIndex # for retrieve_from_index
     docstore: BaseDocumentStore # NOTE: NEED TO DEFINE A UNIQUE INDEX!
     _executed_funcs: Set[Tuple[str]] = PrivateAttr(default_factory=set)
@@ -147,6 +151,8 @@ class Librarian(Researcher):
                     **kwargs
                 )
                 current_try += 1 # decrement retries
+
+                await asyncio.sleep(5) # sleep for 5 seconds before trying again
             else:
                 # high relevance, return
                 return ret_chunks
@@ -234,6 +240,8 @@ class Librarian(Researcher):
         
         if (rank_threshold > MAX_RANK_THRESHOLD):
             raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
+
+        logger.warning(f"Retrieving from library for info request: {information_desc[:50]}...")
 
         # get resource requests, and limit to num_resources
         resource_requests = await self._choose_resource(information_desc)

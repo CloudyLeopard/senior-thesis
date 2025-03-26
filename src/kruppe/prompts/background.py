@@ -7,7 +7,7 @@ RESEARCH_STANDARD_SYSTEM = dedent(
     """
 )
 
-DETERMINE_INFO_QUERY_USER = dedent(
+DETERMINE_INFO_REQUEST_USER = dedent(
     """\
     -Goal-
     Given a query, determine what additional background information you want to know to comprehensively and accurately answer the query.
@@ -24,6 +24,41 @@ DETERMINE_INFO_QUERY_USER = dedent(
     """
 )
 
+ANSWER_INFO_REQUEST_USER = dedent(
+    """\
+    -Instruction-
+    You are given a central research question, a sub informatino request (focuses on a specific piece of information that is needed to answer the central research question), and relevant contexts. Generate a response that answers the sub information request, but in the context of the overall research question. Be sure to provide a detailed response that is relevant to the sub information request.
+
+    -Input-
+    Research Question: {query}
+
+    Information Request: {info_request}
+
+    Contexts:
+    {contexts}
+
+    -Output-
+    """
+)
+
+COMPILE_REPORT_USER = dedent(
+    """\
+    Given a central research question, a list of sub information requests used to answer the research question's background, and answers to these information requests, build a background report of the research question. Do not focus on answering the query. Focus on writing relevant background information that will be later used to help answer the query. Cite specific examples to back up your analysis whenever possible.
+
+    -Input-
+    Research Question: {query}
+
+    Information Requests and Responses:
+    {info_responses}
+
+    -Output-
+    """
+)
+
+
+
+# ========================
+
 ANALYZE_DOCUMENT_SIMPLE_USER = dedent(
     """\
     -Instruction-
@@ -35,21 +70,6 @@ ANALYZE_DOCUMENT_SIMPLE_USER = dedent(
     <document>
     {document}
     </document>
-
-    -Output-
-    """
-)
-
-COMPILE_REPORT_USER = dedent(
-    """\
-    Given a query and a list of analyses made from retrieved documented relevant to the query, build a background report of the query. Do not focus on answering the query. Focus on writing relevant background information that will be later used to help answer the query. Cite specific examples to back up your analysis whenever possible.
-
-    -Input-
-    Query: {query}
-
-    <analyses>
-    {analyses}
-    </analyses>
 
     -Output-
     """

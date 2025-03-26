@@ -2,6 +2,7 @@ import functools
 import logging
 import asyncio
 import inspect
+from uuid import uuid4
 
 # global flag to control logging
 ENABLE_IO_LOGGING = True
@@ -65,34 +66,36 @@ def log_io(func):
         @functools.wraps(func)
         async def async_gen_wrapper(*args, **kwargs):
             caller = get_caller_name(func, args)
+            func_id = uuid4()
             filtered_args = filter_args(args)
             capped_args = tuple(cap_value(arg) for arg in filtered_args)
             capped_kwargs = {k: cap_value(v) for k, v in kwargs.items()}
-            io_logger.info(f"Calling async generator {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
+            io_logger.info(f"{func_id} - Calling async generator {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
             try:
                 async for item in func(*args, **kwargs):
-                    io_logger.info(f"{caller} yielded {cap_value(item)}")
+                    io_logger.info(f"{func_id} - {caller} yielded {cap_value(item)}")
                     yield item
             except Exception as e:
-                io_logger.exception(f"{caller} raised an exception: {cap_value(e)}")
+                io_logger.exception(f"{func_id} - {caller} raised an exception: {cap_value(e)}")
                 raise
-            io_logger.info(f"{caller} finished")
+            io_logger.info(f"{func_id} - {caller} finished")
         return async_gen_wrapper
 
     elif asyncio.iscoroutinefunction(func):
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
             caller = get_caller_name(func, args)
+            func_id = uuid4()
             filtered_args = filter_args(args)
             capped_args = tuple(cap_value(arg) for arg in filtered_args)
             capped_kwargs = {k: cap_value(v) for k, v in kwargs.items()}
-            io_logger.info(f"Calling async function {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
+            io_logger.info(f"{func_id} - Calling async function {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
             try:
                 result = await func(*args, **kwargs)
             except Exception as e:
-                io_logger.exception(f"{caller} raised an exception: {cap_value(e)}")
+                io_logger.exception(f"{func_id} - {caller} raised an exception: {cap_value(e)}")
                 raise
-            io_logger.info(f"{caller} returned {cap_value(result)}")
+            io_logger.info(f"{func_id} - {caller} returned {cap_value(result)}")
             return result
         return async_wrapper
 
@@ -100,16 +103,17 @@ def log_io(func):
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             caller = get_caller_name(func, args)
+            func_id = uuid4()
             filtered_args = filter_args(args)
             capped_args = tuple(cap_value(arg) for arg in filtered_args)
             capped_kwargs = {k: cap_value(v) for k, v in kwargs.items()}
-            io_logger.info(f"Calling {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
+            io_logger.info(f"{func_id} - Calling {caller} with args: {capped_args} and kwargs: {capped_kwargs}")
             try:
                 result = func(*args, **kwargs)
             except Exception as e:
-                io_logger.exception(f"{caller} raised an exception: {cap_value(e)}")
+                io_logger.exception(f"{func_id} - {caller} raised an exception: {cap_value(e)}")
                 raise
-            io_logger.info(f"{caller} returned {cap_value(result)}")
+            io_logger.info(f"{func_id} - {caller} returned {cap_value(result)}")
             return result
         return sync_wrapper
 

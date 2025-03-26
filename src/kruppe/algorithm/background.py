@@ -1,8 +1,5 @@
-from abc import ABC, abstractmethod
-from textwrap import dedent
-from arrow import get
-from pydantic import BaseModel, computed_field
-from typing import Callable, List, Dict, Optional
+
+from typing import List, Dict, Tuple
 import re
 import json
 import asyncio
@@ -15,10 +12,11 @@ from kruppe.llm import BaseLLM
 from kruppe.models import Document, Response
 from kruppe.prompts.background import (
     RESEARCH_STANDARD_SYSTEM,
+    DETERMINE_INFO_REQUEST_USER,
+    ANSWER_INFO_REQUEST_USER,
+    COMPILE_REPORT_USER,
     ANALYZE_QUERY_USER_CHAIN,
-    DETERMINE_INFO_QUERY_USER,
     ANALYZE_DOCUMENT_SIMPLE_USER,
-    COMPILE_REPORT_USER
 )
 from kruppe.algorithm.utils import process_request
 from kruppe.algorithm.agents import Researcher
@@ -26,14 +24,14 @@ from kruppe.algorithm.librarian import Librarian
 
 
 class BackgroundResearcher(Researcher):
-    query: str
+    research_question: str # TODO: rename this... maybe "central_question" or "research_question"?
     system_message: str = RESEARCH_STANDARD_SYSTEM
-    history: List[Dict] = []  # research history
+    history: List[Tuple[str, Response]] = []  # research history
     librarian: Librarian
 
 
-    def new_query(self, query: str):
-        self.query = query
+    def clear_history(self, research_question: str):
+        self.research_question = research_question
         self.history = []
 
     async def execute(self):
@@ -41,12 +39,12 @@ class BackgroundResearcher(Researcher):
         info_requests = await self.create_info_requests()
         print(f"Created {len(info_requests)} info requests")
 
-        # NOTE: if this breaks, its ok because partial results will be saved in self.history
-        try:
-            # Set a timeout (in seconds) for retrieve_and_analyze
-            await asyncio.wait_for(self.retrieve_and_analyze(info_requests), timeout=360)
-        except asyncio.TimeoutError:
-            print("retrieve_and_analyze took too long; proceeding with partial results...")
+        # TODO: add timeout or a way to continue with partial results if something breaks
+
+        # answer each info request
+        # doing this sequentially for now cuz it breaking
+        for info_request in tqdm(info_requests, desc="Answering info requests\n"):
+            await self.answer_info_request(info_request)
 
         print("Compiling report...")
         report = await self.compile_report()
@@ -55,7 +53,7 @@ class BackgroundResearcher(Researcher):
 
     @log_io
     async def create_info_requests(self) -> List[str]:
-        user_message = DETERMINE_INFO_QUERY_USER.format(query=self.query)
+        user_message = DETERMINE_INFO_REQUEST_USER.format(query=self.research_question)
         messages = [
             {"role": "system", "content": self.system_message},
             {"role": "user", "content": user_message},
@@ -67,11 +65,29 @@ class BackgroundResearcher(Researcher):
         info_requests = re.split(r'\n+', llm_string)
 
         return info_requests
-    
-    async def _analyze_helper(self, document: Document):
-        user_message = ANALYZE_DOCUMENT_SIMPLE_USER.format(
-            query=self.query,
-            document=document.text
+
+    @log_io
+    async def answer_info_request(self, info_request: str) -> Response:
+        """Prompt the librarian for relevant contexts to answer the info request,
+        and then answer the info request. Pretty much RAG with an extra step lol.
+
+        Also adds the (info_request, Response) pair to history.
+
+        Args:
+            info_request (str): description of the information we want answered
+
+        Returns:
+            Response: response to the information request, with the relevant contexts
+        """
+
+        ret_docs = await self.librarian.execute(info_request)
+        contexts = "\n".join([doc.text for doc in ret_docs])
+
+        # generate response
+        user_message = ANSWER_INFO_REQUEST_USER.format(
+            query=self.research_question,
+            info_request=info_request,
+            contexts=contexts
         )
         messages = [
             {"role": "system", "content": self.system_message},
@@ -79,19 +95,44 @@ class BackgroundResearcher(Researcher):
         ]
 
         llm_response = await self.llm.async_generate(messages)
-        llm_string = llm_response.text
+        llm_response.sources = ret_docs
 
-        research_result = {
-            # "info_request": info_request, # NOTE: the hypothesis exp version should be different here
-            "document": document.text, # TODO: make this document class later im too lazy rn
-            "analysis": llm_string
-        }
+        self.history.append((info_request, llm_response))
 
-        self.history.append(research_result)
-
+        return llm_response
 
     @log_io
-    async def retrieve_and_analyze(self, info_requests: List[str]) -> List[Dict]:
+    async def compile_report(self) -> Response:
+        """Compile a research report on the relevant background pieces using the
+        research history.
+
+        Returns:
+            str: research history
+        """
+
+        info_responses = "\n".join([f"Question: {info_request}\nAnswer: {response.text}\n\n" for info_request, response in self.history])
+
+        user_message = COMPILE_REPORT_USER.format(
+            query=self.research_question,
+            info_responses=info_responses
+        )
+
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": user_message},
+        ]
+
+        llm_response = await self.llm.async_generate(messages)
+
+        return llm_response
+
+
+# =========== OLD CODE ===========
+# NOTE: may consider turning this into the "naive" analyst
+# that processes every document
+
+    @log_io
+    async def request_and_analyze(self, info_requests: List[str]) -> List[Dict]:
         """For each information request, retrieve relevant documents from the libriarian.
         Then analyze the document to extract relevant background for the query.
 
@@ -113,21 +154,12 @@ class BackgroundResearcher(Researcher):
             tasks.append(asyncio.create_task(self._analyze_helper(doc)))
 
         await asyncio.gather(*tasks)
-        
-    @log_io
-    async def compile_report(self) -> str:
-        """Compile a research report on the relevant background pieces using the
-        research history.
 
-        Returns:
-            str: research history
-        """
-
-        user_message = COMPILE_REPORT_USER.format(
-            query=self.query,
-            analyses="\n".join([item["analysis"] for item in self.history])
+    async def _analyze_helper(self, document: Document):
+        user_message = ANALYZE_DOCUMENT_SIMPLE_USER.format(
+            query=self.research_question,
+            document=document.text
         )
-
         messages = [
             {"role": "system", "content": self.system_message},
             {"role": "user", "content": user_message},
@@ -136,8 +168,14 @@ class BackgroundResearcher(Researcher):
         llm_response = await self.llm.async_generate(messages)
         llm_string = llm_response.text
 
-        return llm_string
+        research_result = {
+            # "info_request": info_request, # NOTE: the hypothesis exp version should be different here
+            "document": document.text, # TODO: make this document class later im too lazy rn
+            "analysis": llm_string
+        }
 
+        self.history.append(research_result)
+ 
     async def analyze_query(self) -> List[Dict]:
         """This function breaks down the query into areas to conduct background research.
         Then, it determines which tool to call on for each area. Finally, returns the
@@ -157,7 +195,7 @@ class BackgroundResearcher(Researcher):
         information_categories = "finance, economy, industry"
 
         user_message = ANALYZE_QUERY_USER_CHAIN[0].format(
-            query=self.query,
+            query=self.research_question,
             entity_categories=entity_categories,
             information_categories=information_categories
         )
@@ -171,7 +209,7 @@ class BackgroundResearcher(Researcher):
 
         # extract additional information from query
         followup_message = ANALYZE_QUERY_USER_CHAIN[1].format(
-            query=self.query, information_categories=information_categories
+            query=self.research_question, information_categories=information_categories
         )
         messages.append({"role": "user", "content": followup_message})
 
@@ -185,6 +223,3 @@ class BackgroundResearcher(Researcher):
         info_requests_string = "\n".join([json.dumps(info_request) for info_request in info_requests_sorted])
                     
         ...
-
-class DocumentResearcher(BaseModel):
-    objective: str
