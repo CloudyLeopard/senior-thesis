@@ -10,10 +10,10 @@ RESEARCH_STANDARD_SYSTEM = dedent(
 CREATE_INFO_REQUEST_USER = dedent(
     """\
     -Goal-
-    Given a query, determine what additional background information you want to know to comprehensively and accurately answer the query.
+    Given a query, determine {n} background information you want to know to comprehensively and accurately answer the query.
 
     -Steps-
-    1. Identify all the information you want to know about to answer the query. Be creative and specific (avoid overly general information). Each new piece of information should help build a more complete background for the user to answer the question.
+    1. Identify {n} additional information you want to know about to answer the query. Be creative and specific (avoid overly general information). Each new piece of information should help build a more complete background for the user to answer the question.
     2. Write each identified information as one paragraph (2-3 sentences) that describes 1. What you want to know, 2. Why do you want it (i.e. how does it help?). Note that your justification does not have only be "to help answer the question". Other ideas include "to gain a better background", "to double check the event's validity", etc.
     3. Return the output in English as a single list of all the paragraphs separated by a single newline character.
 

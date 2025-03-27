@@ -10,6 +10,9 @@ class BaseDocumentStore(BaseModel, ABC):
     collection_name: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
+    @property
+    def document_count(self) -> int:
+        ...
 
     @abstractmethod
     def clear_collection(self) -> int:

@@ -14,15 +14,12 @@ from kruppe.algorithm.utils import process_request
 from kruppe.models import Document, Chunk, Query
 from kruppe.prompts.librarian import (
     LIBRARIAN_STANDARD_SYSTEM,
-    LIBRARIAN_STANDARD_USER,
+    CHOOSE_RESOURCE_USER,
     LIBRARIAN_TIME_USER,
     LIBRARIAN_CONTEXT_RELEVANCE_USER
 )
 from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.functional.docstore.base_docstore import BaseDocumentStore
-
-MAX_RANK_THRESHOLD = 3 # rank threshold that llm determines during _choose_library
-CONFIDENCE_THRESHOLD = 5
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +41,11 @@ class Librarian(Researcher):
     # llm_expert_source: 
     index: BaseIndex # for retrieve_from_index
     docstore: BaseDocumentStore # NOTE: NEED TO DEFINE A UNIQUE INDEX!
+    num_retries: int = 2,
+    relevance_score_threshold: Literal[1, 2, 3] | None = 2
+    # retrieve_from_library related
+    resource_rank_threshold: Literal[1, 2, 3] = 2
+    num_rsc_per_retrieve: int = 2
     _executed_funcs: Set[Tuple[str]] = PrivateAttr(default_factory=set)
 
     @computed_field
@@ -79,12 +81,20 @@ class Librarian(Researcher):
 
         return registry
     
+    @computed_field
+    @property
+    def document_count(self) -> int:
+        """Returns the number of documents in the Documentstore.
+
+        Returns:
+            int: number of documents in the Documentstore
+        """
+        return self.docstore.document_count
+
     @log_io
     async def execute(
         self,
         information_desc: str,
-        retries: int = 2,
-        relevance_score_threshold: Literal[1, 2, 3] | None = 2,
         **kwargs
     ) -> List[Document]:
         """Given a description of the information that the user wants, the Librarian will
@@ -108,7 +118,7 @@ class Librarian(Researcher):
         """
 
         current_try = 0
-        while current_try <= retries:
+        while current_try <= self.num_retries:
             ret_chunks = await self.retrieve_from_index(
                 information_desc=information_desc,
                 **kwargs
@@ -118,12 +128,9 @@ class Librarian(Researcher):
 
             if len(ret_chunks) == 0:
                 need_new_documents = True
-            elif relevance_score_threshold is not None:
+            elif self.relevance_score_threshold is not None:
                 # use LLM to determine relevance
                 
-                if relevance_score_threshold not in [1, 2, 3]:
-                    raise ValueError(f"relevance_score_threshold must be 1, 2, or 3, not {relevance_score_threshold}")
-
                 user_message = LIBRARIAN_CONTEXT_RELEVANCE_USER.format(
                     information_desc=information_desc,
                     contexts = "\n".join(chunk.text for chunk in ret_chunks)
@@ -144,7 +151,7 @@ class Librarian(Researcher):
                 if relevance_score == 4:
                     logger.error(f"Could not determine relevance score from LLM. LLM response: {llm_string}")
 
-                if relevance_score > relevance_score_threshold:
+                if relevance_score > self.relevance_score_threshold:
                     need_new_documents = True
             
             if need_new_documents:
@@ -169,8 +176,8 @@ class Librarian(Researcher):
             information_desc: str,
             top_k: int = 10,
             llm_restrict_time: bool = False,
-            start_time: str = None,
-            end_time: str = None,
+            start_time: str | datetime = None,
+            end_time: str | datetime = None,
             **kwargs
         ) -> List[Chunk]:
         """Generates a list of queries based on the information description, then retrieves the chunks
@@ -190,22 +197,34 @@ class Librarian(Researcher):
         filter = None
 
         # --- FILTER WITH TIME ---
-        start_date_str = None
-        end_date_str = None
         if start_time or end_time:
-            start_date_str = start_time if start_time else "1970-01-01"
-            end_date_str = end_time if end_time else "2038-01-19"
-            start_date_unix = int(datetime.strptime(start_date_str, "%Y-%m-%d").timestamp())
-            end_date_unix = int(datetime.strptime(end_date_str, "%Y-%m-%d").timestamp())
-
-            filter = {
-                "$and": [
-                    {"publication_time": {"$gte": start_date_unix}},
-                    {"publication_time": {"$lte": end_date_unix}},
-                ]
-            }
+            # manual filter
+            
+            start_filter = None
+            if start_time:
+                # turn into datetime object
+                if isinstance(start_time, str):
+                    start_time = datetime.strptime(start_time, "%Y-%m-%d")
+                start_date_unix = int(start_time.timestamp())
+                start_filter = {"publication_time": {"$gte": start_date_unix}}
+            
+            end_filter = None
+            if end_time:
+                if isinstance(end_time, str):
+                    end_time = datetime.strptime(end_time, "%Y-%m-%d")
+                end_date_unix = int(end_time.timestamp())
+                end_filter = {"publication_time": {"$lte": end_date_unix}}
+            
+            if start_time and end_time:
+                # combine filters if both are present
+                filter = {"$and": [start_filter, end_filter]}
+            else:
+                # use either start_filter or end_filter
+                filter = start_filter or end_filter
 
         elif llm_restrict_time:
+            # "smart" filter with LLM
+            
             user_message = LIBRARIAN_TIME_USER.format(information_desc=information_desc)
             messages = [
                 {"role": "system", "content": self.system_message},
@@ -238,19 +257,14 @@ class Librarian(Researcher):
     async def retrieve_from_library(
         self,
         information_desc: str,
-        num_resources: int = 1,
-        rank_threshold: Literal[1, 2, 3] = 2,
         **kwargs
     ) -> List[Document]:
-        
-        if (rank_threshold > MAX_RANK_THRESHOLD):
-            raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
 
         # get resource requests, and limit to num_resources
         resource_requests = await self._choose_resource(information_desc)
-        resource_requests = resource_requests[:num_resources]
+        resource_requests = resource_requests[:self.num_rsc_per_retrieve]
 
-        combined_generator = combine_async_generators([self._retrieve_helper(request, rank_threshold=rank_threshold) for request in resource_requests])
+        combined_generator = combine_async_generators([self._retrieve_helper(request) for request in resource_requests])
 
         running_save_tasks = set()
         async for doc in combined_generator:
@@ -286,10 +300,11 @@ class Librarian(Researcher):
         funcs_past = "\n".join(f"func_name: {tup[0]}, parameters: {tup[1]}" for tup in self._executed_funcs)
 
         # format librarian user message
-        user_message = LIBRARIAN_STANDARD_USER.format(
+        user_message = CHOOSE_RESOURCE_USER.format(
             information_desc=information_desc,
             resource_desc=resource_desc, # resource descriptions in JSON format
             funcs_past=funcs_past, # past function calls
+            n=self.num_rsc_per_retrieve
         )
 
         messages = [
@@ -308,7 +323,7 @@ class Librarian(Researcher):
 
         return resource_requests
 
-    async def _retrieve_helper(self, resource_request: Dict, rank_threshold: Literal[1, 2, 3] = 2) -> AsyncGenerator[Document, None]:
+    async def _retrieve_helper(self, resource_request: Dict) -> AsyncGenerator[Document, None]:
         """Executes the function specified in the resource request and yields the documents.
         If the function has already been executed, it will not be executed again.
 
@@ -329,9 +344,7 @@ class Librarian(Researcher):
         parameters["max_results"] = 10
 
         # check if rank is higher than lowest rank
-        if rank_threshold > MAX_RANK_THRESHOLD:
-            raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
-        if resource_request["rank"] > rank_threshold:
+        if resource_request["rank"] > self.resource_rank_threshold:
             return
 
         # check for duplicates.

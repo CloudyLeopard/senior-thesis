@@ -225,7 +225,7 @@ class BaseEmbeddingModel(ABC, BaseModel):
         raise NotImplementedError
 
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
-    model: Literal["text-embedding-3-small"] = "text-embedding-3-small"
+    model: Literal["text-embedding-3-small", "text-embedding-3-large"] = "text-embedding-3-small"
     api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"))
     sync_client: OpenAI = None
     async_client: AsyncOpenAI = None

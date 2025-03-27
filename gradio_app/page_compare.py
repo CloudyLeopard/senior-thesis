@@ -1,8 +1,8 @@
-from kruppe.operate import (
-    ask_simple_llm,
-    ask_simple_rag,
-    build_index_from_mongo_db,
-)
+# from kruppe.operate import (
+#     ask_simple_llm,
+#     ask_simple_rag,
+#     build_index_from_mongo_db,
+# )
 from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM, NYUOpenAIEmbeddingModel, NYUOpenAILLM
 from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
 from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore
@@ -13,6 +13,8 @@ from kruppe.functional.rag.index.contextual_index import ContextualVectorStoreIn
 import gradio as gr
 from datetime import datetime
 from pathlib import Path
+
+from kruppe.models import Response
 
 inmemory_vectorstore_dir = Path("tmp/inmemory")
 (inmemory_vectorstore_dir / "Vectorstore Index").mkdir(parents=True, exist_ok=True)
@@ -64,7 +66,7 @@ async def build_index_helper(dataset: str, index: BaseIndex):
         gr.Info("Building index for Deepseek News...", duration=5)
 
         # build index
-        await build_index_from_mongo_db(index=index, collection_name="news_search_2025-01-27")
+        # await build_index_from_mongo_db(index=index, collection_name="news_search_2025-01-27")
 
         # save vectorstore
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -140,11 +142,10 @@ async def handle_submit_1(query):
     if not query:
         raise gr.Error("Please enter a query first")
     
-    llm_response = await ask_simple_llm(query, llm)
+    # llm_response = await ask_simple_llm(query, llm)
+    # return llm_response.text
 
-    # TODO: add context metadata (e.g. headlines)
-
-    return llm_response.text
+    return "blah"
 
 async def handle_submit_2(query):
     global embedding_model, llm
@@ -156,14 +157,16 @@ async def handle_submit_2(query):
     if index1 is None:
         raise gr.Error("Index not built yet")
 
-    simple_rag_response = await ask_simple_rag(query, index1, embedding_model, llm)
+    # simple_rag_response = await ask_simple_rag(query, index1, embedding_model, llm)
 
 
-    # TODO: add context metadata (e.g. headlines)
-    simple_rag_contexts = [doc.text for doc in simple_rag_response["contexts"]]
-    simple_rag_text = simple_rag_response["response"]
+    # # TODO: add context metadata (e.g. headlines)
+    # simple_rag_contexts = [doc.text for doc in simple_rag_response["contexts"]]
+    # simple_rag_text = simple_rag_response["response"]
 
-    return (simple_rag_text, "\n\n".join(simple_rag_contexts))
+    # return (simple_rag_text, "\n\n".join(simple_rag_contexts))
+
+    return ("blahblah", "contextshahaha")
 
 async def handle_submit_3(query):
     global embedding_model, llm
@@ -175,13 +178,15 @@ async def handle_submit_3(query):
     if index2 is None:
         raise gr.Error("Index not built yet")
 
-    simple_rag_response = await ask_simple_rag(query, index2, embedding_model, llm)
+    # simple_rag_response = await ask_simple_rag(query, index2, embedding_model, llm)
 
-    # TODO: add context metadata (e.g. headlines)
-    simple_rag_contexts = [doc.text for doc in simple_rag_response["contexts"]]
-    simple_rag_text = simple_rag_response["response"]
+    # # TODO: add context metadata (e.g. headlines)
+    # simple_rag_contexts = [doc.text for doc in simple_rag_response["contexts"]]
+    # simple_rag_text = simple_rag_response["response"]
 
-    return (simple_rag_text, "\n\n".join(simple_rag_contexts))
+    # return (simple_rag_text, "\n\n".join(simple_rag_contexts))
+
+    return ("blahblah", "contextshahaha")
 
 
 with gr.Blocks() as demo:

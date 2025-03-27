@@ -10,6 +10,9 @@ from kruppe.models import Document, Chunk
 
 logger = logging.getLogger(__name__)
 
+def get_chroma_collection_names(client: chromadb.ClientAPI) -> List[str]:
+    return client.list_collections()
+
 class ChromaVectorStore(BaseVectorStore):
     """Custom Vector storage class for using Chroma"""
 
@@ -115,6 +118,10 @@ class ChromaVectorStore(BaseVectorStore):
         return data["ids"]
 
     def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
+        if filter == {}: 
+            # apparently chroma doesn't like empty filters
+            filter = None
+
         results = self._collection.query(
             query_embeddings=[vector],
             n_results=top_k,

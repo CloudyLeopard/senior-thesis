@@ -4,6 +4,7 @@ import re
 import json
 import asyncio
 import logging
+from pydantic import computed_field
 from tqdm import tqdm
 
 from kruppe.utils import log_io
@@ -26,15 +27,24 @@ logger = logging.getLogger(__name__)
 
 
 class BackgroundResearcher(Researcher):
-    research_question: str
-    system_message: str = RESEARCH_STANDARD_SYSTEM
-    history: List[Tuple[str, Response]] = []  # research history
     librarian: Librarian
+    system_message: str = RESEARCH_STANDARD_SYSTEM
+    research_question: str
+    num_info_requests: int = 3 # number of info requests to generate
+    verbatim_answer: bool = False # whether to return the raw documents or the processed response
+    strict_answer: bool = True # TODO: change from boolean to magnitude so i have varying degree of "strictness". This determines if the system will continue even if no documents are found
+    # properties users can access
+    info_history: List[Tuple[str, Response]] = []  # TODO: change this to `info_history`
+    reports: List[Response] = []
 
+    @computed_field
+    @property
+    def latest_report(self) -> Response:
+        return self.reports[-1] if self.reports else None
 
     def clear_history(self, research_question: str):
         self.research_question = research_question
-        self.history = []
+        self.info_history = []
 
     async def execute(self):
         print("Creating info requests...")
@@ -46,16 +56,20 @@ class BackgroundResearcher(Researcher):
         # answer each info request
         # doing this sequentially for now cuz it breaking
         for info_request in tqdm(info_requests, desc="Answering info requests\n"):
-            await self.answer_info_request(info_request)
+            await self.complete_info_request(info_request)
 
         print("Compiling report...")
         report = await self.compile_report()
+        self.reports.append(report)
         return report
 
 
     @log_io
     async def create_info_requests(self) -> List[str]:
-        user_message = CREATE_INFO_REQUEST_USER.format(query=self.research_question)
+        user_message = CREATE_INFO_REQUEST_USER.format(
+            query=self.research_question,
+            n=self.num_info_requests
+        )
         messages = [
             {"role": "system", "content": self.system_message},
             {"role": "user", "content": user_message},
@@ -66,10 +80,10 @@ class BackgroundResearcher(Researcher):
 
         info_requests = re.split(r'\n+', llm_string)
 
-        return info_requests
+        return info_requests[:self.num_info_requests]
 
     @log_io
-    async def answer_info_request(self, info_request: str, verbatim: bool = False, strict: bool = True) -> Response:
+    async def complete_info_request(self, info_request: str) -> Response:
         """Prompt the librarian for relevant contexts to answer the info request,
         and then answer the info request. Pretty much RAG with an extra step lol.
 
@@ -83,17 +97,15 @@ class BackgroundResearcher(Researcher):
         """
 
         # TODO: change this to "complete_info_request" 
-        # and add a parameter called "verbatim", which 
-        # will return the retrieved contexts verbatim without any LLM processing
 
         ret_docs = await self.librarian.execute(info_request)
-        if strict and not ret_docs:
+        if self.strict_answer and not ret_docs:
             logger.warning(f"Info request '{info_request}' returned no documents.")
             return Response(text="I do not know, no relevant documents were found.")
         
         contexts = "\n\n".join([doc.text for doc in ret_docs])
 
-        if verbatim:
+        if self.verbatim_answer:
             return Response(text=contexts, sources=ret_docs)
         
         # generate response
@@ -110,7 +122,7 @@ class BackgroundResearcher(Researcher):
         llm_response = await self.llm.async_generate(messages)
         llm_response.sources = ret_docs
 
-        self.history.append((info_request, llm_response))
+        self.info_history.append((info_request, llm_response))
 
         return llm_response
 
@@ -122,8 +134,8 @@ class BackgroundResearcher(Researcher):
         Returns:
             str: research history
         """
-
-        info_responses = "\n".join([f"Question: {info_request}\nAnswer: {response.text}\n\n" for info_request, response in self.history])
+        info_responses_list = [f"Question: {info_request}\nAnswer: {response.text}\n\n" for info_request, response in self.info_history]
+        info_responses = "\n".join(info_responses_list)
 
         user_message = COMPILE_REPORT_USER.format(
             query=self.research_question,
@@ -187,7 +199,7 @@ class BackgroundResearcher(Researcher):
             "analysis": llm_string
         }
 
-        self.history.append(research_result)
+        self.info_history.append(research_result)
  
     async def analyze_query(self) -> List[Dict]:
         """This function breaks down the query into areas to conduct background research.

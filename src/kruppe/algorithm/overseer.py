@@ -1,11 +1,12 @@
 import re
-from pydantic import BaseModel, computed_field, PrivateAttr
+from pydantic import BaseModel, computed_field, PrivateAttr, model_validator
 from typing import List, Dict, Any
 import logging
 from tqdm import tqdm
 
 from kruppe.algorithm.agents import Researcher, Lead
 from kruppe.algorithm.hypothesis import HypothesisResearcher
+from kruppe.algorithm.background import BackgroundResearcher
 from kruppe.algorithm.librarian import Librarian
 from kruppe.prompts.overseer import (
     CREATE_LEAD_SYSTEM,
@@ -17,15 +18,30 @@ from kruppe.models import Response
 logger = logging.getLogger(__name__)
 
 class Overseer(Researcher):
-    research_question: str
-    background_report: str | Response
     librarian: Librarian
-    hyp_researcher_config: Dict = {}
+    research_question: str
+    background_report: str | Response = None
+    bkg_researcher: BackgroundResearcher = None
     num_leads: int = 3
+    hyp_researcher_config: Dict = {}
     _research_queue: List[Lead] = PrivateAttr([])
     _hyp_researchers: List[HypothesisResearcher] = PrivateAttr([])
 
+    @model_validator(mode='after')
+    def check_background_report(self):
+        if self.background_report is None and self.bkg_researcher is None:
+            raise ValueError("Either a background report or a background researcher must be provided.")
+        
+        if self.bkg_researcher is not None:
+            self.background_report = self.bkg_researcher.latest_report # could be None still, if bkg_researcher did not run anything yet
+        return self
+
     async def execute(self) -> List[Dict[str, Any]]:
+
+        if self.background_report is None:
+            print("Executing background researcher...")
+            bkg_report = await self.bkg_researcher.execute()
+            self.background_report = bkg_report
         
         print("Creating leads...")
 

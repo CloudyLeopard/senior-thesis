@@ -6,13 +6,13 @@ LIBRARIAN_STANDARD_SYSTEM = dedent(
     """
 )
 
-LIBRARIAN_STANDARD_USER = dedent(
+CHOOSE_RESOURCE_USER = dedent(
     """\
     -Goal-
-    Given a description of the information that the user is seeking, the list of resources/functions that can be used to gather the information, and a history of past resources/functions call that were already made, determine the functions that should be used to find the information and the parameters needed to execute the function. Make sure you examine the past resources/functions calls, and make new function calls and parameters that are *completely different* from those.
+    Given a description of the information that the user is seeking, the list of resources/functions that can be used to gather the information, and a history of past resources/functions call that were already made, determine {n} functions that should be used to find the information and the parameters needed to execute the function. Make sure you examine the past resources/functions calls, and make new function calls and parameters that are *completely different* from those.
 
     -Steps-
-    1. For each resource/function, use your intuition and the function description to infer the type of information that the function can provide for the request, and determine the parameters needed to execute the function. Make sure that you are making *new* function calls and parameters that are completely different from those used in the past.
+    1. For each of the {n} resource/function you've chosen, use your intuition and the function description to infer the type of information that the function can provide for the request, and determine the parameters needed to execute the function. Make sure that you are making *new* function calls and parameters that are completely different from those used in the past.
     For each resource, determine the following information:
     - func_name: the function name in question. use the original name provided in the input
     - parameters: the parameters that will be entered to the function. It should be a stringified object.

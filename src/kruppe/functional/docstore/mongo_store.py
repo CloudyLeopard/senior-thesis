@@ -1,5 +1,5 @@
 from calendar import c
-from pydantic import Field, model_validator, PrivateAttr
+from pydantic import Field, computed_field, model_validator, PrivateAttr
 from bson import ObjectId
 from typing import List, Optional, Any, Dict
 from uuid import UUID
@@ -37,13 +37,18 @@ class MongoDBStore(BaseDocumentStore):
         try:
             db.validate_collection(self.collection_name)
 
-            if not self.use_async:
-                # init sync collection
-                self._collection = db[self.collection_name] # will create collection if DNE (when you firsrt store a document)
-            else:
-                # init async collection
-                self._acollection = self.aclient[self.db_name][self.collection_name]
-                self.client.close() # close sync version
+            # ehhh imma open both the sync and async collection
+            # screw dealing with closing them
+            self._collection = db[self.collection_name]
+            self._acollection = self.aclient[self.db_name][self.collection_name]
+
+            # if not self.use_async:
+            #     # init sync collection
+            #     self._collection = db[self.collection_name] # will create collection if DNE (when you firsrt store a document)
+            # else:
+            #     # init async collection
+            #     self._acollection = self.aclient[self.db_name][self.collection_name]
+            #     self.client.close() # close sync version
         except OperationFailure as e:
             logger.error("Collection %s is invalid. Please use classmethod `create_db`", self.collection_name)
             raise e
@@ -131,6 +136,11 @@ class MongoDBStore(BaseDocumentStore):
             use_async=True
         )
     
+    @computed_field
+    @property
+    def document_count(self) -> int:
+        return self._collection.estimated_document_count()
+
     def _parse_mongo_result(self, result: Dict[str, Any]) -> Document:
         """Parse MongoDB result into Document class"""
         res_text = result.pop("text")
@@ -139,20 +149,20 @@ class MongoDBStore(BaseDocumentStore):
         return Document(text=res_text, metadata=result, id=res_id)
 
     def close(self):
-        if self.use_async:
-            raise ValueError("Using async client, please use `aclose`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `aclose`")
         
         self.client.close()
     
     async def aclose(self):
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `close`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `close`")
         
         self.aclient.close()
     
     def clear_collection(self, drop_index: bool = False) -> int:
-        if self.use_async:
-            raise ValueError("Using async client, please use `aclear_collection`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `aclear_collection`")
         
         result = self._collection.delete_many({})
         if drop_index:
@@ -161,8 +171,8 @@ class MongoDBStore(BaseDocumentStore):
         return result.deleted_count
     
     async def aclear_collection(self, drop_index: bool = False) -> int:
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `clear_collection`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `clear_collection`")
         
         result = await self._acollection.delete_many({})
         if drop_index:
@@ -172,8 +182,8 @@ class MongoDBStore(BaseDocumentStore):
 
     def save_document(self, document: Document) -> Document | None:
         """save Document into mongodb collection with metadata, return number of documents saved"""
-        if self.use_async:
-            raise ValueError("Using async client, please use `asave_document`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `asave_document`")
         
         data = {
             "text": document.text,
@@ -191,8 +201,8 @@ class MongoDBStore(BaseDocumentStore):
 
     async def asave_document(self, document: Document) -> Document | None:
         """save Document into mongodb collection with metadata, return number of documents saved"""
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `save_document`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `save_document`")
         
         data = {
             "text": document.text,
@@ -219,8 +229,8 @@ class MongoDBStore(BaseDocumentStore):
         Returns:
             List[Document, None]: List of Documents that were saved
         """
-        if self.use_async:
-            raise ValueError("Using async client, please use `asave_documents`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `asave_documents`")
         
         datas = []
         for document in documents:
@@ -254,8 +264,8 @@ class MongoDBStore(BaseDocumentStore):
 
     async def asave_documents(self, documents: List[Document]) -> List[Document]:
         """save Documents into mongodb collection with metadata, return number of documents saved"""
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `save_documents`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `save_documents`")
         
         datas = []
         for document in documents:
@@ -298,8 +308,8 @@ class MongoDBStore(BaseDocumentStore):
         Returns:
             Document | None: Document if found, None if none are found.
         """
-        if self.use_async:
-            raise ValueError("Using async client, please use `aget_document`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `aget_document`")
         
         # Fetch from MongoDB Collection
         if db_id:
@@ -326,8 +336,8 @@ class MongoDBStore(BaseDocumentStore):
         Returns:
             Document | None: Document if found, None if none are found.
         """
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `get_document`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `get_document`")
         
         # Fetch from MongoDB Collection
         if db_id:
@@ -344,8 +354,8 @@ class MongoDBStore(BaseDocumentStore):
             return None
 
     def get_all_documents(self) -> List[Document]:
-        if self.use_async:
-            raise ValueError("Using async client, please use `aget_all_documents`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `aget_all_documents`")
         
         documents = []        
 
@@ -358,8 +368,8 @@ class MongoDBStore(BaseDocumentStore):
         return documents
     
     async def aget_all_documents(self) -> List[Document]:
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `get_all_documents`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `get_all_documents`")
         
         documents = []
 
@@ -372,8 +382,8 @@ class MongoDBStore(BaseDocumentStore):
         return documents
 
     def search_documents(self, filter: Dict[str, Any]) -> List[Document] | None:
-        if self.use_async:
-            raise ValueError("Using async client, please use `asearch_documents`")
+        # if self.use_async:
+        #     raise ValueError("Using async client, please use `asearch_documents`")
         
         documents = []        
         
@@ -385,8 +395,8 @@ class MongoDBStore(BaseDocumentStore):
         return documents
     
     async def asearch_documents(self, filter: Dict[str, Any]) -> List[Document] | None:
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `search_documents`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `search_documents`")
         
         documents = []        
 
@@ -417,8 +427,8 @@ class MongoDBStore(BaseDocumentStore):
         If both are provided, db_id will be used. If neither are provided, raise ValueError.
         """
 
-        if not self.use_async:
-            raise ValueError("Using sync client, please use `remove_document`")
+        # if not self.use_async:
+        #     raise ValueError("Using sync client, please use `remove_document`")
 
         if db_id:
             result = await self._acollection.delete_one({"_id": ObjectId(db_id)})

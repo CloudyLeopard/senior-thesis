@@ -27,6 +27,8 @@ class HypothesisResearcher(Researcher):
     iterations: int = 3 # TODO: currently hardcoded method to stop evaluation, need to change this
     iterations_used: int = 1 # NOTE: number of past chat history to use in next iteration
     num_info_requests: int = 3 # number of info requests to make per iteration
+    verbatim_answer: bool = False # whether to return the raw documents or the processed response
+    strict_answer: bool = True # TODO: change from boolean to magnitude so i have varying degree of "strictness". This determines if the system will continue even if no documents are found
     # properties users can access
     past_leads: List[Lead] = []
     reports: List[Response] = [] # NOTE: not necessary same len as past_leads (due to `start_new_lead`)
@@ -162,15 +164,15 @@ class HypothesisResearcher(Researcher):
         return info_requests
 
     @log_io
-    async def complete_info_request(self, info_request: str, verbatim: bool = False, strict: bool = True) -> Response:
+    async def complete_info_request(self, info_request: str) -> Response:
         ret_docs = await self.librarian.execute(info_request)
-        if strict and not ret_docs:
+        if self.strict_answer and not ret_docs:
             logger.warning(f"Strict mode is on; could not complete info request '{info_request}'")
             return Response(text="I do not know, because no documents found.", sources=[])
         
         contexts = "\n\n".join([doc.text for doc in ret_docs])
 
-        if verbatim:
+        if self.verbatim_answer:
             # if verbatim is True, return the contexts verbatim without any LLM processing
             return Response(text=contexts, sources=ret_docs)
         else:
