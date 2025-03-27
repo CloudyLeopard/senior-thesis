@@ -1,5 +1,4 @@
 import gradio as gr
-from pytest import param
 
 # import essentials
 from kruppe.llm import OpenAILLM
@@ -54,6 +53,55 @@ async def initialize_overseer(research_question, param_model, param_num_leads, p
 
     return "Overseer initialized. " + ("Background report found" if overseer.background_report else "Background report not created yet")
 
+async def create_leads():
+    global overseer
+
+    if overseer is None:
+        gr.Warning("Overseer not initialized. Please initialize the Overseer first.")
+        return
+    
+    leads = await overseer.create_leads()
+    if len(leads) > 3:
+        gr.Warning("More than 3 leads generated. Only the first 3 leads are displayed.")
+        leads = leads[:3]
+    if len(leads) < 3:
+        leads = leads + [None] * (3 - len(leads))
+    
+    def format_lead(lead):
+        if lead is None:
+            return ""
+        else:
+            return (f"**Lead:** {lead.lead}\n"
+                    + f"**Hypothesis:** {lead.hypothesis}\n"
+                    + f"**Observation:** {lead.observation}")
+    
+    return format_lead(leads[0]), format_lead(leads[1]), format_lead(leads[2])
+
+async def execute_overseer():
+    global overseer
+
+    if overseer is None:
+        gr.Warning("Overseer not initialized. Please initialize the Overseer first.")
+        return
+    
+    results = await overseer.execute()
+
+    if len(results) > 3:
+        gr.Warning("More than 3 reports generated. Only the first 3 reports are displayed.")
+        results = results[:3]
+    if len(results) < 3:
+        results = results + [None] * (3 - len(results))
+    
+    def format_report(result):
+        if result is None or result["report"] is None:
+            return ""
+        else:
+            return (f"**Original Lead:** {result['original_lead'].lead}\n\n" 
+                    + f"**Hypothesis:** {result['hypothesis']}\n\n"
+                    + f"---Report---\n{result['report'].text}")
+    
+    return format_report(results[0]), format_report(results[1]), format_report(results[2])    
+
 def create_overseer_block():
     with gr.Blocks() as block:
         gr.Markdown('# Overseer')
@@ -95,9 +143,33 @@ def create_overseer_block():
                 param_verbatim_answer = gr.Checkbox(False, label="Verbatim Answer")
                 param_strict_answer = gr.Checkbox(True, label="Strict Answer")
             
-            init_button = gr.Button("Initialize Overseer")
+            init_button = gr.Button("Initialize Overseer", variant='primary')
             output_config = gr.Textbox(label="Initialization Status", interactive=False)
 
             init_button.click(initialize_overseer, inputs=[research_question, param_model, param_num_leads, param_hyp_model, param_iterations, param_iterations_used, param_num_info_requests, param_verbatim_answer, param_strict_answer], outputs=output_config)
 
+        # ------------------------------------------------
+
+        gr.Markdown('## Creating Leads (Testing)')
+
+        create_leads_button = gr.Button("Create Leads", variant='huggingface')
+        with gr.Row():
+            output_lead_1 = gr.Textbox(label="Lead 1", lines=10, interactive=False)
+            output_lead_2 = gr.Textbox(label="Lead 2", lines=10, interactive=False)
+            output_lead_3 = gr.Textbox(label="Lead 3", lines=10, interactive=False)
+        
+        create_leads_button.click(create_leads, outputs=[output_lead_1, output_lead_2, output_lead_3])
+
+        # ------------------------------------------------
+
+        gr.Markdown('## Execute Overseer\n*Warning: This may take a while.*')
+
+        execute_button = gr.Button("Execute Overseer", variant='huggingface')
+
+        with gr.Row():
+            output_1 = gr.Textbox(label="Report 1", lines=10, interactive=False)
+            output_2 = gr.Textbox(label="Report 2", lines=10, interactive=False)
+            output_3 = gr.Textbox(label="Report 3", lines=10, interactive=False)
+
+        execute_button.click(execute_overseer, outputs=[output_1, output_2, output_3])
     return block

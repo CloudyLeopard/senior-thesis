@@ -94,7 +94,7 @@ async def execute_librarian(info_request, arg_top_k, arg_llm_restrict_time, arg_
 def create_librarian_block():
     with gr.Blocks() as block:
         gr.Markdown("# Librarian")
-        gr.Markdown("## Initialize `Librarian`")
+        gr.Markdown("## Initialize Librarian")
         with gr.Group():
             gr.Markdown('### `Librarian` Configuration')
 
@@ -142,12 +142,12 @@ def create_librarian_block():
                 param_resource_rank_threshold = gr.Number(2, label="Resource Rank Threshold", minimum=1, maximum=3, step=1, interactive=True)
                 param_num_rsc_per_retrieve = gr.Number(2, label="Number of Resources to Retrieve", interactive=True)
 
-        init_button = gr.Button("Initialize Librarian")
+        init_button = gr.Button("Initialize Librarian", variant='primary')
         output_config = gr.Textbox(label="Initialization Status", interactive=False)
         
         init_button.click(initialize_librarian, inputs=[param_model, param_embed_model, param_coll_name, param_news_source, param_num_retries, param_relevance_score_threshold, param_resource_rank_threshold, param_num_rsc_per_retrieve], outputs=[output_config])
         
-        gr.Markdown("## Execute `Librarian`")
+        gr.Markdown("## Execute Librarian")
 
         info_request = gr.Textbox(label="Info Request", placeholder="Enter a piece of information you want from the Librarian")
         
@@ -158,7 +158,7 @@ def create_librarian_block():
             arg_start_time = gr.DateTime(label="Start Time", interactive=True)
             arg_end_time = gr.DateTime(label="End Time", interactive=True)
         
-        execute_button = gr.Button("Execute Librarian")
+        execute_button = gr.Button("Execute Librarian", variant='huggingface')
 
         ret_contexts = gr.Textbox(label="Info Output", lines=10, interactive=False)
 

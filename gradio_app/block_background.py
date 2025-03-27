@@ -57,13 +57,27 @@ async def execute_background_researcher():
     info_history_str = "\n".join([f"{info_request}: {response.text}" for info_request, response in bkg_researcher.info_history])
     return report.text, info_history_str
 
+async def refresh_background_researcher():
+    global bkg_researcher
+
+    if bkg_researcher is None:
+        gr.Warning("BackgroundResearcher not initialized. Please initialize the BackgroundResearcher first.")
+        return
+    
+    report = bkg_researcher.latest_report
+    if report is None:
+        return "No existing background research report found.", ""
+    else:
+        info_history_str = "\n".join([f"{info_request}: {response.text}" for info_request, response in bkg_researcher.info_history])
+        return report.text, info_history_str
+
 def create_background_block():
     with gr.Blocks() as block:
         gr.Markdown('# Background Researcher')
         research_question = gr.Textbox("What are the key developments and financial projections for Amazon's advertising business, and how is it positioning itself in the digital ad market?",
                                        label="Research Question", interactive=True)
 
-        gr.Markdown('## Initialize `BackgroundResearcher')
+        gr.Markdown('## Initialize BackgroundResearcher')
 
         with gr.Group():
             gr.Markdown('### `BackgroundResearcher` Configuration')
@@ -82,19 +96,21 @@ def create_background_block():
                 param_verbatim_answer = gr.Checkbox(False, label="Verbatim Answer")
                 param_strict_answer = gr.Checkbox(True, label="Strict Answer")
 
-        init_button = gr.Button("Initialize BackgroundResearcher")
+        init_button = gr.Button("Initialize BackgroundResearcher", variant='primary')
         output_config = gr.Textbox(label="Initialization Status", interactive=False)
 
         init_button.click(initialize_background_researcher, inputs=[research_question, param_model, param_num_info_requests, param_verbatim_answer, param_strict_answer], outputs=[output_config])
 
-        gr.Markdown('## Execute `BackgroundResearcher`')
+        gr.Markdown('## Execute BackgroundResearcher')
 
-        execute_button = gr.Button("Execute BackgroundResearcher")
+        with gr.Row():
+            execute_button = gr.Button("Execute BackgroundResearcher", variant="huggingface")
+            refresh_button = gr.Button("Refresh/Check for Existing Reports")
 
         with gr.Row():
             output_report = gr.Textbox(label="Background Report", lines=10, interactive=False)
             output_contexts = gr.Textbox(label="Contexts", lines=10, interactive=False)
         
         execute_button.click(execute_background_researcher, outputs=[output_report, output_contexts])
-        # TODO: add a refresh button
+        refresh_button.click(refresh_background_researcher, outputs=[output_report, output_contexts])
     return block
