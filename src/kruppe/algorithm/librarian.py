@@ -1,3 +1,4 @@
+from numpy import isin
 from pydantic import computed_field, PrivateAttr
 from typing import AsyncGenerator, Callable, List, Dict, Literal, Set, Tuple
 import json
@@ -176,7 +177,7 @@ class Librarian(Researcher):
             information_desc: str,
             top_k: int = 10,
             llm_restrict_time: bool = False,
-            start_time: str | datetime = None,
+            start_time: str | float | datetime = None,
             end_time: str | datetime = None,
             **kwargs
         ) -> List[Chunk]:
@@ -205,14 +206,20 @@ class Librarian(Researcher):
                 # turn into datetime object
                 if isinstance(start_time, str):
                     start_time = datetime.strptime(start_time, "%Y-%m-%d")
-                start_date_unix = int(start_time.timestamp())
+                if isinstance(start_time, datetime):
+                    start_date_unix = int(start_time.timestamp())
+                if isinstance(start_time, int) or isinstance(start_time, float):
+                    start_date_unix = int(start_time)
                 start_filter = {"publication_time": {"$gte": start_date_unix}}
             
             end_filter = None
             if end_time:
                 if isinstance(end_time, str):
                     end_time = datetime.strptime(end_time, "%Y-%m-%d")
-                end_date_unix = int(end_time.timestamp())
+                if isinstance(end_time, datetime):
+                    end_date_unix = int(end_time.timestamp())
+                if isinstance(end_time, int) or isinstance(end_time, float):
+                    end_date_unix = int(end_time)
                 end_filter = {"publication_time": {"$lte": end_date_unix}}
             
             if start_time and end_time:

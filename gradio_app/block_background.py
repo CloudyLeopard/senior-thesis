@@ -54,7 +54,7 @@ async def execute_background_researcher():
 
     report = await bkg_researcher.execute()
 
-    info_history_str = "\n".join([f"{info_request}: {response.text}" for info_request, response in bkg_researcher.info_history])
+    info_history_str = "\n".join([f"Q: {info_request}\nA: {response.text}\n" for info_request, response in bkg_researcher.info_history])
     return report.text, info_history_str
 
 async def refresh_background_researcher():
@@ -62,13 +62,13 @@ async def refresh_background_researcher():
 
     if bkg_researcher is None:
         gr.Warning("BackgroundResearcher not initialized. Please initialize the BackgroundResearcher first.")
-        return
+        return "", ""
     
     report = bkg_researcher.latest_report
     if report is None:
         return "No existing background research report found.", ""
     else:
-        info_history_str = "\n".join([f"{info_request}: {response.text}" for info_request, response in bkg_researcher.info_history])
+        info_history_str = "\n".join([f"Q: {info_request}\nA: {response.text}\n" for info_request, response in bkg_researcher.info_history])
         return report.text, info_history_str
 
 def create_background_block():

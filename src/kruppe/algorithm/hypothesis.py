@@ -109,7 +109,6 @@ class HypothesisResearcher(Researcher):
         # TWO OPTIONS ON LIBRARIAN REQUEST (dependent on `verbatim` parameter):
         # 1. use the info answers as context, and llm answer info_request (<-- currently using this one)
         # 2. directly use the retrieved contexts from the librarian as contexts (RAG Mode really)
-        verbatim_mode = False
         
         with tqdm(total=self.iterations, desc="Lead investigation iteration") as pbar:
             # repeat investigation until we finish the iterations
@@ -129,7 +128,7 @@ class HypothesisResearcher(Researcher):
                         # NOTE: also used in prompt (see `create_info_requests`)
                         break
 
-                    response = await self.complete_info_request(info_request, verbatim=verbatim_mode)
+                    response = await self.complete_info_request(info_request)
                     info_retrieved.append(response)
 
 

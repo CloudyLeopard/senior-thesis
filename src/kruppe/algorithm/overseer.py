@@ -85,12 +85,8 @@ class Overseer(Researcher):
         
         return results
 
-            
-        
-
-
     @log_io
-    async def create_leads(self, query: str, report: str | Response) -> List[Lead]:
+    async def create_leads(self) -> List[Lead]:
         """
         Given a research question and a preliminary background report, generate research leads.
 
@@ -101,13 +97,17 @@ class Overseer(Researcher):
         Returns:
             List[Lead]: list of research leads
         """
+
+        if self.background_report is None:
+            raise ValueError("A background report must be provided to generate leads.")
+
         # Convert Response object to text
-        report_text = report
+        report_text = self.background_report
         if isinstance(report_text, Response):
             report_text = report_text.text
         
         user_message = CREATE_LEAD_USER.format(
-            query=query,
+            query=self.research_question,
             report=report_text,
             n=self.num_leads
         )
