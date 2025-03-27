@@ -107,7 +107,7 @@ class Librarian(Researcher):
             List[Document]: list of documents, empty if confidence score is low
         """
 
-        current_try = 1
+        current_try = 0
         while current_try <= retries:
             ret_chunks = await self.retrieve_from_index(
                 information_desc=information_desc,
@@ -137,15 +137,19 @@ class Librarian(Researcher):
                 llm_string = llm_response.text
 
                 # high relevance: 1, somewhat relevant: 2, not relevant: 3
-                relevance = llm_string.split("relevance: ")[-1].strip()
+                relevance = llm_string.lower().split("relevance: ")[-1].strip()
                 relevance_score_map = {"highly relevant": 1, "somewhat relevant": 2, "not relevant": 3}
-                relevance_score = relevance_score_map.get(relevance, 0)
+                relevance_score = relevance_score_map.get(relevance, 4)
+
+                if relevance_score == 4:
+                    logger.error(f"Could not determine relevance score from LLM. LLM response: {llm_string}")
 
                 if relevance_score > relevance_score_threshold:
                     need_new_documents = True
             
             if need_new_documents:
                 # low relevance, try again
+                logger.warning(f"Retrieving from library for info request: {information_desc}")
                 await self.retrieve_from_library(
                     information_desc=information_desc,
                     **kwargs
@@ -156,7 +160,8 @@ class Librarian(Researcher):
             else:
                 # high relevance, return
                 return ret_chunks
-            
+        
+        logger.warning(f"Could not find relevant contexts for info request: {information_desc}")
         return []
         
     async def retrieve_from_index(
@@ -240,8 +245,6 @@ class Librarian(Researcher):
         
         if (rank_threshold > MAX_RANK_THRESHOLD):
             raise ValueError(f"rank_threshold must be less than or equal to {MAX_RANK_THRESHOLD}")
-
-        logger.warning(f"Retrieving from library for info request: {information_desc[:50]}...")
 
         # get resource requests, and limit to num_resources
         resource_requests = await self._choose_resource(information_desc)

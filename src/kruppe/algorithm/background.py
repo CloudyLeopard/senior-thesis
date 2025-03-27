@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple
 import re
 import json
 import asyncio
-
+import logging
 from tqdm import tqdm
 
 from kruppe.utils import log_io
@@ -12,7 +12,7 @@ from kruppe.llm import BaseLLM
 from kruppe.models import Document, Response
 from kruppe.prompts.background import (
     RESEARCH_STANDARD_SYSTEM,
-    DETERMINE_INFO_REQUEST_USER,
+    CREATE_INFO_REQUEST_USER,
     ANSWER_INFO_REQUEST_USER,
     COMPILE_REPORT_USER,
     ANALYZE_QUERY_USER_CHAIN,
@@ -22,9 +22,11 @@ from kruppe.algorithm.utils import process_request
 from kruppe.algorithm.agents import Researcher
 from kruppe.algorithm.librarian import Librarian
 
+logger = logging.getLogger(__name__)
+
 
 class BackgroundResearcher(Researcher):
-    research_question: str # TODO: rename this... maybe "central_question" or "research_question"?
+    research_question: str
     system_message: str = RESEARCH_STANDARD_SYSTEM
     history: List[Tuple[str, Response]] = []  # research history
     librarian: Librarian
@@ -53,7 +55,7 @@ class BackgroundResearcher(Researcher):
 
     @log_io
     async def create_info_requests(self) -> List[str]:
-        user_message = DETERMINE_INFO_REQUEST_USER.format(query=self.research_question)
+        user_message = CREATE_INFO_REQUEST_USER.format(query=self.research_question)
         messages = [
             {"role": "system", "content": self.system_message},
             {"role": "user", "content": user_message},
@@ -67,7 +69,7 @@ class BackgroundResearcher(Researcher):
         return info_requests
 
     @log_io
-    async def answer_info_request(self, info_request: str) -> Response:
+    async def answer_info_request(self, info_request: str, verbatim: bool = False, strict: bool = True) -> Response:
         """Prompt the librarian for relevant contexts to answer the info request,
         and then answer the info request. Pretty much RAG with an extra step lol.
 
@@ -80,9 +82,20 @@ class BackgroundResearcher(Researcher):
             Response: response to the information request, with the relevant contexts
         """
 
-        ret_docs = await self.librarian.execute(info_request)
-        contexts = "\n".join([doc.text for doc in ret_docs])
+        # TODO: change this to "complete_info_request" 
+        # and add a parameter called "verbatim", which 
+        # will return the retrieved contexts verbatim without any LLM processing
 
+        ret_docs = await self.librarian.execute(info_request)
+        if strict and not ret_docs:
+            logger.warning(f"Info request '{info_request}' returned no documents.")
+            return Response(text="I do not know, no relevant documents were found.")
+        
+        contexts = "\n\n".join([doc.text for doc in ret_docs])
+
+        if verbatim:
+            return Response(text=contexts, sources=ret_docs)
+        
         # generate response
         user_message = ANSWER_INFO_REQUEST_USER.format(
             query=self.research_question,

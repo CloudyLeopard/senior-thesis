@@ -7,7 +7,7 @@ RESEARCH_STANDARD_SYSTEM = dedent(
     """
 )
 
-DETERMINE_INFO_REQUEST_USER = dedent(
+CREATE_INFO_REQUEST_USER = dedent(
     """\
     -Goal-
     Given a query, determine what additional background information you want to know to comprehensively and accurately answer the query.
@@ -27,7 +27,7 @@ DETERMINE_INFO_REQUEST_USER = dedent(
 ANSWER_INFO_REQUEST_USER = dedent(
     """\
     -Instruction-
-    You are given a central research question, a sub informatino request (focuses on a specific piece of information that is needed to answer the central research question), and relevant contexts. Generate a response that answers the sub information request, but in the context of the overall research question. Be sure to provide a detailed response that is relevant to the sub information request.
+    You are given a central research question, a sub information request (focuses on a specific piece of information that is needed to answer the central research question), and relevant contexts. Generate a response that answers the sub information request, but in the context of the overall research question. Be sure to provide a detailed response that is relevant to the sub information request.
 
     -Input-
     Research Question: {query}

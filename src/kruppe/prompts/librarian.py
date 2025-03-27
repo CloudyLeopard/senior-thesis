@@ -86,14 +86,14 @@ LIBRARIAN_TIME_USER_2 = dedent(
 LIBRARIAN_CONTEXT_RELEVANCE_USER = dedent(
     """\
     -Instruction-
-    Given a description of the information that the user is seeking, and a list of retrieved contexts, determine if the contexts are relevant to the information description and how relevant they are. First, I want you to think out loud and analyze if any of the contexts are relevant. Then, determine how relevant the contexts are using one of the following three categories: "highly relevant", "somewhat relevant", or "not relevant".
+    Given a description of the information that the user is seeking, and a list of retrieved contexts, determine if the contexts are relevant to the information description and how relevant they are. First, I want you to think out loud and analyze if any of the contexts are relevant. Then, determine how relevant the contexts are answering with one of the following three categories exactly: "highly relevant", "somewhat relevant", or "not relevant".
     - highly relevant: the context is significantly related to the information description
     - somewhat relevant: at least one piece of the context is related to the information description
     - not relevant: the context is not related to the information description
 
     -Output Structure-
-    <thought process>
-    relevance: <relevance>
+    [thought process]
+    relevance: [highly relevant | somewhat relevant | not relevant]
 
     -Input-
     Description of the information that the user wants to know:
