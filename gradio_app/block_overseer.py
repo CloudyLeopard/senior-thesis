@@ -2,17 +2,17 @@ import gradio as gr
 
 # import essentials
 from kruppe.llm import OpenAILLM
-from kruppe.algorithm.overseer import Overseer
+from kruppe.algorithm.coordinator import Coordinator
 
 # import librarian and background researcher
 from block_librarian import get_librarian
 from block_background import get_background_researcher
 
 # global states
-overseer = None
+coordinator = None
 
-async def initialize_overseer(research_question, param_model, param_num_leads, param_hyp_model, param_iterations, param_iterations_used, param_num_info_requests, param_verbatim_answer, param_strict_answer):
-    global overseer
+async def initialize_coordinator(research_question, param_model, param_num_leads, param_hyp_model, param_iterations, param_iterations_used, param_num_info_requests, param_verbatim_answer, param_strict_answer):
+    global coordinator
 
     librarian = get_librarian()
     background_researcher = get_background_researcher()
@@ -28,14 +28,14 @@ async def initialize_overseer(research_question, param_model, param_num_leads, p
         return
     
     # initialize the LLM model
-    overseer_llm = OpenAILLM(model=param_model)
-    overseer_hyp_llm = OpenAILLM(model=param_hyp_model)
+    coordinator_llm = OpenAILLM(model=param_model)
+    coordinator_hyp_llm = OpenAILLM(model=param_hyp_model)
 
-    # initialize the overseer
+    # initialize the coordinator
     other_configs = {
         "num_leads": param_num_leads,
         "hyp_researcher_config": {
-            "llm": overseer_hyp_llm,
+            "llm": coordinator_hyp_llm,
             "iterations": param_iterations,
             "iterations_used": param_iterations_used,
             "num_info_requests": param_num_info_requests,
@@ -43,24 +43,24 @@ async def initialize_overseer(research_question, param_model, param_num_leads, p
             "strict_answer": param_strict_answer
         }
     }
-    overseer = Overseer(
-        llm=overseer_llm,
+    coordinator = Coordinator(
+        llm=coordinator_llm,
         research_question=research_question,
         librarian=librarian,
         bkg_researcher=background_researcher,
         **other_configs
     )
 
-    return "Overseer initialized. " + ("Background report found" if overseer.background_report else "Background report not created yet")
+    return "Coordinator initialized. " + ("Background report found" if coordinator.background_report else "Background report not created yet")
 
 async def create_leads():
-    global overseer
+    global coordinator
 
-    if overseer is None:
-        gr.Warning("Overseer not initialized. Please initialize the Overseer first.")
+    if coordinator is None:
+        gr.Warning("coordinator not initialized. Please initialize the coordinator first.")
         return
     
-    leads = await overseer.create_leads()
+    leads = await coordinator.create_leads()
     if len(leads) > 3:
         gr.Warning("More than 3 leads generated. Only the first 3 leads are displayed.")
         leads = leads[:3]
@@ -77,14 +77,14 @@ async def create_leads():
     
     return format_lead(leads[0]), format_lead(leads[1]), format_lead(leads[2])
 
-async def execute_overseer():
-    global overseer
+async def execute_coordinator():
+    global coordinator
 
-    if overseer is None:
-        gr.Warning("Overseer not initialized. Please initialize the Overseer first.")
+    if coordinator is None:
+        gr.Warning("Coordinator not initialized. Please initialize the Coordinator first.")
         return
     
-    results = await overseer.execute()
+    results = await coordinator.execute()
 
     if len(results) > 3:
         gr.Warning("More than 3 reports generated. Only the first 3 reports are displayed.")
@@ -102,15 +102,15 @@ async def execute_overseer():
     
     return format_report(results[0]), format_report(results[1]), format_report(results[2])    
 
-def create_overseer_block():
+def create_coordinator_block():
     with gr.Blocks() as block:
-        gr.Markdown('# Overseer')
+        gr.Markdown('# Coordinator')
         research_question = gr.Textbox("What are the key developments and financial projections for Amazon's advertising business, and how is it positioning itself in the digital ad market?",
                                        label="Research Question", interactive=True)
         
-        gr.Markdown('## Initialize `Overseer`')
+        gr.Markdown('## Initialize `Coordinator`')
         with gr.Group():
-            gr.Markdown('### `Overseer` Configurations')
+            gr.Markdown('### `Coordinator` Configurations')
 
             with gr.Row():
                 param_model = gr.Dropdown(
@@ -143,10 +143,10 @@ def create_overseer_block():
                 param_verbatim_answer = gr.Checkbox(False, label="Verbatim Answer")
                 param_strict_answer = gr.Checkbox(True, label="Strict Answer")
             
-            init_button = gr.Button("Initialize Overseer", variant='primary')
+            init_button = gr.Button("Initialize Coordinator", variant='primary')
             output_config = gr.Textbox(label="Initialization Status", interactive=False)
 
-            init_button.click(initialize_overseer, inputs=[research_question, param_model, param_num_leads, param_hyp_model, param_iterations, param_iterations_used, param_num_info_requests, param_verbatim_answer, param_strict_answer], outputs=output_config)
+            init_button.click(initialize_coordinator, inputs=[research_question, param_model, param_num_leads, param_hyp_model, param_iterations, param_iterations_used, param_num_info_requests, param_verbatim_answer, param_strict_answer], outputs=output_config)
 
         # ------------------------------------------------
 
@@ -162,14 +162,14 @@ def create_overseer_block():
 
         # ------------------------------------------------
 
-        gr.Markdown('## Execute Overseer\n*Warning: This may take a while.*')
+        gr.Markdown('## Execute Coordinator\n*Warning: This may take a while.*')
 
-        execute_button = gr.Button("Execute Overseer", variant='huggingface')
+        execute_button = gr.Button("Execute Coordinator", variant='huggingface')
 
         with gr.Row():
             output_1 = gr.Textbox(label="Report 1", lines=10, interactive=False)
             output_2 = gr.Textbox(label="Report 2", lines=10, interactive=False)
             output_3 = gr.Textbox(label="Report 3", lines=10, interactive=False)
 
-        execute_button.click(execute_overseer, outputs=[output_1, output_2, output_3])
+        execute_button.click(execute_coordinator, outputs=[output_1, output_2, output_3])
     return block

@@ -8,7 +8,7 @@ from kruppe.algorithm.agents import Researcher, Lead
 from kruppe.algorithm.hypothesis import HypothesisResearcher
 from kruppe.algorithm.background import BackgroundResearcher
 from kruppe.algorithm.librarian import Librarian
-from kruppe.prompts.overseer import (
+from kruppe.prompts.coordinator import (
     CREATE_LEAD_SYSTEM,
     CREATE_LEAD_USER,
 )
@@ -17,7 +17,7 @@ from kruppe.models import Response
 
 logger = logging.getLogger(__name__)
 
-class Overseer(Researcher):
+class Coordinator(Researcher):
     librarian: Librarian
     research_question: str
     background_report: str | Response = None
