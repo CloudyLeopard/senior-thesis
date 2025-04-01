@@ -307,8 +307,8 @@ class WebScraper:
             #     pbar.update(len(tasks))
             # return results
 
-            tasks = [self.async_scrape_link(url=link, driver=driver) for link in links]
-            for completed in asyncio.as_completed(tasks):
+            coros = [self.async_scrape_link(url=link, driver=driver) for link in links]
+            async for completed in asyncio.as_completed(coros):
                 if progress_bar:
                     pbar.update(1)
                 data = await completed

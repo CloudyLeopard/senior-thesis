@@ -7,12 +7,12 @@ name = "KRUPPE"
 dynamic = ["version"]
 description = "Knowledge Retrieval for Understanding Perspectives on Performance Events"
 readme = "README.md"
-requires-python = ">=3.10, <3.13"
+requires-python = ">=3.13"
 authors = [{ name = "Daniel", email = "daniel.liu@stern.nyu.edu" }]
 dependencies = [
     "numpy>=2.1.0",
     "openai>=1.52.0",
-    "pydantic==2.10.0",
+    "pydantic>=2.11",
     "pymilvus>=2.4.0",
     "chromadb>=0.6.0",
     "requests",
@@ -23,7 +23,7 @@ dependencies = [
     "lexisnexisapi", 
     "yfinance>=0.2.54",
     "langchain_text_splitters>=0.3.0",
-    "pymongo>=4.1, <5",
+    "pymongo>=4.1",
     "motor>=3.6.0",
     "pypdf==5.1.0",
     "stamina>=24.3.0"
@@ -40,7 +40,7 @@ jupyter = [
     "nest_asyncio"
 ]
 gradio = [
-    "gradio==5.8.0"
+    "gradio>=5.8.0"
 ]
 ml = [
     "torch==2.5.1",
