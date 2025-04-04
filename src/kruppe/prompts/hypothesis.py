@@ -17,7 +17,7 @@ CREATE_INFO_REQUEST_USER = dedent(
     Given a main research question, a specific research lead/direction, and a working hypothesis, determine the {n} pieces of information you need to address the research lead/direction. This information should be detailed, relevant, and directly related to the research lead to provide a comprehensive understanding of the situation. Most importantly, be very specific on what you want.
 
     -Steps-
-    1. Identify up to {n} key pieces of information you want to know about to address the research lead. Be creative and specific (avoid overly generic information). Each new piece of information should help build a more complete background for the user to address the research lead
+    1. Identify up to {n} key pieces of information you want to know about to address the research lead. Be creative and specific (avoid overly generic information). Each new piece of information should be distinct and actionable, and can be used to either expand upon the research lead/hypothesis or reject the research lead/hypothesis. In other words, answer the question: "What kind of information will support the research lead?", or "What kind of information will reject the research lead?"
     2. Write each identified information as one paragraph (1-2 sentences) that describes 1. What you want to know, 2. Why do you want it (i.e. how does it help?). Be specific and detailed in your requests, use technical language if applicable, and avoid use of filler phrases.
     3. Return the output in English as a single list of all the paragraphs separated by a single newline character.
 
