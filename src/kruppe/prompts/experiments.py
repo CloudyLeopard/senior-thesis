@@ -62,6 +62,7 @@ EVALUATE_REPORT_SYSTEM = dedent(
     - Comprehensiveness: How much detail does the answer provide to cover all aspects and details of the question?
     - Diversity: How varied and rich is the answer in providing different perspectives and insights on the question?
     - Empowerment: How well does the answer help the reader understand and make informed judgements about the topic?
+    - Cohesiveness: How well does the answer flow and connect different parts of the information together? Does the answer follow one central narrative?
 
     For each criterion, choose the better answer (either Answer 1 or Answer 2) and explain why. Then, select an overall winner based on these three categories.
     """

@@ -1,14 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import Dict, AsyncGenerator, Generator, Literal
+from abc import ABC
+from typing import Dict
 import logging
-from fastapi.background import P
-from pydantic import BaseModel, Field, computed_field
-import asyncio
-import threading
+from pydantic import BaseModel
 from textwrap import dedent
-from datetime import datetime
 
-from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
 
