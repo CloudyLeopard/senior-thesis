@@ -15,9 +15,12 @@ from kruppe.utils import log_io
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.models import Document
 
-MAX_CONNECTIONS = 200
-HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=MAX_CONNECTIONS)
-DEFAULT_HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=60.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
+HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=300)
+HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=60.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
+
+semaphore = asyncio.Semaphore(225) # Limit concurrent requests to avoid overwhelming the server
+
+# Note: best combination i've found with httpx request is 225 semaphore, 300 max_connections
 
 # TODO: timeout error
 
@@ -38,37 +41,55 @@ def is_method_ready(obj, method_name: str):
     return not getattr(method, "_not_ready", False)
 
 async def combine_async_generators(async_gens):
-    queue = asyncio.Queue()
-
-    async def producer(agen):
-        async for item in agen:
-            await queue.put(item)
-        await queue.put(None)
-
-    tasks = [asyncio.create_task(producer(agen)) for agen in async_gens]
-    finished = 0
-    total = len(async_gens)
+    # Start by scheduling the first item from each generator.
+    pending = {
+        asyncio.create_task(gen.__anext__()): gen
+        for gen in async_gens
+    }
     
-    while finished < total:
-        item = await queue.get()
-        if item is None:
-            finished += 1
-        else:
-            yield item
-    
-    await asyncio.gather(*tasks)
+    while pending:
+        # Wait until at least one task completes.
+        done, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            gen = pending.pop(task)
+            try:
+                result = task.result()
+            except StopAsyncIteration:
+                # This generator is exhausted.
+                continue
+            except Exception:
+                # Propagate any other exceptions.
+                raise
+            # Yield the result that finished first.
+            yield result
+            # Schedule the next item from the same generator.
+            pending[asyncio.create_task(gen.__anext__())] = gen
 
 def retry_on_httpx_error(exc: Exception) -> bool:
+    # acceptable client errors
     if isinstance(exc, httpx.HTTPStatusError):
-        logger.warning("HTTP ERROR %d: %s", exc.response.status_code, exc.response.text)
+        logger.warning("RETRY ON HTTP ERROR %d: %s", exc.response.status_code, exc.response.text)
         return exc.response.status_code == 429 or exc.response.status_code >= 500
     
-    elif isinstance(exc, httpx.PoolTimeout):
-        # see my notes on "error debugging" on how to deal with this
-        logger.warning("POOL TIMEOUT")
-    else:
-        print("ERROR", repr(exc)) # to see what error it is
-    return isinstance(exc, httpx.HTTPError)
+    # network error
+    if isinstance(exc, httpx.NetworkError):
+        logger.warning("RETRY ON CONNECT ERROR: %s", repr(exc))
+        # This includes connection errors like DNS failure, refused connection, etc.
+        return True  # Retry on connection errors
+    
+    if isinstance(exc, httpx.PoolTimeout):
+        logger.warning("RETRY ON POOL TIMEOUT ERROR: %s", repr(exc))
+        # see my notes on "error debugging" on how to deal with this Pool Connect Error
+        # PoolTimeout indicates that the connection pool is exhausted (waited for too long before sending request)
+        return True  # Retry on pool timeout errors
+    elif isinstance(exc, httpx.TimeoutException):
+        # on all other timeout errors, including connect timeout and read timeout
+        # do not retry
+        logger.warning(f"TIMEOUT ERROR {type(exc).__name__}: {repr(exc)}", )
+        return False  # Retry on timeout errors
+    
+    print("ERROR", repr(exc)) # to see what error it is
+    return False
 
 def load_headers(header_path: str):
     # Resolve the path to header.json which is outside of the src folder.
@@ -90,8 +111,10 @@ class WebScraper:
         self.async_client = async_client
 
         # set timeout all to the same cuz im lazy im gonna fix this later
+        # also set all httpx connection limit to
         if async_client:
-            self.async_client.timeout = DEFAULT_HTTPX_TIMEOUT
+            self.async_client.timeout = HTTPX_TIMEOUT
+            self.async_client.limits = HTTPX_CONNECTION_LIMITS
 
     @staticmethod
     def default_html_parser(html: str, url: str, **kwargs) -> Dict[str, str]:
@@ -199,7 +222,10 @@ class WebScraper:
 
     @stamina.retry(on=retry_on_httpx_error, attempts=3)
     async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
-        r = await client.get(url)
+        
+        async with semaphore:  # Use semaphore to limit concurrent requests
+            r = await client.get(url)
+        
         r.raise_for_status()
 
         # if the link is a pdf, return None
@@ -291,26 +317,9 @@ class WebScraper:
         else:
             client = self.async_client
 
-        if progress_bar: 
-            pbar = tqdm(total=len(links), desc="Async scraping links")
         try:
-
-            # # NOTE: I do NOT know if I need to do things in batches. 
-            # # I think httpx handles it for me, but past experience tells me now.
-            # results = []
-            # for i in range(0, len(links), HTTPX_CONNECTION_LIMITS.max_connections):
-            #     tasks = [
-            #         self.async_scrape_link(url=link, driver=driver)
-            #         for link in links[i : i + HTTPX_CONNECTION_LIMITS.max_connections]
-            #     ]
-            #     results.extend(await asyncio.gather(*tasks))
-            #     pbar.update(len(tasks))
-            # return results
-
             coros = [self.async_scrape_link(url=link, driver=driver) for link in links]
             async for completed in asyncio.as_completed(coros):
-                if progress_bar:
-                    pbar.update(1)
                 data = await completed
                 if data is not None:
                     yield data
@@ -322,9 +331,7 @@ class WebScraper:
             if driver:
                 driver.quit()
                 logger.debug("Closed Selenium driver")
-            
-            if progress_bar:
-                pbar.close()
+
 
 
 

@@ -7,7 +7,7 @@ from pydantic import Field
 import time
 
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException, load_headers
+from kruppe.data_source.utils import WebScraper, RequestSourceException, load_headers
 from kruppe.models import Document
 from kruppe.utils import log_io
 
@@ -26,7 +26,7 @@ class NewYorkTimesData(NewsSource):
         urls = [article.get("web_url") or article.get("url") for article in article_metadata]
         meta_dict = {url: article for url, article in zip(urls, article_metadata)}
 
-        client = httpx.AsyncClient(timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS)
+        client = httpx.AsyncClient(headers=self.headers)
         try:
             scraper = WebScraper(async_client=client)
             async for data in scraper.async_scrape_links(urls):
@@ -56,7 +56,7 @@ class NewYorkTimesData(NewsSource):
     ) -> AsyncGenerator[Document, None]:
         
         article_metadata = []
-        async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
+        async with httpx.AsyncClient() as client:
             url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
 
             NUM_RESULTS_PER_PAGE = 10
@@ -115,7 +115,7 @@ class NewYorkTimesData(NewsSource):
         sections = ["business", "technology"]
         article_metadata = []
 
-        async with httpx.AsyncClient(timeout=20.0, limits=HTTPX_CONNECTION_LIMITS) as client:
+        async with httpx.AsyncClient() as client:
             logger.info("Fetching links from newsfeed")
             for section in sections:
                 url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={max_results}"
@@ -180,7 +180,7 @@ class NewYorkTimesData(NewsSource):
             for year, month in year_month_pairs
         ]
 
-        async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
+        async with httpx.AsyncClient() as client:
             article_metadata = []
 
             for url in urls:

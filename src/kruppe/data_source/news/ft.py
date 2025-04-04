@@ -175,6 +175,8 @@ class FinancialTimesData(NewsSource):
                 document = Document(text=data["content"], metadata=metadata)
                 yield document
 
+            # TODO: for now, i'm not going to scrape blog links
+            """
             logger.info("Async scraping %d Financial Times blogs", len(blog_links))
             # scrape blogs
             # NOTE: not using the default parser. The custom parser takes an additional input
@@ -187,12 +189,13 @@ class FinancialTimesData(NewsSource):
                 scraper.async_scrape_link(url=link, post_id=link.split("#")[1])
                 for link in blog_links
             ]
-            for future in asyncio.as_completed(tasks):
+            async for future in asyncio.as_completed(tasks):
                 data = await future
                 if data is None:
                     continue
                 metadata = self.parse_metadata(query=query, **data["meta"])
                 yield Document(text=data["content"], metadata=metadata)
+            """
         finally:
             await client.aclose()
 

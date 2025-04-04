@@ -1,4 +1,4 @@
-from numpy import isin
+from tqdm import tqdm
 from pydantic import computed_field, PrivateAttr
 from typing import AsyncGenerator, Callable, List, Dict, Literal, Set, Tuple
 import json
@@ -265,7 +265,7 @@ class Librarian(Researcher):
         self,
         information_desc: str,
         **kwargs
-    ) -> List[Document]:
+    ) -> None:
 
         # get resource requests, and limit to num_resources
         resource_requests = await self._choose_resource(information_desc)
@@ -273,14 +273,14 @@ class Librarian(Researcher):
 
         combined_generator = combine_async_generators([self._retrieve_helper(request) for request in resource_requests])
 
-        running_save_tasks = set()
+        progress_bar = tqdm(desc= "Retrieving documents from library",)
         async for doc in combined_generator:
-            # create a task to save the document to docstore and index
-            # https://stackoverflow.com/questions/71938799/python-asyncio-create-task-really-need-to-keep-a-reference
-            save_task = asyncio.create_task(self._save_to_docstore_and_index(doc))
-            running_save_tasks.add(save_task)
-        
-        return await asyncio.gather(*running_save_tasks) # final catch all to make sure all save tasks are done
+            saved_doc = await self.docstore.asave_document(doc)
+            if saved_doc: # if document was a repeat, saved_doc will be None
+                await self.index.async_add_documents([doc])
+            progress_bar.update(1)
+        progress_bar.close()
+
 
     async def _choose_resource(self, information_desc: str) -> List[Dict]:
         """Given an information description (which could be a query or a description of the information
@@ -351,13 +351,14 @@ class Librarian(Researcher):
         parameters["max_results"] = 10
 
         # check if rank is higher than lowest rank
-        if resource_request["rank"] > self.resource_rank_threshold:
+        if "rank" in resource_request and resource_request["rank"] > self.resource_rank_threshold:
             return
 
         # check for duplicates.
         # we do not want to execute the same function twice
         new_func = (func_name, json.dumps(parameters))
         if new_func in self._executed_funcs:
+            logger.warning(f"Skipping duplicate function execution: {new_func}")
             return
         
         # if we do not find a duplicate, add to _executed_funcs
@@ -368,21 +369,12 @@ class Librarian(Researcher):
             async for document in result: # if it is an async gen
                 yield document
         else:
-            result = await result # if it is not an async gen, await it
+            logger.warning(" The function returned a non-async generator. Awaiting it.")
+            # Await the result if it's not an async generator
+            result = await result
             for document in result:
                 yield document
     
-    async def _save_to_docstore_and_index(self, document: Document):
-        """Saves Document to Documentstore and Index. 
-        Will not save if document is a repeat.
 
-        Args:
-            document (Document): Document to save
-        """
-        saved_doc = await self.docstore.asave_document(document)
-        if saved_doc: # if document was a repeat, saved_doc will be None
-            await self.index.async_add_documents([document])
-        
-        return saved_doc
         
     
