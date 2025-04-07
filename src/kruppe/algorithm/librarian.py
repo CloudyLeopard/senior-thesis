@@ -41,7 +41,7 @@ class Librarian(Researcher):
     # forum_source:
     # llm_expert_source: 
     index: BaseIndex # for retrieve_from_index
-    docstore: BaseDocumentStore # NOTE: NEED TO DEFINE A UNIQUE INDEX!
+    docstore: BaseDocumentStore # NOTE: THIS DOCUMENT STORE NEED TO HAVE A UNIQUE INDEX TO DEAL WITH DUPLICATES
     num_retries: int = 2,
     relevance_score_threshold: Literal[1, 2, 3] | None = 2
     # retrieve_from_library related

@@ -52,6 +52,29 @@ class MongoDBStore(BaseDocumentStore):
         except OperationFailure as e:
             logger.error("Collection %s is invalid. Please use classmethod `create_db`", self.collection_name)
             raise e
+        
+        # check if collection has unique index on uuid
+        # and at least one other unique index
+        # if not, raise ValueError
+
+        has_unique_index = False
+        has_uuid_index = False
+        for index_names, index_info in self._collection.index_information().items():
+            if index_info.get("unique"):
+                if index_info["key"][0][0] == "uuid":
+                    has_uuid_index = True
+                else:
+                    has_unique_index = True
+                
+                if has_uuid_index and has_unique_index:
+                    break
+
+        if not has_uuid_index:
+            logger.warning("Collection %s does not have a unique index on uuid", self.collection_name)
+            raise ValueError("Collection does not have a unique index on uuid")
+        if not has_unique_index:
+            logger.warning("Collection %s does not have a unique index on any other field", self.collection_name)
+            raise ValueError("Collection does not have a unique index on any other field")
 
         return self
     
