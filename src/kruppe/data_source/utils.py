@@ -6,7 +6,6 @@ import time
 from typing import List, Dict, AsyncGenerator
 import logging
 from pathlib import Path
-from tqdm import tqdm
 import stamina
 import json
 from functools import wraps
@@ -68,17 +67,24 @@ async def combine_async_generators(async_gens):
 def retry_on_httpx_error(exc: Exception) -> bool:
     # acceptable client errors
     if isinstance(exc, httpx.HTTPStatusError):
-        logger.warning("RETRY ON HTTP ERROR %d: %s", exc.response.status_code, exc.response.text)
-        return exc.response.status_code == 429 or exc.response.status_code >= 500
+        if exc.response.status_code == 429 or exc.response.status_code >= 500:
+            logger.warning(f"RETRY ON HTTP ERROR {exc.response.status_code}")
+            return True  # Retry on 429 and 5xx errors
+        elif exc.response.status_code == 408:
+            logger.warning(f"RETRY ON HTTP TIMEOUT ERROR {exc.response.status_code}")
+            return True
+        else:
+            # use wrapper function to log the error
+            return False
     
     # network error
     if isinstance(exc, httpx.NetworkError):
-        logger.warning("RETRY ON CONNECT ERROR: %s", repr(exc))
+        logger.warning(f"RETRY ON CONNECT ERROR: {repr(exc)}")
         # This includes connection errors like DNS failure, refused connection, etc.
         return True  # Retry on connection errors
     
     if isinstance(exc, httpx.PoolTimeout):
-        logger.warning("RETRY ON POOL TIMEOUT ERROR: %s", repr(exc))
+        logger.warning(f"RETRY ON POOL TIMEOUT ERROR: {repr(exc)}")
         # see my notes on "error debugging" on how to deal with this Pool Connect Error
         # PoolTimeout indicates that the connection pool is exhausted (waited for too long before sending request)
         return True  # Retry on pool timeout errors
@@ -88,7 +94,7 @@ def retry_on_httpx_error(exc: Exception) -> bool:
         logger.warning(f"TIMEOUT ERROR {type(exc).__name__}: {repr(exc)}", )
         return False  # Retry on timeout errors
     
-    print("ERROR", repr(exc)) # to see what error it is
+    logger.error(f"ERROR {repr(exc)}") # to see what error it is
     return False
 
 def load_headers(header_path: str):
@@ -205,23 +211,24 @@ class WebScraper:
 
     def _scrape_with_selenium(self, driver, url: str, **kwargs) -> str | None:
         """Fallback to Selenium to scrape the page."""
-        logging.debug("Attempting to scrape %s with Selenium", url)
+        logger.debug("[Selenium] Attempting to scrape %s ", url)
 
         try:
             driver.get(url)
             time.sleep(2)  # Give the page time to load
             page_content = driver.page_source
-            logging.info("Successfully scraped %s with Selenium", url)
+            logger.info("[Selenium] Successfully scraped %s", url)
 
             return page_content
         except Exception:
-            logging.warning("Failed to scrape %s with Selenium", url)
+            logger.warning("[Selenium] Failed to scrape %s", url)
             return None
 
     
 
     @stamina.retry(on=retry_on_httpx_error, attempts=3)
     async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
+        logger.debug("[httpx] Attempting to scrape %s", url)
         
         async with semaphore:  # Use semaphore to limit concurrent requests
             r = await client.get(url)
@@ -234,6 +241,7 @@ class WebScraper:
             return None
 
         html = r.text
+        logger.info("[httpx] Successfully scraped %s", url)
         return html
 
 
@@ -246,15 +254,14 @@ class WebScraper:
         **kwargs,
     ) -> Dict[str, str] | None:
         """Async function for scraping a single link"""
-        logger.info("Async scraping %s", url)
 
         # init async client
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
-            logging.info("Inititalized new async client")
+            logger.info("Inititalized new async client")
         else:
             client = self.async_client
-            logging.info("Using entered async client")
+            logger.info("Using entered async client")
         
         # scrape
         html = None
@@ -263,11 +270,10 @@ class WebScraper:
             html = await self._async_scrape_with_httpx(client, url, **kwargs)
             
         except httpx.HTTPError as exc:
-            logger.warning("Error occurred while scraping %s: %s", url, repr(exc))
+            logger.warning("[httpx] Failed to scrape %s : %s", url, repr(exc))
 
             # if httpx doesn't work, fallback to selenium if it exists
             if driver:
-                logger.info("Attempting to scrape %s with Selenium", url)
                 html = self._scrape_with_selenium(driver, url, **kwargs)
             else:
                 return None
@@ -275,7 +281,7 @@ class WebScraper:
             # close async client
             if self.async_client is None:
                 await client.aclose()
-                logging.debug("Closed async client")
+                logger.debug("Closed async client")
 
             # if scraping returns a non-empty document
             if html:
@@ -350,13 +356,13 @@ class NewsArticleSearcher:
                 )
                 documents.extend(fetched_documents[:num_results])
             except RequestSourceException as e:
-                logging.error(
+                logger.error(
                     "Error occurred while fetching documents from %s: %s",
                     source.__class__.__name__,
                     str(e),
                 )
 
-        logging.info("Fetched %d documents from sources", len(documents))
+        logger.info("Fetched %d documents from sources", len(documents))
         self.documents.extend(documents)
         return documents
 
@@ -367,7 +373,7 @@ class NewsArticleSearcher:
             try:
                 return await async_fetch(query, num_results=num_results, **kwargs)
             except RequestSourceException as e:
-                logging.error(
+                logger.error(
                     "Error occurred while fetching documents from %s: %s",
                     async_fetch.__name__,
                     str(e),

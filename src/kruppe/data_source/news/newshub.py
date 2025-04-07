@@ -1,53 +1,58 @@
-from typing import Dict, Literal, List
+from textwrap import dedent
+from typing import AsyncGenerator, Dict, Literal, List
+from pydantic import model_validator
+
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import not_ready, combine_async_generators, is_method_ready
+from kruppe.data_source.utils import is_method_ready
+from kruppe.models import Document
 
 
 class NewsHub(NewsSource):
-    source = "Newshub"
-    shorthand = "hub"
-    description = "A compilation of different news sources"
+    source: str = "News Hub"
+    shorthand: str = "newshub"
     news_sources: List[NewsSource]
+    description: str = "A news aggregator"
+
+    @model_validator(mode="after")
+    def set_description(self):
+        if not self.news_sources:
+            raise ValueError("At least one news source must be provided")
+        
+        self.description = dedent(f"""\
+            Newshub is a news aggregator that combines multiple news sources into one platform, providing a comprehensive view of the latest news from various outlets. Contains the following sources: {", ".join([source.source for source in self.news_sources])}."
+        """)
+        return self
+
     
-    @not_ready
     async def news_search(
         self,
         query: str,
         max_results: int = 10,
-        sort: Literal["relevance", "date"] = None,
+        sort: Literal["relevance", "date"] = "date",
         **kwargs,
-    ):
-        async_generators = []
+    ) -> AsyncGenerator[Document, None]:
         for news_source in self.news_sources:
             if not is_method_ready(news_source, "news_search"):
                 continue
 
-            async_generators.append(news_source.news_search(query, max_results, sort, **kwargs))
-        combined_generator = combine_async_generators(async_generators)
-
-        async for doc in combined_generator:
-            yield doc
+            async for doc in news_source.news_search(query, max_results, sort, **kwargs):
+                yield doc
     
-    @not_ready
-    async def new_recent(
+    async def news_recent(
         self,
         days: int = 0,
         max_results: int = None,
         filter: Dict = None, # TODO: not implemented
         **kwargs
-    ):
-        async_generators = []
+    ) -> AsyncGenerator[Document, None]:
         for news_source in self.news_sources:
             if not is_method_ready(news_source, "news_recent"):
                 continue
-
-            async_generators.append(news_source.news_recent(days, max_results, filter, **kwargs))
-        combined_generator = combine_async_generators(async_generators)
-
-        async for doc in combined_generator:
-            yield doc
+            
+            async for doc in news_source.news_recent(days, max_results, filter, **kwargs):
+                yield doc
+            
     
-    @not_ready
     async def news_archive(
         self,
         start_date,
@@ -55,15 +60,13 @@ class NewsHub(NewsSource):
         max_results = 100, 
         filter = None,
         **kwargs
-    ):
+    ) -> AsyncGenerator[Document, None] :
         
-        async_generators = []
         for news_source in self.news_sources:
             if not is_method_ready(news_source, "news_archive"):
                 continue
 
-            async_generators.append(news_source.news_archive(start_date, end_date, max_results, filter, **kwargs))
-        combined_generator = combine_async_generators(async_generators)
+            async_generator = news_source.news_archive(start_date, end_date, max_results, filter, **kwargs)
 
-        async for doc in combined_generator:
-            yield doc
+            async for doc in async_generator:
+                yield doc
