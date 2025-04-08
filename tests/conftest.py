@@ -1,4 +1,3 @@
-from calendar import c
 import pytest
 import pytest_asyncio
 import os
@@ -6,7 +5,7 @@ import nest_asyncio
 
 from kruppe.data_source.directory import DirectoryData
 from kruppe.functional.rag.text_splitters import RecursiveTextSplitter
-from kruppe.functional.rag.vectorstore.in_memory import InMemoryVectorStore
+from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore
 from kruppe.functional.docstore.mongo_store import MongoDBStore
 from kruppe.llm import OpenAIEmbeddingModel, OpenAILLM
 # from kruppe.llm import NYUOpenAIEmbeddingModel, NYUOpenAILLM
@@ -117,7 +116,7 @@ async def async_document_storage(documents2):
 
 @pytest.fixture(scope="module")
 def text_splitter():
-    return RecursiveTextSplitter()
+    return RecursiveTextSplitter(chunk_size=512, chunk_overlap=12)
 
 
 @pytest.fixture(scope="module")
@@ -130,11 +129,16 @@ def llm():
     # return OpenAILLM()
     return OpenAILLM()
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def vector_storage(embedding_model, text_splitter, documents2):
-    vector_storage = InMemoryVectorStore(embedding_model=embedding_model)
+    vector_storage = ChromaVectorStore(
+        embedding_model=embedding_model,
+        collection_name="group_test")
+    
+    vector_storage.clear() # Clear the vector storage before inserting documents
 
     chunked_documents = text_splitter.split_documents(documents2)
     vector_storage.insert_documents(chunked_documents)
+
 
     yield vector_storage

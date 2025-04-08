@@ -2,14 +2,17 @@
 
 from kruppe.functional.rag.retriever.base_retriever import BaseRetriever
 from kruppe.models import Query, Document
+from kruppe.functional.rag.index.base_index import BaseIndex
 from typing import List
 
 class SimpleRetriever(BaseRetriever):
     """
     A custom retriever that performs vector similarity search on a vector store.
     """
-    def retrieve(self, query: Query, top_k: int = 5) -> List[Document]:
-        return self.index.query(query, top_k)
+    index: BaseIndex
 
-    async def async_retrieve(self, query: Query, top_k: int = 5) -> List[Document]:
-        return await self.index.async_query(query, top_k)
+    def retrieve(self, query: Query) -> List[Document]:
+        return self.index.query(query, self.top_k)
+
+    async def async_retrieve(self, query: Query) -> List[Document]:
+        return await self.index.async_query(query, self.top_k)

@@ -1,5 +1,6 @@
+import numpy as np
 from uuid import UUID
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from pydantic import Field, PrivateAttr, model_validator
 from typing import Optional
 import chromadb
@@ -9,6 +10,9 @@ from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.models import Document, Chunk
 
 logger = logging.getLogger(__name__)
+
+def distance_to_similarity(distances: List[float]) -> List[float]:
+    return (1 / (1 + np.array(distances))).tolist()
 
 def get_chroma_collection_names(client: chromadb.ClientAPI) -> List[str]:
     return client.list_collections()
@@ -33,8 +37,14 @@ class ChromaVectorStore(BaseVectorStore):
                 self.client = chromadb.Client()
             # option 3: client passed in
 
-        self._collection = self.client.get_or_create_collection(self.collection_name)
+        self._collection = self.client.get_or_create_collection(
+            self.collection_name,
+            metadata={"hnsw:space": "l2"},
+        )
         return self
+
+    def size(self) -> int:
+        return self._collection.count()
     
     def clear(self) -> None:
         self.client.delete_collection(self.collection_name)
@@ -58,8 +68,9 @@ class ChromaVectorStore(BaseVectorStore):
             metadata = document.metadata
             if isinstance(document, Chunk):
                 metadata["document_id"] = str(document.document_id)
-                metadata["prev_chunk_id"] = str(document.prev_chunk_id)
-                metadata["next_chunk_id"] = str(document.next_chunk_id)
+                metadata["prev_chunk_id"] = str(document.prev_chunk_id) if document.prev_chunk_id else ""
+                metadata["next_chunk_id"] = str(document.next_chunk_id) if document.next_chunk_id else ""
+
             data["metadatas"].append(document.metadata)
 
             # add text for each document/chunk
@@ -101,6 +112,7 @@ class ChromaVectorStore(BaseVectorStore):
                 # AHHHH this screwed me over for a while
                 metadata["prev_chunk_id"] = str(document.prev_chunk_id) if document.prev_chunk_id else ""
                 metadata["next_chunk_id"] = str(document.next_chunk_id) if document.next_chunk_id else ""
+
             data["metadatas"].append(document.metadata)
 
             # add text for each document/chunk
@@ -117,7 +129,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         return data["ids"]
 
-    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
+    def search(self, vector: List[float], top_k: int = 3, filter: Dict[str, Any] = None) -> Tuple[List[Chunk], List[int]]:
         if filter == {}: 
             # apparently chroma doesn't like empty filters
             filter = None
@@ -129,7 +141,8 @@ class ChromaVectorStore(BaseVectorStore):
         )
 
         retrieved_docs = [] # chunks, really - im treating docs like chunks
-        for res_text, res_id, res_metadata in zip(results["documents"][0], results["ids"][0], results["metadatas"][0]):
+        similarity_scores = distance_to_similarity(results["distances"][0]) # NOTE: chroma by default returns L2 norm or euclidean distance
+        for res_text, res_id, res_metadata, res_score in zip(results["documents"][0], results["ids"][0], results["metadatas"][0], similarity_scores):
             document_id = res_metadata.pop("document_id", res_id) # if no document_id, then chunk_id is document_id
             
             # get prev_chunk_id and next_chunk_id if they exist
@@ -143,7 +156,8 @@ class ChromaVectorStore(BaseVectorStore):
                 text=res_text,
                 id=UUID(res_id),
                 metadata=res_metadata,
-                document_id=UUID(document_id) ,
+                document_id=UUID(document_id),
+                score=res_score,
                 prev_chunk_id=UUID(prev_chunk_id) if prev_chunk_id else None,
                 next_chunk_id=UUID(next_chunk_id) if next_chunk_id else None,
             )
@@ -152,7 +166,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         return retrieved_docs
     
-    async def async_search(self, vector: List[float], top_k=3, filter: Dict[str, Any] = None):
+    async def async_search(self, vector: List[float], top_k=3, filter: Dict[str, Any] = None) -> List[Chunk]:
         """Falls back to synchronous search"""
         return self.search(vector=vector, top_k=top_k, filter=filter)
 

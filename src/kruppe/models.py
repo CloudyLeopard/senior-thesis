@@ -66,6 +66,7 @@ class Document(Embeddable):
 class Chunk(Document):
     document_id: UUID
     metadata: Annotated[Dict[str, Any], AfterValidator(validate_metadata)]
+    score: Optional[float] = None
 
     prev_chunk_id: Optional[UUID] = None
     next_chunk_id: Optional[UUID] = None

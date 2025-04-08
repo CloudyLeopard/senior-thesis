@@ -5,7 +5,7 @@ import asyncio
 
 from kruppe.llm import BaseEmbeddingModel
 from kruppe.functional.rag.index.base_index import BaseIndex
-from kruppe.models import Document, Query, Response
+from kruppe.models import Chunk, Document, Query, Response
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
 from kruppe.prompt_formatter import RAGPromptFormatter
 
@@ -32,45 +32,45 @@ class VectorStoreIndex(BaseIndex):
         # insert documents into vector store
         await self.vectorstore.async_insert_documents(chunked_documents)
 
-    def query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+    def query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         # embed query
         query_vector = self._embedder.embed([query])[0]
 
         # search vector store
-        relevant_documents = self.vectorstore.search(
+        ret_chunks = self.vectorstore.search(
             vector=query_vector,
             top_k=top_k,
             filter=filter
         )
 
-        return relevant_documents
+        return ret_chunks
 
-    async def async_query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Document]:
+    async def async_query(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> List[Chunk]:
         # embed query
         query_vector = await self._embedder.async_embed([query])
         query_vector = query_vector[0]
 
         # search vector store
-        relevant_documents = await self.vectorstore.async_search(
+        ret_chunks = await self.vectorstore.async_search(
             vector=query_vector,
             top_k=top_k,
             filter=filter
         )
 
-        return relevant_documents
+        return ret_chunks
     
     async def async_generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
         # retrieve relevant documents
-        relevant_documents = await self.async_query(query, top_k=top_k, filter=filter)
+        ret_chunks = await self.async_query(query, top_k=top_k, filter=filter)
 
         # format rag prompt
         prompt_formatter = RAGPromptFormatter()
-        prompt_formatter.add_documents(relevant_documents)
+        prompt_formatter.add_documents(ret_chunks)
         messages = prompt_formatter.format_messages(user_prompt=query)
 
         # generate response and add sources
         response = await self.llm.async_generate(messages)
-        response.sources = relevant_documents
+        response.sources = ret_chunks
 
         return response
     

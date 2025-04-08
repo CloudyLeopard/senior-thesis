@@ -1,13 +1,13 @@
 import asyncio
 import numpy as np
-from typing import List
+from typing import List, Tuple
 import logging
 from pydantic import Field, PrivateAttr
 import pickle
 
 from kruppe.llm import OpenAIEmbeddingModel
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
-from kruppe.models import Document
+from kruppe.models import Chunk, Document
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class InMemoryVectorStore(BaseVectorStore):
         self.documents.extend(documents)
         return ids
 
-    def search(self, vector: List[float], top_k: int = 3):
+    def search(self, vector: List[float], top_k: int = 3) -> Tuple[List[Chunk], List[int]]:
         top_k = min(top_k, len(self.documents))
         if top_k == 0:
             return []
@@ -57,9 +57,11 @@ class InMemoryVectorStore(BaseVectorStore):
         top_indices = sorted_indices[:top_k]  # get top k indices
 
         documents = [self.documents[index] for index in top_indices]
-        return documents
+        # NOTE: not sure if the next line is right, double check
+        distances = [similarity_scores[index] for index in top_indices] 
+        return documents, distances
 
-    async def async_search(self, vector: List[float], top_k: int = 3) -> List[Document]:
+    async def async_search(self, vector: List[float], top_k: int = 3) -> Tuple[List[Chunk], List[int]]:
         return self.search(vector, top_k)
 
     def remove_documents(self, ids: List[int]):

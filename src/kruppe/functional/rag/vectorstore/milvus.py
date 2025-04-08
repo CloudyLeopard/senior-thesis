@@ -91,8 +91,6 @@ class MilvusVectorStore(BaseVectorStore):
         Args:
             documents: List of Documents that will be indexed
         """
-        # remove duplicate documents
-        documents = [doc for doc in documents if (doc_hash := hash(doc)) not in self._text_hashes and not self._text_hashes.add(doc_hash)]
 
         data = []
         for document in documents:

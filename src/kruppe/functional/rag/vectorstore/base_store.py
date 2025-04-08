@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, PrivateAttr, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Any
 
 from kruppe.models import Document, Chunk
@@ -11,13 +11,10 @@ class BaseVectorStore(ABC, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     embedding_model: BaseEmbeddingModel
-    _text_hashes: set[str] = PrivateAttr(default_factory=set)
 
-    def __contains__(self, item) -> bool:
-        return hash(item) in self._text_hashes
-
+    @abstractmethod
     def size(self) -> int:
-        return len(self._text_hashes)
+        ...
 
     @abstractmethod
     def insert_documents(self, documents: List[Document]) -> List[int]:
