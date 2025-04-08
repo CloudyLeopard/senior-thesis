@@ -95,7 +95,7 @@ class Librarian(Researcher):
     @log_io
     async def execute(
         self,
-        information_desc: str,
+        info_request: str,
         **kwargs
     ) -> List[Document]:
         """Given a description of the information that the user wants, the Librarian will
@@ -110,7 +110,7 @@ class Librarian(Researcher):
         If, after a few retries, the confidence score is still low, the Librarian will return an empty list
 
         Args:
-            information_desc (str): description of the information that the user wants to know
+            info_request (str): description of the information that the user wants to know
             retries (int): number of retries to get relevant contexts from index
             kwargs: additional arguments, defined by `retrieve_from_library` and `retrieve_from_index`
 
@@ -121,7 +121,7 @@ class Librarian(Researcher):
         current_try = 0
         while current_try <= self.num_retries:
             ret_chunks = await self.retrieve_from_index(
-                information_desc=information_desc,
+                info_request=info_request,
                 **kwargs
             )
 
@@ -133,7 +133,7 @@ class Librarian(Researcher):
                 # use LLM to determine relevance
                 
                 user_message = LIBRARIAN_CONTEXT_RELEVANCE_USER.format(
-                    information_desc=information_desc,
+                    info_request=info_request,
                     contexts = "\n".join(chunk.text for chunk in ret_chunks)
                 )
                 messages = [
@@ -157,9 +157,9 @@ class Librarian(Researcher):
             
             if need_new_documents:
                 # low relevance, try again
-                logger.warning(f"Retrieving from library for info request: {information_desc}")
+                logger.warning(f"Retrieving from library for info request: {info_request}")
                 await self.retrieve_from_library(
-                    information_desc=information_desc,
+                    info_request=info_request,
                     **kwargs
                 )
                 current_try += 1 # decrement retries
@@ -169,12 +169,12 @@ class Librarian(Researcher):
                 # high relevance, return
                 return ret_chunks
         
-        logger.warning(f"Could not find relevant contexts for info request: {information_desc}")
+        logger.warning(f"Could not find relevant contexts for info request: {info_request}")
         return []
         
     async def retrieve_from_index(
             self,
-            information_desc: str,
+            info_request: str,
             top_k: int = 10,
             llm_restrict_time: bool = False,
             start_time: str | float | datetime = None,
@@ -185,7 +185,7 @@ class Librarian(Researcher):
         from the index.
 
         Args:
-            information_desc (str): description of the information that the user wants to know
+            info_request (str): description of the information that the user wants to know
 
         Returns:
             List[str]: list of queries
@@ -232,7 +232,7 @@ class Librarian(Researcher):
         elif llm_restrict_time:
             # "smart" filter with LLM
             
-            user_message = LIBRARIAN_TIME_USER.format(information_desc=information_desc)
+            user_message = LIBRARIAN_TIME_USER.format(info_request=info_request)
             messages = [
                 {"role": "system", "content": self.system_message},
                 {"role": "user", "content": user_message},
@@ -257,18 +257,18 @@ class Librarian(Researcher):
                 }
 
         # query index and retrieve documents
-        query = Query(text=information_desc)
+        query = Query(text=info_request)
         relevant_documents = self.index.query(query, top_k=top_k, filter=filter)
         return relevant_documents
 
     async def retrieve_from_library(
         self,
-        information_desc: str,
+        info_request: str,
         **kwargs
     ) -> None:
 
         # get resource requests, and limit to num_resources
-        resource_requests = await self._choose_resource(information_desc)
+        resource_requests = await self._choose_resource(info_request)
         resource_requests = resource_requests[:self.num_rsc_per_retrieve]
 
         combined_generator = combine_async_generators([self._retrieve_helper(request) for request in resource_requests])
@@ -282,13 +282,13 @@ class Librarian(Researcher):
         progress_bar.close()
 
 
-    async def _choose_resource(self, information_desc: str) -> List[Dict]:
+    async def _choose_resource(self, info_request: str) -> List[Dict]:
         """Given an information description (which could be a query or a description of the information
         that the user is seeking), determine which tools/functions should be used to find the information
         and the parameters needed to execute the function.
 
         Args:
-            information_desc (str): description of the information that the user wants to know
+            info_request (str): description of the information that the user wants to know
 
         Returns:
             List[Dict]: list of resource requests
@@ -308,7 +308,7 @@ class Librarian(Researcher):
 
         # format librarian user message
         user_message = CHOOSE_RESOURCE_USER.format(
-            information_desc=information_desc,
+            info_request=info_request,
             resource_desc=resource_desc, # resource descriptions in JSON format
             funcs_past=funcs_past, # past function calls
             n=self.num_rsc_per_retrieve
