@@ -6,6 +6,19 @@ LIBRARIAN_STANDARD_SYSTEM = dedent(
     """
 )
 
+REQUEST_TO_QUERY_USER = dedent(
+    """\
+    -Instruction-
+    You are given an information request, which is a description of some information a user is seeking. Reword the information request into a single statement that concisely describes the information the user is looking for. The statement should not have any filler words, should be straight forward, and as concise as possible without losing any meaning.
+    
+    -Input-
+    Description of the information that the user wants to know:
+    {info_request}
+
+    -Output-
+    """
+)
+
 CHOOSE_RESOURCE_USER = dedent(
     """\
     -Goal-
@@ -25,7 +38,7 @@ CHOOSE_RESOURCE_USER = dedent(
 
     -Input-
     Description of the information that the user wants to know:
-    {information_desc}
+    {info_request}
 
     Resource/Function Descriptions in JSON Format:
     {resource_desc}
@@ -50,7 +63,7 @@ LIBRARIAN_TIME_USER = dedent(
 
     -Input-
     Description of the information that the user wants to know:
-    {information_desc}
+    {info_request}
 
     -Output-
     """
@@ -77,7 +90,7 @@ LIBRARIAN_TIME_USER_2 = dedent(
 
     -Input-
     Description of the information that the user wants to know:
-    {information_desc}
+    {info_request}
 
     -Output-
     """
@@ -97,7 +110,7 @@ LIBRARIAN_CONTEXT_RELEVANCE_USER = dedent(
 
     -Input-
     Description of the information that the user wants to know:
-    {information_desc}
+    {info_request}
 
     Contexts:
     {contexts}
@@ -119,7 +132,7 @@ LIBRARIAN_QUERY_USER = dedent(
 
     -Input-
     Description of the information that the user wants to know:
-    {information_desc}
+    {info_request}
 
     -Output-
     """

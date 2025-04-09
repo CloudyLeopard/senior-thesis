@@ -15,7 +15,7 @@ from kruppe.data_source.news.base_news import NewsSource
 from kruppe.models import Document
 
 HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=300)
-HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=60.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
+HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=20.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
 
 semaphore = asyncio.Semaphore(225) # Limit concurrent requests to avoid overwhelming the server
 
@@ -228,16 +228,17 @@ class WebScraper:
 
     @stamina.retry(on=retry_on_httpx_error, attempts=3)
     async def _async_scrape_with_httpx(self, client: httpx.AsyncClient, url: str, **kwargs) -> str:
-        logger.debug("[httpx] Attempting to scrape %s", url)
         
         async with semaphore:  # Use semaphore to limit concurrent requests
+            logger.debug("[httpx] Attempting to scrape %s", url)
             r = await client.get(url)
+
         
         r.raise_for_status()
 
         # if the link is a pdf, return None
         if r.headers.get("Content-Type") == "application/pdf":
-            logger.warning("Url %s is a pdf. Skipping.", url)
+            logger.warning(f"[httpx] Url {url} is a pdf. Skipping.")
             return None
 
         html = r.text
@@ -258,10 +259,9 @@ class WebScraper:
         # init async client
         if self.async_client is None:
             client = httpx.AsyncClient(headers=headers)
-            logger.info("Inititalized new async client")
+            logger.debug("Inititalized new async httpx client in async_scrape_link")
         else:
             client = self.async_client
-            logger.info("Using entered async client")
         
         # scrape
         html = None
@@ -276,6 +276,7 @@ class WebScraper:
             if driver:
                 html = self._scrape_with_selenium(driver, url, **kwargs)
             else:
+                logger.warning("No Selenium driver available for %s", url)
                 return None
         finally:
             # close async client
@@ -314,11 +315,12 @@ class WebScraper:
             Additional arguments to pass to the html_parser function
         """
 
-        logger.debug("Async scraping %d links", len(links))
+        logger.info("Async scraping %d links", len(links))
 
-        logger.debug("Creating Selenium driver")
+        logger.debug("Creating Selenium driver in async_scrape_links")
         driver = self._create_selenium_driver() if selenium_fallback else None
         if self.async_client is None:
+            logger.debug("Initializing new async httpx client in async_scrape_links")
             client = httpx.AsyncClient(headers=headers, limits=HTTPX_CONNECTION_LIMITS)
         else:
             client = self.async_client
@@ -333,87 +335,12 @@ class WebScraper:
         finally:
             if self.async_client is None:
                 await client.aclose()
+                logger.debug("Closed async httpx client in async_scrape_links")
 
             if driver:
                 driver.quit()
-                logger.debug("Closed Selenium driver")
+                logger.debug("Closed Selenium driver in async_scrape_links")
 
-
-
-
-class NewsArticleSearcher:
-    def __init__(self, sources: List[NewsSource]):
-        """Chooses which sources to use for fetching documents"""
-        self.sources = sources  # TODO: do some kind of "setting" here to determine which sources to use
-        self.documents = []
-
-    def search(self, query: str, num_results: int = 10, **kwargs) -> List[Document]:
-        documents = []
-        for source in self.sources:
-            try:
-                fetched_documents = source.fetch(
-                    query, num_results=num_results, **kwargs
-                )
-                documents.extend(fetched_documents[:num_results])
-            except RequestSourceException as e:
-                logger.error(
-                    "Error occurred while fetching documents from %s: %s",
-                    source.__class__.__name__,
-                    str(e),
-                )
-
-        logger.info("Fetched %d documents from sources", len(documents))
-        self.documents.extend(documents)
-        return documents
-
-    async def async_search(
-        self, query: str, num_results: int = 10, **kwargs
-    ) -> List[Document]:
-        async def _async_fetch(async_fetch: callable):
-            try:
-                return await async_fetch(query, num_results=num_results, **kwargs)
-            except RequestSourceException as e:
-                logger.error(
-                    "Error occurred while fetching documents from %s: %s",
-                    async_fetch.__name__,
-                    str(e),
-                )
-                return []
-
-        documents = []
-        results = await asyncio.gather(
-            *[_async_fetch(source.async_fetch) for source in self.sources]
-        )
-        for result in results:
-            documents.extend(result[:num_results])
-        self.documents.extend(documents)
-        return documents
-
-    def export_documents(self, directory: str, create_dir: bool) -> List[Document]:
-        """Export documents into directory as txt files, with a json file
-        containing each document's metadata"""
-
-        dir_path = Path(directory)
-        if not dir_path.exists():
-            if create_dir:
-                dir_path.mkdir(parents=True)
-            else:
-                raise ValueError(
-                    "Directory does not exist. Set create_dir=True to create it."
-                )
-
-        metadata = {}
-        for i, document in enumerate(self.documents):
-            file_path = dir_path / f"{i}.txt"
-            file_path.write_text(document.text)
-            metadata[i] = document.metadata
-
-        import json
-
-        metadata_path = dir_path / "metadata.json"
-        with metadata_path.open("w") as f:
-            json.dump(metadata, f, indent=4)
-        return self.documents
 
 
 # Example usage

@@ -6,11 +6,15 @@ import chromadb
 from kruppe.llm import OpenAILLM, OpenAIEmbeddingModel
 
 # data sources to use
+from kruppe.data_source.news.newshub import NewsHub
 from kruppe.data_source.news.nyt import NewYorkTimesData
+from kruppe.data_source.news.ft import FinancialTimesData
+from kruppe.data_source.news.newsapi import NewsAPIData
 
 # import index and rag related stuff
 from kruppe.functional.rag.vectorstore.chroma import ChromaVectorStore, get_chroma_collection_names
 from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
+from kruppe.functional.rag.retriever.fusion_retriever import QueryFusionRetriever
 from kruppe.functional.docstore.mongo_store import MongoDBStore
 
 # import librarian
@@ -19,8 +23,12 @@ from kruppe.algorithm.librarian import Librarian
 # initializing news sources
 news_sources = [
     NewYorkTimesData(headers_path="/Users/danielliu/Workspace/fin-rag/.nyt-headers.json"),
-
+    FinancialTimesData(headers_path="/Users/danielliu/Workspace/fin-rag/.ft-headers.json"),
+    NewsAPIData(),
 ]
+news_sources.append(
+    NewsHub(news_sources=news_sources[:]) # shallow copy of the list
+)
 news_sources_map = {source.source: source for source in news_sources}
 
 # initializing vectorstore client
@@ -37,7 +45,7 @@ def get_librarian():
     global librarian
     return librarian
 
-async def initialize_librarian(param_model, param_embed_model, param_coll_name, param_news_source, param_num_retries, param_relevance_score_threshold, param_resource_rank_threshold, param_num_rsc_per_retrieve):
+async def initialize_librarian(param_model, param_embed_model, param_retriever, param_coll_name, param_news_source, param_num_retries, param_relevance_score_threshold, param_resource_rank_threshold, param_num_rsc_per_retrieve):
     global librarian
 
     # initialize the LLM model
@@ -51,6 +59,26 @@ async def initialize_librarian(param_model, param_embed_model, param_coll_name, 
         client=chroma_client
     )
     index = VectorStoreIndex(llm=llm, vectorstore=vectorstore)
+
+    # get the retriever
+    if param_retriever == "simple":
+        retriever = index.as_retriever() # this is also default
+    elif param_retriever == "fusion [simple]":
+        retriever = QueryFusionRetriever(
+            retrievers=[index.as_retriever()],
+            llm=llm,
+            num_queries=5,
+            mode="simple"
+        )
+    elif param_retriever == "fusion [rff]":
+        retriever = QueryFusionRetriever(
+            retrievers=[index.as_retriever()],
+            llm=llm,
+            num_queries=5,
+            mode="rrf"
+        )
+    else:
+        raise ValueError(f"Unknown retriever: {param_retriever}")
 
     # initialize/create doc source
     unique_indices = [['title', 'datasource']] # NOTE: necessary to avoid duplicates
@@ -68,6 +96,7 @@ async def initialize_librarian(param_model, param_embed_model, param_coll_name, 
         llm=llm,
         docstore=docstore,
         index=index,
+        retriever=retriever,
         news_source=news_source,
         num_retries=param_num_retries,
         relevance_score_threshold=param_relevance_score_threshold,
@@ -87,7 +116,7 @@ async def execute_librarian(info_request, arg_top_k, arg_llm_restrict_time, arg_
         "end_time": arg_end_time
     }
 
-    ret_docs = await librarian.execute(information_desc=info_request, **kwargs)
+    ret_docs = await librarian.execute(info_request=info_request, **kwargs)
 
     return "\n\n".join([doc.text for doc in ret_docs])
 
@@ -101,18 +130,30 @@ def create_librarian_block():
             with gr.Row():
                 param_model = gr.Dropdown(
                     label="Select LLM Model",
+                    info="Recommend using `gpt-4o-mini` for local testing",
                     choices=["gpt-4o", "gpt-4o-mini"],
                     multiselect=False,
-                    value="gpt-4o-mini",
+                    value="gpt-4o",
                     interactive=True,
                     allow_custom_value=False,
                 )
 
                 param_embed_model = gr.Dropdown(
                     label="Select Embedding Model",
+                    info="Make sure to use a consistent embedding model",
                     choices=["text-embedding-3-small", "text-embedding-3-large"],
                     multiselect=False,
                     value="text-embedding-3-small",
+                    interactive=True,
+                    allow_custom_value=False,
+                )
+
+                param_retriever = gr.Dropdown(
+                    label="Select Retriever",
+                    info="Choose the retriever to use",
+                    choices=["simple", "fusion [simple]", "fusion [rff]"],
+                    multiselect=False,
+                    value="simple",
                     interactive=True,
                     allow_custom_value=False,
                 )
@@ -128,6 +169,7 @@ def create_librarian_block():
 
                 param_news_source = gr.Dropdown(
                     label="Select News Source to scrape from",
+                    info="Choose the news source to scrape from",
                     choices=news_sources_map.keys(),
                     multiselect=False,
                     interactive=True,
@@ -145,7 +187,7 @@ def create_librarian_block():
         init_button = gr.Button("Initialize Librarian", variant='primary')
         output_config = gr.Textbox(label="Initialization Status", interactive=False)
         
-        init_button.click(initialize_librarian, inputs=[param_model, param_embed_model, param_coll_name, param_news_source, param_num_retries, param_relevance_score_threshold, param_resource_rank_threshold, param_num_rsc_per_retrieve], outputs=[output_config])
+        init_button.click(initialize_librarian, inputs=[param_model, param_embed_model, param_retriever, param_coll_name, param_news_source, param_num_retries, param_relevance_score_threshold, param_resource_rank_threshold, param_num_rsc_per_retrieve], outputs=[output_config])
         
         gr.Markdown("## Execute Librarian")
 
@@ -163,5 +205,6 @@ def create_librarian_block():
         ret_contexts = gr.Textbox(label="Info Output", lines=10, interactive=False)
 
         execute_button.click(execute_librarian, inputs=[info_request, arg_top_k, arg_llm_restrict_time, arg_start_time, arg_end_time], outputs=[ret_contexts])
+
 
     return block

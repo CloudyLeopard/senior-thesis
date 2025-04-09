@@ -91,7 +91,7 @@ class NewYorkTimesData(NewsSource):
                     raise RequestSourceException(e)
                 
                 # Break if there are no more articles to fetch
-                if data["response"]["meta"]["hits"] <= data["response"]["meta"]["offset"]:
+                if not data["response"]["docs"]:
                     break
 
                 article_metadata.extend(data["response"]["docs"])

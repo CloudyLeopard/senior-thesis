@@ -18,7 +18,7 @@ io_logger.propagate = False
 
 
 # Maximum length for logging each argument, keyword, or output.
-MAX_LOG_LENGTH = 150
+MAX_LOG_LENGTH = 250
 
 def log_io(func):
     """

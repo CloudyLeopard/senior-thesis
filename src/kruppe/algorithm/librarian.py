@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from pydantic import computed_field, PrivateAttr
+from pydantic import Field, computed_field, PrivateAttr
 from typing import AsyncGenerator, Callable, List, Dict, Literal, Set, Tuple
 import json
 import asyncio
@@ -16,10 +16,12 @@ from kruppe.models import Document, Chunk, Query
 from kruppe.prompts.librarian import (
     LIBRARIAN_STANDARD_SYSTEM,
     CHOOSE_RESOURCE_USER,
+    REQUEST_TO_QUERY_USER,
     LIBRARIAN_TIME_USER,
     LIBRARIAN_CONTEXT_RELEVANCE_USER
 )
 from kruppe.functional.rag.index.base_index import BaseIndex
+from kruppe.functional.rag.retriever.base_retriever import BaseRetriever
 from kruppe.functional.docstore.base_docstore import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ class Librarian(Researcher):
     # forum_source:
     # llm_expert_source: 
     index: BaseIndex # for retrieve_from_index
+    retriever: BaseRetriever = Field(default_factory = lambda data: data['index'].as_retriever())
     docstore: BaseDocumentStore # NOTE: THIS DOCUMENT STORE NEED TO HAVE A UNIQUE INDEX TO DEAL WITH DUPLICATES
     num_retries: int = 2,
     relevance_score_threshold: Literal[1, 2, 3] | None = 2
@@ -117,32 +120,52 @@ class Librarian(Researcher):
         Returns:
             List[Document]: list of documents, empty if confidence score is low
         """
+        logger.info("Executing librarian with info request: %s", info_request)
+
+        # NOTE: this step is unnecessary if I optimize the prompts that generate info_requests
+        # in hypothesis and background.py, such that the info_requests is concsie and clear
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": REQUEST_TO_QUERY_USER.format(info_request=info_request)},
+        ]
+        llm_response = await self.llm.async_generate(messages)
+        llm_string = llm_response.text # info request, except more concise
+        logger.debug("LLM Query\nSYSTEM=%s\nUSER=%s", messages[0]["content"], messages[1]["content"])
+        logger.debug("LLM Response\nASSISTANT=%s", llm_string)
+
+        info_query = llm_string
+        logger.info("Transformed info request to query: %s", info_query)
 
         current_try = 0
         while current_try <= self.num_retries:
+            
+            logger.info("Attempt %d/%d to retrieve from index", current_try + 1, self.num_retries + 1)
+
             ret_chunks = await self.retrieve_from_index(
-                info_request=info_request,
+                info_request=info_query,
                 **kwargs
             )
 
             need_new_documents = False
 
             if len(ret_chunks) == 0:
+                logger.warning("Index is empty")
                 need_new_documents = True
             elif self.relevance_score_threshold is not None:
                 # use LLM to determine relevance
                 
                 user_message = LIBRARIAN_CONTEXT_RELEVANCE_USER.format(
-                    info_request=info_request,
+                    info_request=info_query,
                     contexts = "\n".join(chunk.text for chunk in ret_chunks)
                 )
                 messages = [
                     {"role": "system", "content": self.system_message},
                     {"role": "user", "content": user_message},
                 ]
-
                 llm_response = await self.llm.async_generate(messages)
                 llm_string = llm_response.text
+                logger.debug("LLM Query\nSYSTEM=%s\nUSER=%s", messages[0]["content"], messages[1]["content"])
+                logger.debug("LLM Response\nASSISTANT=%s", llm_string)
 
                 # high relevance: 1, somewhat relevant: 2, not relevant: 3
                 relevance = llm_string.lower().split("relevance: ")[-1].strip()
@@ -150,26 +173,28 @@ class Librarian(Researcher):
                 relevance_score = relevance_score_map.get(relevance, 4)
 
                 if relevance_score == 4:
-                    logger.error(f"Could not determine relevance score from LLM. LLM response: {llm_string}")
+                    logger.error("Could not determine relevance score from LLM.")
 
                 if relevance_score > self.relevance_score_threshold:
+                    logger.info("Relevance score %d is too low, need to collect new documents", relevance_score)
                     need_new_documents = True
             
             if need_new_documents:
                 # low relevance, try again
-                logger.warning(f"Retrieving from library for info request: {info_request}")
+                logger.info("Collecting from library for info request: %s", info_query)
                 await self.retrieve_from_library(
-                    info_request=info_request,
+                    info_request=info_query,
                     **kwargs
                 )
                 current_try += 1 # decrement retries
 
-                await asyncio.sleep(5) # sleep for 5 seconds before trying again
+                # await asyncio.sleep(5) # sleep for 5 seconds before trying again
             else:
                 # high relevance, return
+                logger.info("Retrieved %d relevant contexts", len(ret_chunks))
                 return ret_chunks
         
-        logger.warning(f"Could not find relevant contexts for info request: {info_request}")
+        logger.warning("Could not find relevant contexts after %d tries", self.num_retries)
         return []
         
     async def retrieve_from_index(
@@ -190,9 +215,6 @@ class Librarian(Researcher):
         Returns:
             List[str]: list of queries
         """
-
-        # TODO: add function for LLM to generate sub-queries given an information description
-        # maybe do this in index?
     
         # TODO: maybe more functionalities with filters... we'll see
         filter = None
@@ -206,20 +228,24 @@ class Librarian(Researcher):
                 # turn into datetime object
                 if isinstance(start_time, str):
                     start_time = datetime.strptime(start_time, "%Y-%m-%d")
-                if isinstance(start_time, datetime):
+                elif isinstance(start_time, datetime):
                     start_date_unix = int(start_time.timestamp())
-                if isinstance(start_time, int) or isinstance(start_time, float):
+                elif isinstance(start_time, int) or isinstance(start_time, float):
                     start_date_unix = int(start_time)
+                else:
+                    raise ValueError("start_time must be a string, datetime, or unix timestamp")
                 start_filter = {"publication_time": {"$gte": start_date_unix}}
             
             end_filter = None
             if end_time:
                 if isinstance(end_time, str):
                     end_time = datetime.strptime(end_time, "%Y-%m-%d")
-                if isinstance(end_time, datetime):
+                elif isinstance(end_time, datetime):
                     end_date_unix = int(end_time.timestamp())
-                if isinstance(end_time, int) or isinstance(end_time, float):
+                elif isinstance(end_time, int) or isinstance(end_time, float):
                     end_date_unix = int(end_time)
+                else:
+                    raise ValueError("end_time must be a string, datetime, or unix timestamp")
                 end_filter = {"publication_time": {"$lte": end_date_unix}}
             
             if start_time and end_time:
@@ -240,6 +266,8 @@ class Librarian(Researcher):
 
             llm_response = await self.llm.async_generate(messages)
             llm_string = llm_response.text
+            logger.debug("LLM Query\nSYSTEM=%s\nUSER=%s", messages[0]["content"], messages[1]["content"])
+            logger.debug("LLM Response\nASSISTANT=%s", llm_string)
 
             pattern = r'start_date:\s*(?P<start_date>\S+).*?end_date:\s*(?P<end_date>\S+)'
             match = re.search(pattern, llm_string)
@@ -255,6 +283,8 @@ class Librarian(Researcher):
                         {"publication_time": {"$lte": end_date_unix}},
                     ]
                 }
+            else:
+                logger.warning("Could not find start_date or end_date in LLM response")
 
         # query index and retrieve documents
         query = Query(text=info_request)
@@ -273,13 +303,20 @@ class Librarian(Researcher):
 
         combined_generator = combine_async_generators([self._retrieve_helper(request) for request in resource_requests])
 
-        progress_bar = tqdm(desc= "Retrieving documents from library",)
+        documents_added = 0
         async for doc in combined_generator:
             saved_doc = await self.docstore.asave_document(doc)
             if saved_doc: # if document was a repeat, saved_doc will be None
                 await self.index.async_add_documents([doc])
-            progress_bar.update(1)
-        progress_bar.close()
+                documents_added += 1
+
+                # logs
+                logger.debug("Added document: title=%s, uuid=%s", saved_doc.metadata.get('title'), str(saved_doc.id))
+                if documents_added % 10 == 0:
+                    logger.info("Added %d documents to index and docstore", documents_added)
+                
+        logger.info("Added total of %d documents to index and docstore", documents_added)
+
 
 
     async def _choose_resource(self, info_request: str) -> List[Dict]:
@@ -321,9 +358,14 @@ class Librarian(Researcher):
 
         llm_response = await self.llm.async_generate(messages)
         llm_string = llm_response.text
+        logger.debug("LLM Query\nSYSTEM=%s\nUSER=%s", messages[0]["content"], messages[1]["content"])
+        logger.debug("LLM Response\nASSISTANT=%s", llm_string)
 
         # parse llm response into list of dict
         resource_requests = process_request(llm_string)
+        if not resource_requests:
+            logger.warning("No resource requests found in LLM response")
+            return []
 
         # sort by rank
         resource_requests = sorted(resource_requests, key=lambda x: x["rank"])
@@ -358,18 +400,20 @@ class Librarian(Researcher):
         # we do not want to execute the same function twice
         new_func = (func_name, json.dumps(parameters))
         if new_func in self._executed_funcs:
-            logger.warning(f"Skipping duplicate function execution: {new_func}")
+            logger.warning("Skipping duplicate function execution: func=%s, params=%s", func_name, str(parameters))
             return
         
         # if we do not find a duplicate, add to _executed_funcs
         self._executed_funcs.add(new_func)
+
+        logger.info("Executing func=%s, params=%s", func_name, parameters)
 
         result = func(**parameters)
         if hasattr(result, "__aiter__"):  # some functions return async iterators
             async for document in result: # if it is an async gen
                 yield document
         else:
-            logger.warning(" The function returned a non-async generator. Awaiting it.")
+            logger.warning("The function returned a non-async generator. Awaiting it.")
             # Await the result if it's not an async generator
             result = await result
             for document in result:

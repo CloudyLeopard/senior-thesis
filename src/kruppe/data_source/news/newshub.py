@@ -14,13 +14,15 @@ class NewsHub(NewsSource):
     description: str = "A news aggregator"
 
     @model_validator(mode="after")
-    def set_description(self):
+    def set_source_info(self):
         if not self.news_sources:
             raise ValueError("At least one news source must be provided")
         
         self.description = dedent(f"""\
             Newshub is a news aggregator that combines multiple news sources into one platform, providing a comprehensive view of the latest news from various outlets. Contains the following sources: {", ".join([source.source for source in self.news_sources])}."
         """)
+
+        self.source = f"News Hub [{', '.join([source.shorthand for source in self.news_sources])}]"
         return self
 
     

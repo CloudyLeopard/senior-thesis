@@ -16,7 +16,6 @@ from kruppe.data_source.utils import (
     not_ready
 )
 from kruppe.models import Document
-from kruppe.utils import log_io
 
 logger = logging.getLogger(__name__)
 
@@ -163,16 +162,7 @@ class FinancialTimesData(NewsSource):
                     article_links.append(link)
 
             # scrape articles
-            logger.debug("Initialize Async WebScraper")
-            scraper = WebScraper(async_client=client)
-
-            logger.info("Async scraping %d Financial Times articles", len(links))
-            async for data in scraper.async_scrape_links(article_links):
-                if data is None:
-                    continue
-
-                metadata = self.parse_metadata(query=query, **data["meta"])
-                document = Document(text=data["content"], metadata=metadata)
+            async for document in self._async_scrape_links(links=links, client=client, query=query):
                 yield document
 
             # TODO: for now, i'm not going to scrape blog links
@@ -203,9 +193,6 @@ class FinancialTimesData(NewsSource):
         self, days: int = 365, max_results: int = 20, filter: Dict = None, **kwargs
     ) -> AsyncGenerator[Document, None]:
         links = []
-        client = httpx.AsyncClient(
-            timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS
-        )
         url = "https://www.ft.com/news-feed"
         pages = 1
         end = False
@@ -235,7 +222,9 @@ class FinancialTimesData(NewsSource):
             start_date = (datetime.today() - timedelta(days=days)).date()
             logger.info("Fetching news feed from %s to %s", start_date, end_date)
 
+        client = httpx.AsyncClient(headers=self.headers)
         try:
+            # scraping links of news feed
             while not end:
                 logger.info("Current page: %d", pages)
                 params = {
@@ -284,17 +273,21 @@ class FinancialTimesData(NewsSource):
                     raise RequestSourceException(e)
                 finally:
                     pages += 1
+            
+            # scraping the actual links
+
+            # this shouldn't be necessary
+            if max_results:
+                links = links[:max_results]
+
+            logger.info("Fetched %d links from Financial Times news feed", len(links))
+
+            async for document in self._async_scrape_links(links=links, client=client):
+                yield document
+
         finally:
             await client.aclose()
 
-        # this shouldn't be necessary
-        if max_results:
-            links = links[:max_results]
-
-        logger.info("Fetched %d links from Financial Times news feed", len(links))
-
-        async for document in self._async_scrape_links(links=links):
-            yield document
 
     @not_ready
     async def news_archive(
@@ -307,23 +300,17 @@ class FinancialTimesData(NewsSource):
     ) -> AsyncGenerator[Document, None]:
         raise NotImplementedError
 
-    async def _async_scrape_links(self, links: List[str]):
-        client = httpx.AsyncClient(
-            timeout=10.0, headers=self.headers, limits=HTTPX_CONNECTION_LIMITS
-        )
-        try:
-            # scrape articles
-            logger.debug("Initialize Async WebScraper")
-            scraper = WebScraper(async_client=client)
+    async def _async_scrape_links(self, links: List[str], client: httpx.AsyncClient, query=None) -> AsyncGenerator[Document, None]:
+        # scrape articles
+        logger.debug("Initialize Async WebScraper")
+        scraper = WebScraper(async_client=client)
 
-            logger.debug("Async scraping %d Financial Times articles", len(links))
-            async for data in scraper.async_scrape_links(links):
-                if data is None:
-                    # if both selenium scrape and httpx scrape fails, article will return None
-                    # in this case, we can't parse the metadata, so we skip
-                    continue
-                metadata = self.parse_metadata(query=None, **data["meta"])
-                document = Document(text=data["content"], metadata=metadata)
-                yield document
-        finally:
-            await client.aclose()
+        logger.debug("Async scraping %d Financial Times articles", len(links))
+        async for data in scraper.async_scrape_links(links):
+            if data is None:
+                # if both selenium scrape and httpx scrape fails, article will return None
+                # in this case, we can't parse the metadata, so we skip
+                continue
+            metadata = self.parse_metadata(query=query, **data["meta"])
+            document = Document(text=data["content"], metadata=metadata)
+            yield document
