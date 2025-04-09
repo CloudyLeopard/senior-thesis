@@ -16,4 +16,5 @@ bash/
 exports/
 .gradio/
 
-*.pdf
+experiments/**/*.pdf
+experiments/**/*.txt
