@@ -1,5 +1,5 @@
 import heapq
-from typing import Callable, List, Literal
+from typing import Callable, List, Literal, Dict, Any
 import asyncio
 import re
 
@@ -24,7 +24,7 @@ class QueryFusionRetriever(BaseRetriever):
         else:
             raise ValueError(f"Unknown fusion method: {self.mode}")
 
-    def retrieve(self, query: Query) -> List[Document]:
+    def retrieve(self, query: Query, filter: Dict[str, Any] = None) -> List[Document]:
         # generate queries
         if isinstance(query, Query):
             query = query.text
@@ -40,13 +40,13 @@ class QueryFusionRetriever(BaseRetriever):
 
         # retrieve chunks (list of list of chunks)
         retrieved_chunks = [
-            retriever.retrieve(query=gen_query)
+            retriever.retrieve(query=gen_query, filter=filter)
             for gen_query in queries
             for retriever in self.retrievers
         ]
         return self.fusion_method(retrieved_chunks)[:self.top_k]
     
-    async def async_retrieve(self, query: Query | str) -> List[Document]:
+    async def async_retrieve(self, query: Query | str, filter: Dict[str, Any] = None) -> List[Document]:
         # generate queries
         if isinstance(query, Query):
             query = query.text
@@ -63,7 +63,7 @@ class QueryFusionRetriever(BaseRetriever):
         # retrieve documents
         async with asyncio.TaskGroup() as tg:
             tasks = [
-                tg.create_task(retriever.async_retrieve(query=gen_query))
+                tg.create_task(retriever.async_retrieve(query=gen_query, filter=filter))
                 for gen_query in queries
                 for retriever in self.retrievers
             ]

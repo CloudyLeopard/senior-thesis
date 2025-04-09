@@ -1,9 +1,7 @@
-# retriever/custom_retriever.py
-
 from kruppe.functional.rag.retriever.base_retriever import BaseRetriever
 from kruppe.models import Query, Document
 from kruppe.functional.rag.index.base_index import BaseIndex
-from typing import List
+from typing import List, Dict, Any
 
 class SimpleRetriever(BaseRetriever):
     """
@@ -11,8 +9,8 @@ class SimpleRetriever(BaseRetriever):
     """
     index: BaseIndex
 
-    def retrieve(self, query: Query) -> List[Document]:
-        return self.index.query(query, self.top_k)
+    def retrieve(self, query: Query, filter: Dict[str, Any] = None) -> List[Document]:
+        return self.index.query(query, self.top_k, filter)
 
-    async def async_retrieve(self, query: Query) -> List[Document]:
-        return await self.index.async_query(query, self.top_k)
+    async def async_retrieve(self, query: Query, filter: Dict[str, Any] = None) -> List[Document]:
+        return await self.index.async_query(query, self.top_k, filter)

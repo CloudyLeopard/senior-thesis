@@ -42,3 +42,8 @@ class BaseIndex(ABC, BaseModel):
     async def async_generate(self, query: Query, top_k: int = 3, filter: Dict[str, Any] = None) -> Response:
         """Generate a response based on the query asynchronously."""
         pass
+
+    def as_retriever(self, top_k: int = 10):
+        from kruppe.functional.rag.retriever.simple_retriever import SimpleRetriever
+
+        return SimpleRetriever(index=self, top_k=top_k)

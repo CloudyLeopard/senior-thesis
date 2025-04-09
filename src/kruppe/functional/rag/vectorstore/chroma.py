@@ -15,7 +15,7 @@ def distance_to_similarity(distances: List[float]) -> List[float]:
     return (1 / (1 + np.array(distances))).tolist()
 
 def get_chroma_collection_names(client: chromadb.ClientAPI) -> List[str]:
-    return client.list_collections()
+    return [collection.name for collection in client.list_collections()]
 
 class ChromaVectorStore(BaseVectorStore):
     """Custom Vector storage class for using Chroma"""
