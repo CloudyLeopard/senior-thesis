@@ -106,8 +106,14 @@ class OpenAILLM(BaseLLM):
         self._input_token_usage += completion.usage.prompt_tokens
         self._output_token_usage += completion.usage.completion_tokens
 
-        logger.info("Total tokens used: %d", total_tokens)
-        logger.info("Completion: %s", completion.choices[0].message.content)
+        # log token usages
+        logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion.usage.prompt_tokens, completion.usage.completion_tokens)
+        
+        # log llm output
+        if logger.isEnabledFor(logging.INFO):
+            log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
+            log_messages.append(f"[assistant] {completion.choices[0].message.content}")
+            logger.info("\n".join(log_messages))
 
         return Response(text=completion.choices[0].message.content)
 
@@ -134,8 +140,14 @@ class OpenAILLM(BaseLLM):
         self._input_token_usage += completion.usage.prompt_tokens
         self._output_token_usage += completion.usage.completion_tokens
 
-        logger.info("Total tokens used: %d", total_tokens)
-        logger.info("Completion: %s", completion.choices[0].message.content)
+        # log token usages
+        logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion.usage.prompt_tokens, completion.usage.completion_tokens)
+        
+        # log llm output
+        if logger.isEnabledFor(logging.INFO):
+            log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
+            log_messages.append(f"[assistant] {completion.choices[0].message.content}")
+            logger.info("\n".join(log_messages))
 
         return Response(text=completion.choices[0].message.content)
 
@@ -164,19 +176,26 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             )
             response.raise_for_status()
 
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            completion = response.json()
+            content = completion["choices"][0]["message"]["content"]
 
             if self.keep_history:
                 self.messages.append({"role": "assistant", "content": content})
             
-            total_tokens = data["usage"]["total_tokens"]
+            total_tokens = completion["usage"]["total_tokens"]
             self._session_token_usage += total_tokens
-            self._input_token_usage += data["usage"]["prompt_tokens"]
-            self._output_token_usage += data["usage"]["completion_tokens"]
+            self._input_token_usage += completion["usage"]["prompt_tokens"]
+            self._output_token_usage += completion["usage"]["completion_tokens"]
 
-            logger.info("Total tokens used: %d", total_tokens)
-            logger.info("Completion: %s", content)
+            # log token usages
+            logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion["usage"]["prompt_token"], completion["usage"]["completion_token"])
+            
+            # log llm output
+            if logger.isEnabledFor(logging.INFO):
+                log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
+                log_messages.append(f"[assistant] {completion["choices"][0]["message"]["content"]}")
+                logger.info("\n".join(log_messages))
+
 
             return Response(text=content)
         except httpx.HTTPStatusError as e:

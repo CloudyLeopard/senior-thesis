@@ -60,17 +60,23 @@ logging.basicConfig(level=logging.WARNING)
 queue_handler = QueueLoggingHandler()
 queue_handler.setFormatter(logging.Formatter("%(name)s - %(asctime)s - %(levelname)s - %(message)s"))
 
-# Setup the librarian logger
-logger_librarian = logging.getLogger("kruppe.algorithm.librarian")
-logger_librarian.setLevel(logging.DEBUG)
+# # Setup the librarian logger
+# logger_librarian = logging.getLogger("kruppe.algorithm.librarian")
+# logger_librarian.setLevel(logging.DEBUG)
 # logger_librarian.propagate = False  # Ensure only messages from this logger are processed.
-logger_librarian.addHandler(queue_handler) # Add the queue handler to the logger.
+# logger_librarian.addHandler(queue_handler) # Add the queue handler to the logger.
 
-# Set up WebScraper logger
-logger_librarian = logging.getLogger("kruppe.data_source.utils")
-logger_librarian.setLevel(logging.INFO)
+# # Set up WebScraper logger
+# logger_librarian = logging.getLogger("kruppe.data_source.utils")
+# logger_librarian.setLevel(logging.INFO)
 # logger_librarian.propagate = False 
-logger_librarian.addHandler(queue_handler)
+# logger_librarian.addHandler(queue_handler)
+
+# Set up the LLM logger
+logger_llm = logging.getLogger("kruppe.llm")
+logger_llm.setLevel(logging.DEBUG)
+logger_llm.propagate = False
+logger_llm.addHandler(queue_handler)
 
 # # -------------------------------
 # # Simulated Log Generation (Optional)

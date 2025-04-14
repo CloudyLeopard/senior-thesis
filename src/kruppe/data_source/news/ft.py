@@ -162,7 +162,7 @@ class FinancialTimesData(NewsSource):
                     article_links.append(link)
 
             # scrape articles
-            async for document in self._async_scrape_links(links=links, client=client, query=query):
+            async for document in self._async_scrape_links(links=article_links, client=client, query=query):
                 yield document
 
             # TODO: for now, i'm not going to scrape blog links

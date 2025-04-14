@@ -45,7 +45,7 @@ class Librarian(Researcher):
     index: BaseIndex # for retrieve_from_index
     retriever: BaseRetriever = Field(default_factory = lambda data: data['index'].as_retriever())
     docstore: BaseDocumentStore # NOTE: THIS DOCUMENT STORE NEED TO HAVE A UNIQUE INDEX TO DEAL WITH DUPLICATES
-    num_retries: int = 2,
+    num_retries: int = 2
     relevance_score_threshold: Literal[1, 2, 3] | None = 2
     # retrieve_from_library related
     resource_rank_threshold: Literal[1, 2, 3] = 2

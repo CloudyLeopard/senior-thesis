@@ -5,7 +5,7 @@ import inspect
 from uuid import uuid4
 
 # global flag to control logging
-ENABLE_IO_LOGGING = True
+ENABLE_IO_LOGGING = False
 
 # Create a dedicated logger for logging function inputs and outputs.
 io_logger = logging.getLogger("io_logger")

@@ -21,7 +21,7 @@ with gr.Blocks() as demo:
             librarian_block.render()
         with gr.Tab("Background Research"):
             background_block.render()
-        with gr.Tab("Overseer"):
+        with gr.Tab("Coordinator"):
             overseer_block.render()
         with gr.Tab("Hypothesis Research"):
             hypothesis_block.render()

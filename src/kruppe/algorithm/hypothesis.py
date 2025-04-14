@@ -1,5 +1,5 @@
 import re
-from pydantic import computed_field, PrivateAttr
+from pydantic import Field, computed_field, PrivateAttr
 from typing import List, Dict, Literal, Tuple
 import logging
 from tqdm import tqdm
@@ -23,15 +23,15 @@ class HypothesisResearcher(Researcher):
     librarian: Librarian
     system_message: str = HYPOTHESIS_RESEARCHER_SYSTEM
     research_question: str
-    new_lead: Lead = None
-    iterations: int = 3 # TODO: currently hardcoded method to stop evaluation, need to change this
-    iterations_used: int = 1 # NOTE: number of past chat history to use in next iteration
+    init_lead: Lead
+    chat_iterations: int = 3 # TODO: currently hardcoded method to stop evaluation, need to change this
+    chat_depth: int = 1 # NOTE: number of past chat history to use in next iteration
     num_info_requests: int = 3 # number of info requests to make per iteration
     verbatim_answer: bool = False # whether to return the raw documents or the processed response
     strict_answer: bool = True # TODO: change from boolean to magnitude so i have varying degree of "strictness". This determines if the system will continue even if no documents are found
     # properties users can access
-    past_leads: List[Lead] = []
-    reports: List[Response] = [] # NOTE: not necessary same len as past_leads (due to `start_new_lead`)
+    leads: List[Lead] = Field(default_factory = lambda data: [data["init_lead"]])
+    reports: List[Response] = [] 
     info_history: List[Tuple[str, Response]] = []
     # private attributes for internal use
     _lead_status: Literal[0, 1, 2] = PrivateAttr(default=2)
@@ -54,17 +54,20 @@ class HypothesisResearcher(Researcher):
     
     @computed_field
     @property
+    def latest_lead(self) -> Lead | None:
+        return self.leads[-1] if self.leads else None
+    
+    @computed_field
+    @property
     def latest_hypothesis(self) -> str:
         if self._lead_status == 0:
             # lead is rejected, return the hypothesis of the last lead
             logger.warning("Lead is rejected. Returning the hypothesis of the last lead.")
-            return self.past_leads[-1].hypothesis
-        elif self._lead_status == 1:
-            # lead is accepted, return the hypothesis of the current lead
-            return self.new_lead.hypothesis
-        elif self._lead_status == 2:
-            # still investigating, return the hypothesis of the current lead
-            return self.new_lead.hypothesis
+            return self.latest_lead.hypothesis
+        elif self._lead_status == 1 or self._lead_status == 2:
+            # 1 = lead is accepted, return the hypothesis of the current lead
+            # 2 = still investigating, return the hypothesis of the current lead
+            return self.latest_lead.hypothesis
         else:
             logger.error("Lead status is invalid. Returning None.")
             return None
@@ -72,7 +75,7 @@ class HypothesisResearcher(Researcher):
     @computed_field
     @property
     def _messages_history(self) -> List[Dict[str, str]]:
-        msgs_group = self._messages_history_list[-self.iterations_used:]
+        msgs_group = self._messages_history_list[-self.chat_depth:]
         if not msgs_group:
             return []
         # this is a list of list... need to flatten it
@@ -91,11 +94,11 @@ class HypothesisResearcher(Researcher):
             iterations (int, optional): Number of iterations. Defaults to 3.
         """
         # reset leads
-        self.past_leads.append(self.new_lead)
-        self.new_lead = lead
+        self.init_lead = lead
+        self.leads.append(lead)
         # reset investigation status
         self._lead_status = 2
-        self.iterations = iterations
+        self.chat_iterations = iterations
         # reset messages
         self._messages_history_list = []
     
@@ -110,44 +113,105 @@ class HypothesisResearcher(Researcher):
         # 1. use the info answers as context, and llm answer info_request (<-- currently using this one)
         # 2. directly use the retrieved contexts from the librarian as contexts (RAG Mode really)
         
-        with tqdm(total=self.iterations, desc="Lead investigation iteration") as pbar:
+        with tqdm(total=self.chat_iterations, desc="Lead investigation iteration") as pbar:
             # repeat investigation until we finish the iterations
             continue_research = True
 
             while (continue_research):
-                # --- MAKE INFO REQUEST AND RETRIEVE ---
-                # make info requests and answer them using the library as a source
-                info_requests = await self.create_info_requests()
-                info_retrieved = []
-                for i in range(len(info_requests)):
-                    info_request = info_requests[i]
-
-                    if i >= self.num_info_requests:
-                        # adding a hard cap to how many info requests can be made
-                        # to avoid excessive calls
-                        # NOTE: also used in prompt (see `create_info_requests`)
-                        break
-
-                    response = await self.complete_info_request(info_request)
-                    info_retrieved.append(response)
-
-
-                # --- COMPILE REPORT AND UPDATE LEAD ---
-                continue_research = await self.compile_report_and_update_lead(
-                    info_requests=info_requests, 
-                    info_retrieved=info_retrieved
-                )
+                continue_research = await self.research()
 
                 pbar.update(1)
         
         return self.latest_report
+
+    async def research(self) -> bool:
+        """
+        Create info requests, and retrieve information from the librarian to address the reqeusts.
+        Using the retrieved info_requests and info_retrieved, compile a report built on top of
+        the research question, lead, and hypothesis. Finally, update the lead and decide
+        whether to continue investigating or not.
+
+        Returns:
+            bool: True if there is more to investigate, False if there is nothing more to investigate
+        """
+        # if lead status is 0 or 1, send a warning
+        if self._lead_status in [0, 1]:
+            logger.warning("You are researching a lead whose status is not in investigating state.")
+
+        # --- MAKE INFO REQUEST AND RETRIEVE ---
+        # make info requests and answer them using the library as a source
+        info_requests = await self.create_info_requests()
+        info_retrieved = []
+        for i in range(len(info_requests)):
+            info_request = info_requests[i]
+
+            if i >= self.num_info_requests:
+                # adding a hard cap to how many info requests can be made
+                # to avoid excessive calls
+                # NOTE: also used in prompt (see `create_info_requests`)
+                break
+
+            response = await self.complete_info_request(info_request)
+            info_retrieved.append(response)
+
+        # chat history - note that all the helper method will append to this list in the functions
+        # also i am not adding a system message - see helper function __send_messages_with_history
+        messages = []
+
+        # --- COMPILE REPORT ---
+        report_response = await self._compile_report(
+            messages=messages,
+            info_requests=info_requests,
+            info_retrieved=info_retrieved
+        )
+
+        # add report to all compiled reports
+        self.reports.append(report_response) 
+
+        # --- EVALUATE LEAD ---
+        continue_lead = await self._evaluate_lead(messages=messages)
+
+        if not continue_lead:
+            self._lead_status = 0
+            self.chat_iterations = 0
+            self._messages_history_list.append(messages) # since we are stopping here, store messages
+            return False
+        
+        # TODO: add a llm thing to say "oh, we can stop now but we are good"
+
+        # --- UPDATE LEAD ---
+        latest_lead = await self._create_lead(messages=messages)
+        self._messages_history_list.append(messages) # last call in this chain, so store the messages
+
+        # regex failed to match llm response --> assume lead is rejected
+        if latest_lead is None:
+            logger.warning("LLM did not return a valid response for updating the lead. " \
+                "Assuming the lead is rejected.")
+            self._lead_status = 0
+            self.chat_iterations = 0
+            return False
+        
+        # update the newest lead
+        self.leads.append(latest_lead)
+        
+        # update iteration count and check if we reached final iteration
+        self.chat_iterations -= 1
+        if self.chat_iterations == 0:
+            # we finished all iterations! we are done!
+            self._lead_status = 1
+            return False
+        else:
+            # we want to keep exploring
+            self._lead_status = 2
+            return True
+
     
     @log_io
     async def create_info_requests(self) -> List[str]:
         user_message = CREATE_INFO_REQUEST_USER.format(
             query=self.research_question,
-            lead=self.new_lead.lead,
-            hypothesis=self.new_lead.hypothesis,
+            lead=self.latest_lead.lead,
+            hypothesis=self.latest_lead.hypothesis,
             n=self.num_info_requests # number of info requests
         )
         messages = [
@@ -176,7 +240,7 @@ class HypothesisResearcher(Researcher):
             return Response(text=contexts, sources=ret_docs)
         else:
             user_message = ANSWER_INFO_REQUEST_USER.format(
-                lead=self.new_lead.lead,
+                lead=self.latest_lead.lead,
                 info_request=info_request,
                 contexts=contexts
             )
@@ -189,92 +253,7 @@ class HypothesisResearcher(Researcher):
             llm_response.sources = ret_docs
 
             return llm_response
-    
-    @log_io
-    async def compile_report_and_update_lead(
-            self,
-            info_requests: List[str],
-            info_retrieved: List[Response]
-        ) -> bool:
-        """
-        Using the retrieved info_requests and info_retrieved, compile a report built on top of
-        the research question, lead, and hypothesis.
 
-        Args:
-            info_requests (List[str]): list of information requests, from `create_info_requests`
-            info_retrieved (List[Response]): list of responses to the information requests, from `complete_info_request`
-
-        Returns:
-            bool: True if there is more to investigate, False if there is nothing more to investigate
-        """
-
-        # if lead status is 0 or 1, we don't need to do anything
-        if self._lead_status in [0, 1]:
-            return False
-
-        # Check if the number of info requests and info retrieved match
-        # If not, truncate the longer list
-        if len(info_requests) != len(info_retrieved):
-            logger.warning("Number of info requests and info retrieved do not match. " \
-                "Truncating the longer list.")
-            min_len = min(len(info_requests), len(info_retrieved))
-            info_requests = info_requests[:min_len]
-            info_retrieved = info_retrieved[:min_len]
-
-        # chat history - note that all the helper method will append to this list in the functions
-        # also i am not adding a system message - see helper function __send_messages_with_history
-        messages = []
-
-        # --- COMPILE REPORT ---
-        report_response = await self._compile_report(
-            messages=messages,
-            info_requests=info_requests,
-            info_retrieved=info_retrieved
-        )
-
-        # add report to all compiled reports
-        self.reports.append(report_response) 
-
-        # --- EVALUATE LEAD ---
-        continue_lead = await self._evaluate_lead(messages=messages)
-
-        # append current lead to past leads
-        self.past_leads.append(self.new_lead)
-        self.new_lead = None # reset current lead
-
-        if not continue_lead:
-            self._lead_status = 0
-            self.iterations = 0
-            self._messages_history_list.append(messages) # since we are stopping here, store messages
-            return False
-        
-        # TODO: add a llm thing to say "oh, we can stop now but we are good"
-
-        # --- UPDATE LEAD ---
-        new_lead = await self._update_lead(messages=messages)
-        self._messages_history_list.append(messages) # last call in this chain, so store the messages
-
-        # regex failed to match llm response --> assume lead is rejected
-        if new_lead is None:
-            logger.warning("LLM did not return a valid response for updating the lead. " \
-                "Assuming the lead is rejected.")
-            self._lead_status = 0
-            self.iterations = 0
-            return False
-        
-        # update the newest lead
-        self.new_lead = new_lead
-        
-        # update iteration count and check if we reached final iteration
-        self.iterations -= 1
-        if self.iterations == 0:
-            # we finished all iterations! we are done!
-            self._lead_status = 1
-            return False
-        else:
-            # we want to keep exploring
-            self._lead_status = 2
-            return True
 
     async def _compile_report(
         self,
@@ -289,9 +268,9 @@ class HypothesisResearcher(Researcher):
 
         user_message = COMPILE_REPORT_USER.format(
             research_question=self.research_question,
-            lead=self.new_lead.lead,
-            hypothesis=self.new_lead.hypothesis,
-            observation=self.new_lead.observation,
+            lead=self.lateset_lead.lead,
+            hypothesis=self.lateset_lead.hypothesis,
+            observation=self.lateset_lead.observation,
             info_responses=new_info_responses,
         )
 
@@ -309,8 +288,8 @@ class HypothesisResearcher(Researcher):
         """Evaluate the lead and return True if we should continue investigating, False otherwise."""
         user_message = EVALUATE_LEAD_USER.format(
             research_question=self.research_question,
-            lead=self.new_lead.lead,
-            hypothesis=self.new_lead.hypothesis,
+            lead=self.latest_lead.lead,
+            hypothesis=self.latest_lead.hypothesis,
         )
 
         # append user message to chat history
@@ -332,7 +311,7 @@ class HypothesisResearcher(Researcher):
                 "Assuming the lead is accepted.")
             return True
     
-    async def _update_lead(self, messages: List[Dict[str, str]]) -> Lead | None:
+    async def _create_lead(self, messages: List[Dict[str, str]]) -> Lead | None:
         user_message = UPDATE_LEAD_USER
         messages.append({"role": "user", "content": user_message})
 
@@ -361,6 +340,7 @@ class HypothesisResearcher(Researcher):
             return None
     
     async def __send_messages_with_history(self, curr_messages: List[Dict[str, str]]):
+        """Send messages to the LLM with the history of messages."""
         messages = ([{"role": "system", "content": self.system_message}] # system message
                     + self._messages_history # past messages, for a chosen number of iterations
                     + curr_messages # current messages

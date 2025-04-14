@@ -32,7 +32,7 @@ CHOOSE_RESOURCE_USER = dedent(
     - purpose: describe what you want to learn by using this resource/function
     - rank: the importance of using this resource, where 1 is very important and must be used, and 3 is least important and can be ignored. Minimize the number of functions assigned with a rank of 1, unless absolutely necessary.
 
-    Format each resource identification as (resc|<func_name>|<parameters>|<purpose>|<rank>|).
+    Format each resource identification as (resc|<func_name>|<parameters>|<purpose>|<rank>).
 
     2. Return output in English as a single list of all the resources identified in step 1, **ordered from most important to least important**, separated by a newline character.
 
