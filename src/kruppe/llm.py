@@ -76,14 +76,14 @@ class BaseLLM(ABC, BaseModel):
             return 0
 
 class OpenAILLM(BaseLLM):
-    model: Literal["gpt-4o", "gpt-4o-mini"] = "gpt-4o-mini"
+    model: Literal["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4.5-preview", "o1"] = "gpt-4o-mini"
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
     sync_client: OpenAI = Field(default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     async_client: AsyncOpenAI = Field(default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
     
     @log_io
     def generate(
-        self, messages: List[Dict], max_tokens=2000
+        self, messages: List[Dict], max_tokens=2000, **kwargs
     ) -> Response:
         """returns openai response based on given messages"""
 
@@ -93,7 +93,7 @@ class OpenAILLM(BaseLLM):
             messages = self.messages
 
         completion = self.sync_client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens
+            model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
 
         if self.keep_history:
@@ -119,7 +119,7 @@ class OpenAILLM(BaseLLM):
 
     @log_io
     async def async_generate(
-        self, messages: List[Dict], max_tokens=2000
+        self, messages: List[Dict], max_tokens=2000, **kwargs
     ) -> Response:
         """returns openai response based on given messages"""
 
@@ -129,7 +129,7 @@ class OpenAILLM(BaseLLM):
 
         # TODO: add try/except for openai api key errors
         completion = await self.async_client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens
+            model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
 
         if self.keep_history:
@@ -156,7 +156,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT"))
 
     @log_io
-    async def async_generate(self, messages: List[Dict], max_tokens=2000, retries=3, backoff_factor=0.3) -> Response:
+    async def async_generate(self, messages: List[Dict], max_tokens=2000, retries=3, backoff_factor=0.3, **kwargs) -> Response:
         if self.keep_history:
             self.messages.extend(messages)
             messages = self.messages
@@ -164,7 +164,9 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
         body = {
             "messages": messages,
             "openai_parameters": {"max_tokens": max_tokens},
+            **kwargs
         }
+
         # init httpx client if not initialized in the model
         client = self._httpx_client or init_httpx_client()
         
