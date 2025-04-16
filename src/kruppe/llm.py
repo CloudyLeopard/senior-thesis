@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Literal
+import json
+from typing import Any, List, Dict, Literal, Tuple
 import os
 import asyncio
 from openai import OpenAI, AsyncOpenAI
@@ -10,18 +11,25 @@ import httpx
 from kruppe.models import Embeddable, Response
 from kruppe.utils import log_io
 
-HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=50, max_connections=400)
-HTTPX_TIMEOUT = httpx.Timeout(5.0, read=60.0) # high read timeout cuz nyu api is slow (i keep getting read timeout error)
+HTTPX_CONNECTION_LIMITS = httpx.Limits(
+    max_keepalive_connections=50, max_connections=400
+)
+HTTPX_TIMEOUT = httpx.Timeout(
+    5.0, read=60.0
+)  # high read timeout cuz nyu api is slow (i keep getting read timeout error)
+
 
 def init_httpx_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-            limits=HTTPX_CONNECTION_LIMITS,
-            timeout=HTTPX_TIMEOUT,
-        )
-        # event_hooks={"response": lambda r: r.release()},
+        limits=HTTPX_CONNECTION_LIMITS,
+        timeout=HTTPX_TIMEOUT,
+    )
+    # event_hooks={"response": lambda r: r.release()},
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
 
 class BaseNYUModel(BaseModel):
     # TODO: deal with (read) timeout error
@@ -40,11 +48,11 @@ class BaseNYUModel(BaseModel):
             "AUTHORIZATION_KEY": self.api_key,
         }
 
+
 class BaseLLM(ABC, BaseModel):
     """Custom generator interface"""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    keep_history: bool = False
-    messages: List[Dict] = []
     _session_token_usage: int = PrivateAttr(default=0)
     _input_token_usage: int = PrivateAttr(default=0)
     _output_token_usage: int = PrivateAttr(default=0)
@@ -56,48 +64,67 @@ class BaseLLM(ABC, BaseModel):
     @abstractmethod
     async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
         raise NotImplementedError
-    
+
     @abstractmethod
     def generate(self, messages: List[Dict], max_tokens=2000) -> Response:
         raise NotImplementedError
     
-    async def async_tool_call(self, messages: List[Dict]):
+    @abstractmethod
+    async def async_generate_with_tools(
+        self, messages: List[Dict], tools: List[Dict], tool_choice="required", **kwargs
+    ) -> Tuple[str, str, Dict[str, Any]]:
         raise NotImplementedError
 
-    async def batch_async_generate(self, messages_list: List[List[Dict]], max_tokens=2000) -> List[Response]:
-        return await asyncio.gather(*(self.async_generate(messages=messages, max_tokens=max_tokens) for messages in messages_list))
-    
+    async def batch_async_generate(
+        self, messages_list: List[List[Dict]], max_tokens=2000
+    ) -> List[Response]:
+        return await asyncio.gather(
+            *(
+                self.async_generate(messages=messages, max_tokens=max_tokens)
+                for messages in messages_list
+            )
+        )
+
     def price(self):
         if self.model == "gpt-4o":
-            return (self._input_token_usage * 2.5 + self._output_token_usage * 10) / 1_000_000
+            return (
+                self._input_token_usage * 2.5 + self._output_token_usage * 10
+            ) / 1_000_000
         elif self.model == "gpt-4o-mini":
-            return (self._input_token_usage * 0.15 + self._output_token_usage * 0.075) / 1_000_000
+            return (
+                self._input_token_usage * 0.15 + self._output_token_usage * 0.075
+            ) / 1_000_000
         else:
             return 0
 
-class OpenAILLM(BaseLLM):
-    model: Literal["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4.5-preview", "o1"] = "gpt-4o-mini"
-    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    sync_client: OpenAI = Field(default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
-    async_client: AsyncOpenAI = Field(default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
-    
-    @log_io
-    def generate(
-        self, messages: List[Dict], max_tokens=2000, **kwargs
-    ) -> Response:
-        """returns openai response based on given messages"""
 
-        # if we want to keep history, add messages to history
-        if self.keep_history:
-            self.messages.extend(messages)
-            messages = self.messages
+class OpenAILLM(BaseLLM):
+    model: Literal[
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4.5-preview",
+        "o1",
+        "o3",
+        "o4-mini"
+    ] = "gpt-4.1-mini"
+    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
+    sync_client: OpenAI = Field(
+        default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    )
+    async_client: AsyncOpenAI = Field(
+        default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    )
+
+    @log_io
+    def generate(self, messages: List[Dict], max_tokens=2000, **kwargs) -> Response:
+        """returns openai response based on given messages"""
 
         completion = self.sync_client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
-
-        if self.keep_history:
-            self.messages.append(completion.choices[0].message)
 
         # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
@@ -107,11 +134,18 @@ class OpenAILLM(BaseLLM):
         self._output_token_usage += completion.usage.completion_tokens
 
         # log token usages
-        logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion.usage.prompt_tokens, completion.usage.completion_tokens)
-        
+        logger.debug(
+            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            total_tokens,
+            completion.usage.prompt_tokens,
+            completion.usage.completion_tokens,
+        )
+
         # log llm output
         if logger.isEnabledFor(logging.INFO):
-            log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
+            log_messages = [
+                f"[{message['role']}] {message['content']}" for message in messages
+            ]
             log_messages.append(f"[assistant] {completion.choices[0].message.content}")
             logger.info("\n".join(log_messages))
 
@@ -123,17 +157,10 @@ class OpenAILLM(BaseLLM):
     ) -> Response:
         """returns openai response based on given messages"""
 
-        if self.keep_history:
-            self.messages.extend(messages)
-            messages = self.messages
-
         # TODO: add try/except for openai api key errors
         completion = await self.async_client.chat.completions.create(
             model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
-
-        if self.keep_history:
-            self.messages.append(completion.choices[0].message)
 
         total_tokens = completion.usage.total_tokens
         self._session_token_usage += total_tokens
@@ -141,35 +168,103 @@ class OpenAILLM(BaseLLM):
         self._output_token_usage += completion.usage.completion_tokens
 
         # log token usages
-        logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion.usage.prompt_tokens, completion.usage.completion_tokens)
-        
+        logger.debug(
+            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            total_tokens,
+            completion.usage.prompt_tokens,
+            completion.usage.completion_tokens,
+        )
+
         # log llm output
         if logger.isEnabledFor(logging.INFO):
-            log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
+            log_messages = [
+                f"[{message['role']}] {message['content']}" for message in messages
+            ]
             log_messages.append(f"[assistant] {completion.choices[0].message.content}")
             logger.info("\n".join(log_messages))
 
         return Response(text=completion.choices[0].message.content)
 
+    async def async_generate_with_tools(
+        self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
+    ) -> Tuple[str, str, Dict[str, Any]]: 
+
+        
+        if messages[0].get("role") != "system":
+            logger.warning("Make sure the first message is a system message.")
+        
+        for tool in tools:
+            if 'function' in tool:
+                logger.warning("Supplied function schema is for chat completion. Auto converting to schema for response.")
+                function = tool.pop('function')
+                tool = tool | function
+        
+        response = await self.async_client.responses.create(
+            model=self.model,
+            input=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+            **kwargs
+        )
+
+        self._session_token_usage += response.usage.total_tokens
+        self._input_token_usage += response.usage.input_tokens
+        self._output_token_usage += response.usage.output_tokens
+
+        # log debug
+        logger.debug(
+            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            response.usage.total_tokens,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+
+        logger.debug(response)
+
+        text = None
+        tool_name = None
+        tool_args = None
+
+        for output in response.output:
+            if output.type == 'message':
+                # NOTE: if `tool_choice` is set to 'required', i do not think gpt returns a text output.
+                # NOTE: or, if instruction does not require GPT to think out loud, it may also not return a text output.
+                text = output.content[0].text
+            elif output.type == 'function_call':
+                tool_name = output.name
+                tool_args = json.loads(output.arguments)
+            else:
+                logger.warning(f"Unknown output type: {output.type}")
+                continue
+        
+        return text, tool_name, tool_args
+
+
 class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     model: Literal["gpt-4o-mini"] = "gpt-4o-mini"
-    endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT"))
+    endpoint_url: str = Field(
+        default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT")
+    )
 
     @log_io
-    async def async_generate(self, messages: List[Dict], max_tokens=2000, retries=3, backoff_factor=0.3, **kwargs) -> Response:
-        if self.keep_history:
-            self.messages.extend(messages)
-            messages = self.messages
-        
+    async def async_generate(
+        self,
+        messages: List[Dict],
+        max_tokens=2000,
+        retries=3,
+        backoff_factor=0.3,
+        **kwargs,
+    ) -> Response:
+
         body = {
             "messages": messages,
             "openai_parameters": {"max_tokens": max_tokens},
-            **kwargs
+            **kwargs,
         }
 
         # init httpx client if not initialized in the model
         client = self._httpx_client or init_httpx_client()
-        
+
         try:
             response = await client.post(
                 self.endpoint_url,
@@ -181,23 +276,28 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             completion = response.json()
             content = completion["choices"][0]["message"]["content"]
 
-            if self.keep_history:
-                self.messages.append({"role": "assistant", "content": content})
-            
             total_tokens = completion["usage"]["total_tokens"]
             self._session_token_usage += total_tokens
             self._input_token_usage += completion["usage"]["prompt_tokens"]
             self._output_token_usage += completion["usage"]["completion_tokens"]
 
             # log token usages
-            logger.debug("Total tokens used: %d (%d input tokens, %d output tokens)", total_tokens, completion["usage"]["prompt_token"], completion["usage"]["completion_token"])
-            
+            logger.debug(
+                "Total tokens used: %d (%d input tokens, %d output tokens)",
+                total_tokens,
+                completion["usage"]["prompt_token"],
+                completion["usage"]["completion_token"],
+            )
+
             # log llm output
             if logger.isEnabledFor(logging.INFO):
-                log_messages = [f"[{message['role']}] {message['content']}" for message in messages]
-                log_messages.append(f"[assistant] {completion["choices"][0]["message"]["content"]}")
+                log_messages = [
+                    f"[{message['role']}] {message['content']}" for message in messages
+                ]
+                log_messages.append(
+                    f"[assistant] {completion['choices'][0]['message']['content']}"
+                )
                 logger.info("\n".join(log_messages))
-
 
             return Response(text=content)
         except httpx.HTTPStatusError as e:
@@ -210,7 +310,9 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
         except httpx.ReadTimeout as e:
             if retries > 0:
                 await asyncio.sleep(backoff_factor * 2 ** (3 - retries))
-                return await self.async_generate(messages, max_tokens, retries - 1, backoff_factor)
+                return await self.async_generate(
+                    messages, max_tokens, retries - 1, backoff_factor
+                )
             else:
                 raise e
         except (httpx.ConnectTimeout, httpx.ConnectError) as e:
@@ -221,13 +323,19 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
         finally:
             if self._httpx_client is None:
                 await client.aclose()
-    
+
     def generate(self, messages, max_tokens=2000):
         return asyncio.run(self.async_generate(messages, max_tokens))
-            
+    
+    async def async_generate_with_tools(
+        self, messages: List[Dict], tools: List[Dict], tool_choice="required", **kwargs
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        raise NotImplementedError()
+
 
 class BaseEmbeddingModel(ABC, BaseModel):
     "Custom embedding model interface"
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # @abstractmethod
@@ -245,8 +353,11 @@ class BaseEmbeddingModel(ABC, BaseModel):
         """embeds a list of strings, and returns a list of embeddings"""
         raise NotImplementedError
 
+
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
-    model: Literal["text-embedding-3-small", "text-embedding-3-large"] = "text-embedding-3-small"
+    model: Literal["text-embedding-3-small", "text-embedding-3-large"] = (
+        "text-embedding-3-small"
+    )
     api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"))
     sync_client: OpenAI = None
     async_client: AsyncOpenAI = None
@@ -256,7 +367,6 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
             self.sync_client = OpenAI(api_key=self.api_key)
         if self.async_client is None:
             self.async_client = AsyncOpenAI(api_key=self.api_key)
-        
 
     # TODO: work on "retry" when encountered error
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
@@ -265,31 +375,48 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
         embeddings = []
         for i in range(0, len(text), 100):
-            result = self.sync_client.embeddings.create(input=text[i : i + 100], model=self.model)
+            result = self.sync_client.embeddings.create(
+                input=text[i : i + 100], model=self.model
+            )
             embeddings.extend([x.embedding for x in result.data])
 
         return embeddings
-    
-    async def async_embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
+
+    async def async_embed(
+        self, text: List[str] | List[Embeddable]
+    ) -> List[List[float]]:
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
-            
+
         # batch requests so that we don't have a list that is too large
         tasks = []
         for i in range(0, len(text), 100):
-            tasks.append(self.async_client.embeddings.create(input=text[i : i + 100], model=self.model))
+            tasks.append(
+                self.async_client.embeddings.create(
+                    input=text[i : i + 100], model=self.model
+                )
+            )
         results = await asyncio.gather(*tasks)
         return [x.embedding for result in results for x in result.data]
 
+
 class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
-    model: Literal['api-embedding-openai-text-embed-3-small'] = 'api-embedding-openai-text-embed-3-small'
-    endpoint_url: str = Field(default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_EMBEDDING"))
-    
-    async def async_embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
+    model: Literal["api-embedding-openai-text-embed-3-small"] = (
+        "api-embedding-openai-text-embed-3-small"
+    )
+    endpoint_url: str = Field(
+        default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_EMBEDDING")
+    )
+
+    async def async_embed(
+        self, text: List[str] | List[Embeddable]
+    ) -> List[List[float]]:
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
-            
-        async def send_embedding_request(line: str, client: httpx.AsyncClient, retries=3, backoff_factor=0.3):
+
+        async def send_embedding_request(
+            line: str, client: httpx.AsyncClient, retries=3, backoff_factor=0.3
+        ):
             try:
                 response = await client.post(
                     self.endpoint_url,
@@ -302,13 +429,17 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
             except httpx.HTTPStatusError as e:
                 logger.error(f"HTTP error: {e}")
                 if e.response.status_code == 401:
-                    logger.warning(f"Double check your auth key: {self.api_key[:10]}...")
+                    logger.warning(
+                        f"Double check your auth key: {self.api_key[:10]}..."
+                    )
 
                 raise e
             except httpx.ReadTimeout as e:
                 if retries > 0:
                     await asyncio.sleep(backoff_factor * 2 ** (3 - retries))
-                    return await send_embedding_request(line, client, retries - 1, backoff_factor * 2)
+                    return await send_embedding_request(
+                        line, client, retries - 1, backoff_factor * 2
+                    )
                 else:
                     raise e
             except (httpx.ConnectTimeout, httpx.ConnectError) as e:
@@ -316,15 +447,20 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
                 # logger.error(f"Error: {e}")
                 logger.warning("Did you connect to NYU's VPN?")
                 raise e
-        
-         # init httpx client if not initialized in the model
+
+        # init httpx client if not initialized in the model
         client = self._httpx_client or init_httpx_client()
-        
+
         try:
             # batch requests so that we don't have a list that is too large
             embeddings = []
             for i in range(0, len(text), 100):
-                results = await asyncio.gather(*[send_embedding_request(line, client) for line in text[i : i + 100]])
+                results = await asyncio.gather(
+                    *[
+                        send_embedding_request(line, client)
+                        for line in text[i : i + 100]
+                    ]
+                )
                 embeddings.extend(results)
 
             return embeddings
@@ -334,4 +470,3 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
 
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
         return asyncio.run(self.async_embed(text))
-            
