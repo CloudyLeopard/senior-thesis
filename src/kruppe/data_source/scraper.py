@@ -8,61 +8,19 @@ import logging
 from pathlib import Path
 import stamina
 import json
-from functools import wraps
 
-from kruppe.utils import log_io
-from kruppe.data_source.news.base_news import NewsSource
-from kruppe.models import Document
-
-HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=300)
-HTTPX_TIMEOUT = httpx.Timeout(10.0, connect=20.0, pool=60.0) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
-
-semaphore = asyncio.Semaphore(225) # Limit concurrent requests to avoid overwhelming the server
-
-# Note: best combination i've found with httpx request is 225 semaphore, 300 max_connections
-
-# TODO: timeout error
+from kruppe.common.log import log_io
 
 logger = logging.getLogger(__name__)
 
+HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=300)
+HTTPX_TIMEOUT = httpx.Timeout(5.0, pool=None) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
+
+semaphore = asyncio.Semaphore(225) # Limit concurrent requests to avoid overwhelming the server
+# Note: best combination i've found with httpx request is 225 semaphore, 300 max_connections
+
 class RequestSourceException(Exception):
     pass
-
-def not_ready(func):
-    func._not_ready = True
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        raise NotImplementedError(f"{func.__name__} is not implemented")
-    return wrapper
-
-def is_method_ready(obj, method_name: str):
-    method = getattr(obj, method_name)
-    return not getattr(method, "_not_ready", False)
-
-async def combine_async_generators(async_gens):
-    # Start by scheduling the first item from each generator.
-    pending = {
-        asyncio.create_task(gen.__anext__()): gen
-        for gen in async_gens
-    }
-    
-    while pending:
-        # Wait until at least one task completes.
-        done, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-        for task in done:
-            gen = pending.pop(task)
-            try:
-                result = task.result()
-            except StopAsyncIteration:
-                # This generator is exhausted.
-                continue
-            except Exception:
-                # Propagate any other exceptions.
-                raise
-            # Yield the result that finished first.
-            yield result
-            # Schedule the next item from the same generator.
-            pending[asyncio.create_task(gen.__anext__())] = gen
 
 def retry_on_httpx_error(exc: Exception) -> bool:
     # acceptable client errors

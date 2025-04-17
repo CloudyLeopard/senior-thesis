@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+STANDARD_SYSTEM = "You are a helpful assistant."
+
 RAG_STANDARD_USER = dedent(
     """\
     You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
@@ -12,6 +14,12 @@ RAG_STANDARD_USER = dedent(
 RAG_STANDARD_SYSTEM = dedent(
     """\
     You are a helpful assistant that answers a query using the given contexts
+    """
+)
+
+SPLITTER_CONTEXTUALIZE_SYSTEM = dedent(
+    """\
+    You are a helpful assistant that contextualizes chunks of text within a larger document.
     """
 )
 

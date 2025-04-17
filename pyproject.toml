@@ -21,7 +21,7 @@ dependencies = [
     "beautifulsoup4",
     "lxml>=5.3.0",
     "lexisnexisapi", 
-    "yfinance>=0.2.54",
+    "yfinance[nospam]>=0.2.54",
     "langchain_text_splitters>=0.3.0",
     "pymongo>=4.1",
     "motor>=3.6.0",

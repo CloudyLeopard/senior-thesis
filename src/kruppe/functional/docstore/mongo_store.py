@@ -1,4 +1,3 @@
-from calendar import c
 from pydantic import Field, computed_field, model_validator, PrivateAttr
 from bson import ObjectId
 from typing import List, Optional, Any, Dict

@@ -9,6 +9,7 @@ __pycache__/
 data/
 tmp/
 logs/
+*.cache
 
 bash/
 .ft-headers.json

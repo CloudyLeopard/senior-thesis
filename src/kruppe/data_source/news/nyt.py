@@ -7,9 +7,9 @@ from pydantic import Field
 import time
 
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import WebScraper, RequestSourceException, load_headers
+from kruppe.data_source.scraper import WebScraper, RequestSourceException, load_headers
 from kruppe.models import Document
-from kruppe.utils import log_io
+from kruppe.common.log import log_io
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,14 @@ class NewYorkTimesData(NewsSource):
         **kwargs
     ) -> AsyncGenerator[Document, None]:
         
+        retries = 3 # NOTE: cheat method for when theres a problem
         article_metadata = []
         async with httpx.AsyncClient() as client:
             url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
 
-            NUM_RESULTS_PER_PAGE = 10
+            # NUM_RESULTS_PER_PAGE = 10
             page = 0
-            while page * NUM_RESULTS_PER_PAGE < max_results: # Fetch until we have enough articles
+            while len(article_metadata) < max_results: # Fetch until we have enough articles
                 params = {
                     "q": query,
                     "api-key": self.apiKey,
@@ -87,14 +88,26 @@ class NewYorkTimesData(NewsSource):
                     )
                     raise RequestSourceException(msg)
                 except httpx.RequestError as e:
-                    logger.error("New York Times Failed to fetch documents: %s", e)
-                    raise RequestSourceException(e)
+                    logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))
+                    retries -= 1
+                    if retries > 0:
+                        time.sleep(13)
+                        continue
+                    
+                    if len(article_metadata) == 0:
+                        raise RequestSourceException("Failed to fetch any articles from New York Times")
+                    else:
+                        # NOTE: cheat method for when theres a problem
+                        logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                        break
                 
                 # Break if there are no more articles to fetch
                 if not data["response"]["docs"]:
                     break
 
                 article_metadata.extend(data["response"]["docs"])
+
+                # Sleep to avoid hitting the rate limit
                 time.sleep(13)
 
         article_metadata = article_metadata[:max_results]
@@ -111,8 +124,8 @@ class NewYorkTimesData(NewsSource):
         filter: Dict = None, # TODO: not implemented
         **kwargs
     ) -> AsyncGenerator[Document, None]:
-        # sections = ["business", "education", "job market", "technology", "u.s.", "world"]
-        sections = ["business", "technology"]
+        sections = ["business", "education", "job market", "technology", "u.s.", "world"]
+        # sections = ["business", "technology"]
         article_metadata = []
 
         async with httpx.AsyncClient() as client:
@@ -139,12 +152,15 @@ class NewYorkTimesData(NewsSource):
                 
                 if data["num_results"] > 0:
                     article_metadata.extend(data["results"])
+                
 
-
+                # Sleep to avoid hitting the rate limit
                 time.sleep(13)
         
         # hard cap
+        article_metadata.sort(key=lambda x: x.get("published_date", ""), reverse=True)
         article_metadata = article_metadata[:max_results]
+
         async for document in self._nyt_scraper_helper(article_metadata):
             yield document
     

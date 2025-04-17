@@ -24,7 +24,7 @@ class QueryFusionRetriever(BaseRetriever):
         else:
             raise ValueError(f"Unknown fusion method: {self.mode}")
 
-    def retrieve(self, query: Query, filter: Dict[str, Any] = None) -> List[Document]:
+    def retrieve(self, query: Query | str, filter: Dict[str, Any] = None) -> List[Chunk]:
         # generate queries
         if isinstance(query, Query):
             query = query.text
@@ -46,7 +46,7 @@ class QueryFusionRetriever(BaseRetriever):
         ]
         return self.fusion_method(retrieved_chunks)[:self.top_k]
     
-    async def async_retrieve(self, query: Query | str, filter: Dict[str, Any] = None) -> List[Document]:
+    async def async_retrieve(self, query: Query | str, filter: Dict[str, Any] = None) -> List[Chunk]:
         # generate queries
         if isinstance(query, Query):
             query = query.text

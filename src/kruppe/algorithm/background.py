@@ -7,8 +7,8 @@ import logging
 from pydantic import computed_field
 from tqdm import tqdm
 
-from kruppe.utils import log_io
-from kruppe.data_source.utils import combine_async_generators
+from kruppe.common.log import log_io
+from kruppe.common.utils import combine_async_generators
 from kruppe.llm import BaseLLM
 from kruppe.models import Document, Response
 from kruppe.prompts.background import (

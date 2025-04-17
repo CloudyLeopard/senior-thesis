@@ -5,12 +5,12 @@ import logging
 from pydantic import Field, field_validator
 
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import RequestSourceException
-from kruppe.data_source.utils import (
+from kruppe.common.utils import RequestSourceException
+from kruppe.data_source.scraper import (
     WebScraper,
     HTTPX_CONNECTION_LIMITS,
-    not_ready
 )
+from kruppe.common.utils import not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

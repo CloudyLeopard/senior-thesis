@@ -1,3 +1,4 @@
+import json
 import logging
 import pytest
 
@@ -43,7 +44,7 @@ async def test_llm(llm):
 @pytest.mark.asyncio
 async def test_generate_with_tool(llm, caplog):
     # caplog.set_level(logging.DEBUG, logger='kruppe.llm')
-    
+
     messages = [
         {"role": "system", "content": "You answer questions about countries by calling on tools. You MUST plan extensively before each function call, no matter how simple it is, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully. Repeat your thoughts out loud verbatim."},
         {"role": "user", "content": "What is the capital of France? "},
@@ -70,43 +71,48 @@ async def test_generate_with_tool(llm, caplog):
     tools = [
         {
             "type": "function",
-            "name": "get_capital",
-            "description": "Get the capital of a country",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "country": {"type": "string", "description": "The name of the country"},
+            "function": {
+                "name": "get_capital",
+                "description": "Get the capital of a country",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "country": {"type": "string", "description": "The name of the country"},
+                    },
+                    "required": ["country"],
+                    "additionalProperties": False
                 },
-                "required": ["country"],
-                "additionalProperties": False
-            },
-            "strict": True
+                "strict": True
+            }
         },
         {
             "type": "function",
-            "name": "get_continent",
-            "description": "Get the continent of a country",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "country": {"type": "string", "description": "The name of the country"},
+            "function": {
+                "name": "get_continent",
+                "description": "Get the continent of a country",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "country": {"type": "string", "description": "The name of the country"},
+                    },
+                    "required": ["country"],
+                    "additionalProperties": False
                 },
-                "required": ["country"],
-                "additionalProperties": False
-            },
-            "strict": True
+                "strict": True
+            }
         }
     ]
     
-    text, func_name, func_args = await llm.async_generate_with_tools(messages, tools=tools, tool_choice='auto')
+    text, tool_id, tool_name, tool_args_str = await llm.async_generate_with_tools(messages, tools=tools, tool_choice='auto')
 
-    assert isinstance(func_args, dict)
+    assert tool_id
     if not text:
         logger.warning("Generated text is empty, which may indicate that the model did not provide a thought process or reasoning before the function call.")
-    assert func_name == "get_capital"
-    assert func_args == {"country": "France"}
+    tool_args = json.loads(tool_args_str)
+    assert tool_name == "get_capital"
+    assert tool_args == {"country": "France"}
     try:
-        capital = get_capital(**func_args)
+        capital = get_capital(**tool_args)
         assert capital == "Paris"
     except TypeError:
         pytest.fail("Function arguments do not match the expected format")

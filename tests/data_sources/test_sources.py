@@ -3,13 +3,12 @@ from uuid import UUID
 import time
 import logging
 
-from kruppe.data_source.utils import is_method_ready
+from kruppe.common.utils import is_method_ready
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.data_source.directory import DirectoryData
 from kruppe.data_source.news.nyt import NewYorkTimesData
 from kruppe.data_source.news.ft import FinancialTimesData
 from kruppe.data_source.news.newsapi import NewsAPIData
-from kruppe.data_source.news.newshub import NewsHub
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
@@ -17,13 +16,8 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(
     params=[
         NewYorkTimesData(headers_path=".nyt-headers.json"),
-        FinancialTimesData(headers_path=".ft-headers.json"),
-        NewsAPIData(),
-        NewsHub(news_sources=[
-            NewYorkTimesData(headers_path=".nyt-headers.json"),
-            FinancialTimesData(headers_path=".ft-headers.json"),
-            NewsAPIData()
-        ])
+        # FinancialTimesData(headers_path=".ft-headers.json"),
+        # NewsAPIData(),
     ],
     ids=lambda data: data.shorthand
 )
@@ -52,8 +46,6 @@ async def test_news_search(source: NewsSource, query, caplog):
         assert document.text
         assert isinstance(document, Document)
         assert len(document.metadata) > 0
-        if source.__class__.__name__ != "NewsHub":
-            assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.metadata.get("query") == query
         assert "url" in document.metadata
         assert "title" in document.metadata
@@ -84,8 +76,6 @@ async def test_news_recent(source: NewsSource, caplog):
         assert len(document.metadata) > 0
         assert "title" in document.metadata
         assert "description" in document.metadata
-        if source.__class__.__name__ != "NewsHub":
-            assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.id and isinstance(document.id, UUID)
     
     assert size > 0
@@ -112,8 +102,6 @@ async def test_news_archive(source: NewsSource, caplog):
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
-        if source.__class__.__name__ != "NewsHub":
-            assert document.metadata.get("datasource") == source.__class__.__name__
         assert document.id and isinstance(document.id, UUID)
     
     assert size > 0

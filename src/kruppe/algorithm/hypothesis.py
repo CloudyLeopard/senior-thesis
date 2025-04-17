@@ -14,7 +14,7 @@ from kruppe.prompts.hypothesis import (
     EVALUATE_LEAD_USER,
     UPDATE_LEAD_USER
 )
-from kruppe.utils import log_io
+from kruppe.common.log import log_io
 from kruppe.models import Response
 
 logger = logging.getLogger(__name__)

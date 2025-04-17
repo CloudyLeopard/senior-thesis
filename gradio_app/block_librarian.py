@@ -6,7 +6,7 @@ import chromadb
 from kruppe.llm import OpenAILLM, OpenAIEmbeddingModel
 
 # data sources to use
-from kruppe.data_source.news.newshub import NewsHub
+from kruppe.functional.newshub import NewsHub
 from kruppe.data_source.news.nyt import NewYorkTimesData
 from kruppe.data_source.news.ft import FinancialTimesData
 from kruppe.data_source.news.newsapi import NewsAPIData

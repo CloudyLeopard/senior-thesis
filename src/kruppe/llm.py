@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import json
 from typing import Any, List, Dict, Literal, Tuple
 import os
 import asyncio
@@ -9,7 +8,7 @@ from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
 import httpx
 
 from kruppe.models import Embeddable, Response
-from kruppe.utils import log_io
+from kruppe.common.log import log_io
 
 HTTPX_CONNECTION_LIMITS = httpx.Limits(
     max_keepalive_connections=50, max_connections=400
@@ -71,8 +70,22 @@ class BaseLLM(ABC, BaseModel):
     
     @abstractmethod
     async def async_generate_with_tools(
-        self, messages: List[Dict], tools: List[Dict], tool_choice="required", **kwargs
-    ) -> Tuple[str, str, Dict[str, Any]]:
+        self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
+    ) -> Tuple[str, str, str, str]: 
+        """_summary_
+
+        Args:
+            messages (List[Dict]): _description_
+            tools (List[Dict]): _description_
+            tool_choice (str, optional): _description_. Defaults to "auto".
+
+        Returns:
+            Tuple[str, str, str, str]: A 4-tuple containing
+                - text
+                - tool_id
+                - tool_name
+                - tool_args_str
+        """
         raise NotImplementedError
 
     async def batch_async_generate(
@@ -162,19 +175,6 @@ class OpenAILLM(BaseLLM):
             model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
 
-        total_tokens = completion.usage.total_tokens
-        self._session_token_usage += total_tokens
-        self._input_token_usage += completion.usage.prompt_tokens
-        self._output_token_usage += completion.usage.completion_tokens
-
-        # log token usages
-        logger.debug(
-            "Total tokens used: %d (%d input tokens, %d output tokens)",
-            total_tokens,
-            completion.usage.prompt_tokens,
-            completion.usage.completion_tokens,
-        )
-
         # log llm output
         if logger.isEnabledFor(logging.INFO):
             log_messages = [
@@ -187,57 +187,55 @@ class OpenAILLM(BaseLLM):
 
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
-    ) -> Tuple[str, str, Dict[str, Any]]: 
+    ) -> Tuple[str, str, str, str]: 
 
         
         if messages[0].get("role") != "system":
             logger.warning("Make sure the first message is a system message.")
         
         for tool in tools:
-            if 'function' in tool:
-                logger.warning("Supplied function schema is for chat completion. Auto converting to schema for response.")
-                function = tool.pop('function')
-                tool = tool | function
-        
-        response = await self.async_client.responses.create(
+            if 'function' not in tool:
+                logger.warning("Tool should follows chat completion schema.")
+                raise ValueError("Tool should follows chat completion schema.")
+
+
+        completion = await self.async_client.chat.completions.create(
             model=self.model,
-            input=messages,
+            messages=messages,
             tools=tools,
             tool_choice=tool_choice,
             **kwargs
         )
+        
+        self._session_token_usage += completion.usage.total_tokens
+        self._input_token_usage += completion.usage.prompt_tokens
+        self._output_token_usage += completion.usage.completion_tokens
 
-        self._session_token_usage += response.usage.total_tokens
-        self._input_token_usage += response.usage.input_tokens
-        self._output_token_usage += response.usage.output_tokens
-
-        # log debug
+        # log token usages
         logger.debug(
             "Total tokens used: %d (%d input tokens, %d output tokens)",
-            response.usage.total_tokens,
-            response.usage.input_tokens,
-            response.usage.output_tokens,
+            completion.usage.total_tokens,
+            completion.usage.prompt_tokens,
+            completion.usage.completion_tokens,
         )
+        logger.debug(completion)
 
-        logger.debug(response)
-
-        text = None
-        tool_name = None
-        tool_args = None
-
-        for output in response.output:
-            if output.type == 'message':
-                # NOTE: if `tool_choice` is set to 'required', i do not think gpt returns a text output.
-                # NOTE: or, if instruction does not require GPT to think out loud, it may also not return a text output.
-                text = output.content[0].text
-            elif output.type == 'function_call':
-                tool_name = output.name
-                tool_args = json.loads(output.arguments)
-            else:
-                logger.warning(f"Unknown output type: {output.type}")
-                continue
+        # NOTE: if `tool_choice` is set to 'required', i do not think gpt returns a text output.
+        # NOTE: or, if instruction does not require GPT to think out loud, it may also not return a text output.
+        text = completion.choices[0].message.content # so this could be null
         
-        return text, tool_name, tool_args
+        tool_id = None
+        tool_name = None
+        tool_args_str = None
+        
+        # only use one tool at a time
+        if completion.choices[0].message.tool_calls:
+            tool_call = completion.choices[0].message.tool_calls[0]
+            tool_name = tool_call.function.name
+            tool_args_str = tool_call.function.arguments
+            tool_id = tool_call.id
+        
+        return text, tool_id, tool_name, tool_args_str
 
 
 class NYUOpenAILLM(BaseLLM, BaseNYUModel):

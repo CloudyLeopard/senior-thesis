@@ -12,7 +12,7 @@ from kruppe.prompts.coordinator import (
     CREATE_LEAD_SYSTEM,
     CREATE_LEAD_USER,
 )
-from kruppe.utils import log_io
+from kruppe.common.log import log_io
 from kruppe.models import Response
 
 logger = logging.getLogger(__name__)

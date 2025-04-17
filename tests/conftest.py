@@ -126,7 +126,6 @@ def embedding_model():
 
 @pytest.fixture(scope="module")
 def llm():
-    # return OpenAILLM()
     return OpenAILLM()
 
 @pytest.fixture(scope="function")

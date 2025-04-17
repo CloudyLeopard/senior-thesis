@@ -3,10 +3,13 @@ from pydantic import model_validator
 
 from kruppe.functional.rag.index.vectorstore_index import VectorStoreIndex
 from kruppe.functional.rag.text_splitters import ContextualTextSplitter, RecursiveTextSplitter
+from kruppe.llm import BaseLLM
 
 logger = logging.getLogger(__name__)
 
 class ContextualVectorStoreIndex(VectorStoreIndex):
+    llm: BaseLLM
+    
     @model_validator(mode='after')
     def check_contextual_text_splitter(self):
         text_splitter = self.text_splitter

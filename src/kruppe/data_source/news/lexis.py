@@ -8,7 +8,8 @@ from typing import Any
 from lexisnexisapi import credentials, webservices
 
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import RequestSourceException, WebScraper, not_ready
+from kruppe.data_source.scraper import RequestSourceException, WebScraper
+from kruppe.common.utils import not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)

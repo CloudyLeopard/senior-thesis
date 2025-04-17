@@ -18,9 +18,6 @@ class DataSource(ABC, BaseModel):
             """
         )
     
-    def get_schema(self, method_name: str) -> Dict:
-        return getattr(self, f"{method_name}_schema")
-    
     @classmethod
     def parse_metadata(
         cls,
@@ -42,8 +39,7 @@ class DataSource(ABC, BaseModel):
         metadata.update(kwargs)
         return metadata
    
-class FinancialSource(DataSource):
-    ...
+
 
 class ForumSource(DataSource):
     ...

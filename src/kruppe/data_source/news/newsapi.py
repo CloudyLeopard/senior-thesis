@@ -5,7 +5,8 @@ from typing import AsyncGenerator, Dict, Literal
 import logging
 
 from kruppe.data_source.news.base_news import NewsSource
-from kruppe.data_source.utils import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException, not_ready
+from kruppe.data_source.scraper import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException
+from kruppe.common.utils import not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
@@ -23,12 +24,10 @@ class NewsAPIData(NewsSource):
         return v
     
     async def _parse_newsapi_response(
-        self, data: dict, client: httpx.AsyncClient, query: str = None
+        self, articles: list, client: httpx.AsyncClient, query: str = None
     ) -> AsyncGenerator[Document, None]:
         """Internal method to parse the response from NewsAPI and yield Document objects."""
-        articles = data["articles"]
-        total_results = data["totalResults"]
-        logger.debug("Fetched %d documents from NewsAPI API", total_results)
+        logger.debug("Fetched %d documents from NewsAPI API", len(articles))
     
         # scrape list of links
         logger.debug("Scraping documents from links")
@@ -76,6 +75,7 @@ class NewsAPIData(NewsSource):
                 response = await client.get("https://newsapi.org/v2/everything", params=params)
                 response.raise_for_status()
                 data = response.json()
+                articles = data.get("articles", [])[:max_results]  # Limit to max_results
             except httpx.HTTPStatusError as e:
                 msg = e.response.text
                 if e.response.status_code == 429:
@@ -90,7 +90,7 @@ class NewsAPIData(NewsSource):
                 logger.error("NewsAPI Failed to fetch documents: %s", e)
                 raise RequestSourceException(e)
             
-            generator = self._parse_newsapi_response(data, client, query)
+            generator = self._parse_newsapi_response(articles, client, query)
             async for doc in generator:
                 yield doc
 
@@ -108,6 +108,7 @@ class NewsAPIData(NewsSource):
 
         categories = ["business", "technology"]
 
+        articles = []
         async with httpx.AsyncClient() as client:
             logger.debug("Fetching documents from NewsAPI API")
 
@@ -118,6 +119,7 @@ class NewsAPIData(NewsSource):
                     response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
                     response.raise_for_status()
                     data = response.json()
+                    articles.extend(data.get("articles", []))
                 except httpx.HTTPStatusError as e:
                     msg = e.response.text
                     if e.response.status_code == 429:
@@ -132,9 +134,11 @@ class NewsAPIData(NewsSource):
                     logger.error("NewsAPI Failed to fetch documents: %s", e)
                     raise RequestSourceException(e)
             
-                generator = self._parse_newsapi_response(data, client)
-                async for doc in generator:
-                    yield doc
+            articles.sort(key = lambda x: x.get("publishedAt", ""), reverse=True)
+            articles = articles[:max_results]
+            generator = self._parse_newsapi_response(articles, client)
+            async for doc in generator:
+                yield doc
         
     
     @not_ready

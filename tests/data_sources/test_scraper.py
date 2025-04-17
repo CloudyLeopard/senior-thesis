@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 
-from kruppe.data_source.utils import WebScraper
+from kruppe.data_source.scraper import WebScraper
 import httpx
 import asyncio
 
