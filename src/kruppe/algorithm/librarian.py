@@ -61,29 +61,31 @@ class Librarian(ReActResearcher):
 
         for i in range(1, self.max_steps + 1):
             # reason step
-            reason_messages, action = await self.reason(i)
+            reason_messages, reason_results, done = await self.reason(self._messages, i)
             self._messages.extend(reason_messages)
 
             if to_print:
                 print(reason_messages[0]['content'], end='')
 
-            # check if the action is a termination command
-            action = action.lower()
-            if action.startswith("finish[") and action.endswith("]"):
-                done = True
-                ans = action[len("finish["):-1].strip()
+            if done:
+                ans = reason_results['answer']
                 break
-
+            
             if i == self.max_steps - 1:
                 break
 
-            # act step
-            tool_call_messages, obs, sources = await self.act(i)
+             # act step
+            tool_call_messages, act_results = await self.act(self._messages, i)
             self._messages.extend(tool_call_messages)
-            all_sources.extend(sources)
+            all_sources.extend(act_results['sources'])
+
+            if to_print:
+                print(f"{act_results['tool_name']}({act_results['tool_args_str']})")
+                print(tool_call_messages[-1]['content'], end='')
 
             # librarian exclusive code
             # if the returned sources are documents, not chunks -> assume they are not in index and must be added
+            sources = act_results['sources']
             if len(sources) > 0 and type(sources[0]) is Document:
                 # `asave_documents` will return documents successfully saved, and omit duplicates
                 saved_docs = await self.docstore.asave_documents(sources)
@@ -94,11 +96,6 @@ class Librarian(ReActResearcher):
                 logger.debug("Added %d documents to index and docstore (out of %d total documents)", len(saved_docs), len(sources))
                 if to_print:
                     print(f"Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
-            
-            if to_print:
-                tool_call_func = tool_call_messages[-2]['tool_calls'][0]['function']
-                print(f"{tool_call_func['name']}({tool_call_func['arguments']})")
-                print(tool_call_messages[-1]['content'], end='')
         
         
         if not done:

@@ -14,11 +14,13 @@ REACT_RESEARCH_SYSTEM = dedent(
 
     You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.
 
+    For every step and every action, you must only make a single tool call at a time. So, before every tool call, you must think about what you want to achieve with this tool call, and decide among all the tools, which is the best tool to call RIGHT NOW.
+
 
     # Output Format
     - Always respond with an Action at the end, and call on a tool.
     - Only respond with one new Action at a time.
-    - For each action, only make one tool call at a time, and wait for the observation before making the next action.
+
 
     # Examples
 
@@ -31,15 +33,15 @@ REACT_RESEARCH_SYSTEM = dedent(
     ### Assistant Response 1
     #### Message
     Thought 1: [Analyze the information request and determine the type of information needed to answer it. Consider the context and any relevant documents that may be useful.]
-    Action 1: [Choose a tool to retrieve relevant documents or information, such as a search function or a database query.]
+    Action 1: [Choose ONE tool to retrieve relevant documents or information, such as a search function or a database query.]
 
     #### Tool Calls 1
-    Observation 1: [Tool calls result. This could be a list of documents or relevant information.]
+    Observation 1: [Tool call result. This could be a list of documents or relevant information.]
 
     ### Assistant Response 2
     #### Message
     Thought 2: [Analyze the results of the action taken in the previous step. Determine if the information retrieved is sufficient to answer the information request, or if further actions are needed.]
-    Action 2: [If the information is sufficient, provide the answer to the information request. If not, choose another tool or action to retrieve more information.]
+    Action 2: [If the information is sufficient, provide the answer to the information request. If not, choose ONE tool to retrieve more information.]
 
     ...
 
@@ -49,7 +51,7 @@ REACT_RESEARCH_SYSTEM = dedent(
     Action N: FINISH[<final answer>]
 
     # Final instructions and prompt to think step by step
-    To summarize, find the answer to the user's information request step by step, using a combination of Thought, Action, and Observation. Always think step by step, and plan extensively before each function call. Reflect extensively on the outcomes of the previous function calls, and iterate until you have found the answer or exhausted all possible actions.
+    To summarize, find the answer to the user's information request step by step, using a combination of Thought, Action, and Observation. Always think step by step, and plan extensively before each function call. Only make ONE tool call at a time. Reflect extensively on the outcomes of the previous function calls, and iterate until you have found the answer or exhausted all possible actions.
     """
 )
 

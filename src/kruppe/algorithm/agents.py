@@ -119,8 +119,54 @@ class ReActResearcher(Researcher):
         return str(result), docs
 
 
+    async def _parse_reason (
+            self,
+            messages: List[Dict[str, str]],
+            reason_response: str,
+            step: int
+        ) -> Tuple[List[Dict], Dict[str, Any], bool]:
+        # if the thought starts with "Thought {step}:", we assume it's in the correct format
+        if reason_response.startswith(f"Thought {step}:"):
+            thought_action = reason_response[len(f"Thought {step}:"):].strip()
+
+        try:
+            thought, action = thought_action.split(f"\nAction {step}:")
+            thought = thought.strip()
+            action = action.strip()
+        except ValueError:
+            logger.warning("Failed to split thought and action: %s", thought_action)
+            thought = thought_action.strip().split('\n')[0]
+
+            action_response = await self.llm.async_generate(
+                messages + [{"role": "assistant", "content": f"Thought {step}: {thought}\nAction {step}: "}],
+                tools=self._tools_schemas,
+                tool_choice="none", # does not use tool, but gives model the tools' schema
+                stop=["\n"]
+            )
+            action = action_response.text.strip()
+        
+        reason_message = {"role": "assistant", "content": f"Thought {step}: {thought}\nAction {step}: {action}\n"}
+        
+        results = {
+            "thought": thought,
+            "action": action,
+        }
+
+        # evaluate action
+        done = False
+
+        # check if the action is a termination command
+        if action.lower().startswith("finish[") and action.endswith("]"):
+            done = True
+            results["answer"] = action[len("finish["):-1].strip()
+
+        return [reason_message], results, done
     
-    async def reason(self, step: int) -> Tuple[List[Dict], str]:
+    async def reason(
+            self,
+            messages: List[Dict[str, str]],
+            step: int
+        ) -> Tuple[List[Dict], Dict[str, Any], bool]:
         """Generates the reasoning and action for the given step.
         This method uses the LLM to generate the reasoning and action based on the current messages.
         It initializes the messages for the first step, and uses the existing messages for subsequent steps.
@@ -138,43 +184,22 @@ class ReActResearcher(Researcher):
             Tuple[List[Dict], str]: messages containing the reasoning and action, 
             and the action string.
         """
-        messages = self._messages # same object
 
-        thought_action_response = await self.llm.async_generate(
+        reason_response = await self.llm.async_generate(
             messages,
             tools=self._tools_schemas,
             tool_choice="none", # does not use tool, but gives model the tools' schema
             stop=[f'\nObservation {step}'])
-        thought_action = thought_action_response.text
+        reason_response = reason_response.text
 
         # parse "reason" response
+        reason_messages, reason_results = await self._parse_reason(reason_response, step)
 
-        # if the thought starts with "Thought {step}:", we assume it's in the correct format
-        if thought_action.startswith(f"Thought {step}:"):
-            thought_action = thought_action[len(f"Thought {step}:"):].strip()
 
-        try:
-            thought, action = thought_action.split(f"\nAction {step}:")
-            thought = thought.strip()
-            action = action.strip()
-        except ValueError:
-            logger.warning("Failed to split thought and action: %s", thought_action)
-            thought = thought_action.strip().split('\n')[0]
-
-            action_response = await self.llm.async_generate(
-                self._messages + [{"role": "assistant", "content": f"Thought {step}: {thought}\nAction {step}: "}],
-                tools=self._tools_schemas,
-                tool_choice="none", # does not use tool, but gives model the tools' schema
-                stop=["\n"]
-            )
-            action = action_response.text.strip()
-        
-        reason_message = {"role": "assistant", "content": f"Thought {step}: {thought}\nAction {step}: {action}\n"}
-        
-        return [reason_message], action
+        return reason_messages, reason_results
         
     
-    async def act(self, step: int) -> Tuple[List[Dict], str, List[Document]]:
+    async def act(self, messages: List[Dict[str, str]], step: int) -> Tuple[List[Dict], Dict[str, Any]]:
         """Executes the action for a given step. This function should be called after the
         reasoning step (i.e. after `reason` method).
         It uses the LLM to generate the tool call, and then calls the tool with the generated arguments.
@@ -220,13 +245,22 @@ class ReActResearcher(Researcher):
             "content": obs
         }
 
-        return [tool_call_message, tool_obs_message], obs, sources
+        act_results = {
+            "tool_id": tool_id,
+            "tool_name": tool_name,
+            "tool_args": tool_args,
+            "tool_args_str": tool_args_str,
+            "obs": obs,
+            "sources": sources
+        }
+
+        return [tool_call_message, tool_obs_message], act_results
 
     async def execute(self, query: str, to_print=True) -> Response:
         """Executes the research task using the ReAct framework."""
         all_sources = []
-        done = False
         ans = None
+        done = False
 
         # initialize the messages with the system prompt
         self._messages = [
@@ -236,30 +270,26 @@ class ReActResearcher(Researcher):
 
         for i in range(1, self.max_steps + 1):
             # reason step
-            reason_messages, action = await self.reason(i)
+            reason_messages, reason_results, done = await self.reason(self._messages, i)
             self._messages.extend(reason_messages)
 
             if to_print:
                 print(reason_messages[0]['content'], end='')
 
-            # check if the action is a termination command
-            action = action.lower()
-            if action.startswith("finish[") and action.endswith("]"):
-                done = True
-                ans = action[len("finish["):-1].strip()
+            if done:
+                ans = reason_results['answer']
                 break
-
+            
             if i == self.max_steps - 1:
                 break
 
             # act step
-            tool_call_messages, obs, sources = await self.act(i)
+            tool_call_messages, act_results = await self.act(self._messages, i)
             self._messages.extend(tool_call_messages)
-            all_sources.extend(sources)
+            all_sources.extend(act_results['sources'])
 
             if to_print:
-                tool_call_func = tool_call_messages[-2]['tool_calls'][0]['function']
-                print(f"{tool_call_func['name']}({tool_call_func['arguments']})")
+                print(f"{act_results['tool_name']}({act_results['tool_args_str']})")
                 print(tool_call_messages[-1]['content'], end='')
         
         if not done:
