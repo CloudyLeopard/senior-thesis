@@ -47,14 +47,16 @@ class YFinanceData(FinancialSource):
         # list of tuples to maintain order
         info_to_return = [(key, info.get(key)) for key in info_keys_to_keep]
 
-        # Add additional sector and industry information if available
-        sectorKey = info.get("sector")
+        # Add industry information if available
+        sectorKey = info.get("sectorKey")
         if sectorKey:
+            sectorKey = sectorKey.strip()
             sector = yf.Sector(sectorKey, session=session)
             info_to_return.append(("sector_description", sector.overview.get('description')))
         
-        industryKey = info.get("industry")
+        industryKey = info.get("industryKey")
         if industryKey:
+            industryKey = industryKey.strip()
             industry = yf.Industry(industryKey, session=session)
             info_to_return.append(("industry_description", industry.overview.get('description')))
 

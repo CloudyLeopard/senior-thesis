@@ -14,7 +14,7 @@ from kruppe.common.log import log_io
 logger = logging.getLogger(__name__)
 
 HTTPX_CONNECTION_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=300)
-HTTPX_TIMEOUT = httpx.Timeout(5.0, pool=None) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
+HTTPX_TIMEOUT = httpx.Timeout(5.0, connect=10.0, pool=None) # yea i have no idea but this fixes PoolTimeout and ConnectTimeout error
 
 semaphore = asyncio.Semaphore(225) # Limit concurrent requests to avoid overwhelming the server
 # Note: best combination i've found with httpx request is 225 semaphore, 300 max_connections

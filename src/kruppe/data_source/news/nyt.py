@@ -86,7 +86,11 @@ class NewYorkTimesData(NewsSource):
                         e.response.status_code,
                         msg,
                     )
-                    raise RequestSourceException(msg)
+                    
+                    logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                    break # instead of throwing an error, we just stop fetching more articles
+                    
+
                 except httpx.RequestError as e:
                     logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))
                     retries -= 1
@@ -94,12 +98,9 @@ class NewYorkTimesData(NewsSource):
                         time.sleep(13)
                         continue
                     
-                    if len(article_metadata) == 0:
-                        raise RequestSourceException("Failed to fetch any articles from New York Times")
-                    else:
-                        # NOTE: cheat method for when theres a problem
-                        logger.warning("Failed to fetch more articles from New York Times, returning what we have")
-                        break
+                    logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                    break # instead of throwing an error, we just stop fetching more articles
+
                 
                 # Break if there are no more articles to fetch
                 if not data["response"]["docs"]:
@@ -109,6 +110,10 @@ class NewYorkTimesData(NewsSource):
 
                 # Sleep to avoid hitting the rate limit
                 time.sleep(13)
+        
+        if len(article_metadata) == 0:
+            logger.warning("No articles found from New York Times for query: %s", query)
+            return
 
         article_metadata = article_metadata[:max_results]
         logger.debug("Fetched %d articles", len(article_metadata))
@@ -126,8 +131,9 @@ class NewYorkTimesData(NewsSource):
     ) -> AsyncGenerator[Document, None]:
         sections = ["business", "education", "job market", "technology", "u.s.", "world"]
         # sections = ["business", "technology"]
+        
+        retries = 3
         article_metadata = []
-
         async with httpx.AsyncClient() as client:
             logger.info("Fetching links from newsfeed")
             for section in sections:
@@ -145,10 +151,19 @@ class NewYorkTimesData(NewsSource):
                         e.response.status_code,
                         msg,
                     )
-                    raise RequestSourceException(msg)
+                    
+                    logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                    break # instead of throwing an error, we just stop fetching more articles
+
                 except httpx.RequestError as e:
-                    logger.error("New York Times Failed to fetch documents: %s", e)
-                    raise RequestSourceException(e)
+                    logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))
+                    retries -= 1
+                    if retries > 0:
+                        time.sleep(13)
+                        continue
+                    
+                    logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                    break # instead of throwing an error, we just stop fetching more articles
                 
                 if data["num_results"] > 0:
                     article_metadata.extend(data["results"])
@@ -156,6 +171,10 @@ class NewYorkTimesData(NewsSource):
 
                 # Sleep to avoid hitting the rate limit
                 time.sleep(13)
+        
+        if len(article_metadata) == 0:
+            logger.warning("No recent articles found from New York Times")
+            return
         
         # hard cap
         article_metadata.sort(key=lambda x: x.get("published_date", ""), reverse=True)
@@ -196,31 +215,51 @@ class NewYorkTimesData(NewsSource):
             for year, month in year_month_pairs
         ]
 
+        done = False # turn to True if we hit 429
+
         async with httpx.AsyncClient() as client:
             article_metadata = []
 
             for url in urls:
-                try:
-                    response = await client.get(url)
-                    response.raise_for_status()
-                    data = response.json()
-                except httpx.HTTPStatusError as e:
-                    msg = e.response.text
-                    if e.response.status_code == 429:
-                        msg = "New York Times query limit reached"
-                    logger.error(
-                        "New York Times HTTP Error %d: %s",
-                        e.response.status_code,
-                        msg,
-                    )
-                    raise RequestSourceException(msg)
-                except httpx.RequestError as e:
-                    logger.error("New York Times Failed to fetch documents: %s", e)
-                    raise RequestSourceException(e)
+                for retry in range(3):  # Retry up to 3 times
+                    try:
+                        response = await client.get(url)
+                        response.raise_for_status()
+                        data = response.json()
+                        break # success
+                    except httpx.HTTPStatusError as e:
+                        msg = e.response.text
+                        if e.response.status_code == 429:
+                            msg = "New York Times query limit reached"
+                        logger.error(
+                            "New York Times HTTP Error %d: %s",
+                            e.response.status_code,
+                            msg,
+                        )
+                        
+                        done = True
+                        break # instead of throwing an error, we just stop fetching more articles
+
+                    except httpx.RequestError as e:
+                        logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", retry, 3, repr(e))
+                        time.sleep(13)
+                        
+                        continue # try again
+                
+                if done:
+                    logger.warning("Failed to fetch more articles from New York Times, returning what we have")
+                    break
+
                 article_metadata.extend([doc for doc in data["response"]['docs'] if doc.get("section_name") in section_names])
+                
                 if len(article_metadata) >= max_results:
                     break
+
                 time.sleep(13)
+        
+        if len(article_metadata) == 0:
+            logger.warning("No articles found from New York Times for the specified date range")
+            return
         
         # hard cap
         article_metadata = article_metadata[:max_results]
