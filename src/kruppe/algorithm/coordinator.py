@@ -11,6 +11,11 @@ from kruppe.algorithm.librarian import Librarian
 from kruppe.prompts.coordinator import (
     CREATE_LEAD_SYSTEM,
     CREATE_LEAD_USER,
+    BACKGROUND_QUERY_LIBRARIAN,
+    DOMAIN_EXPERTS_SYSTEM,
+    DOMAIN_EXPERTS_USER,
+    CHOOSE_EXPERTS_SYSTEM,
+    CHOOSE_EXPERTS_USER
 )
 from kruppe.common.log import log_io
 from kruppe.models import Response
@@ -19,13 +24,105 @@ logger = logging.getLogger(__name__)
 
 class Coordinator(Researcher):
     librarian: Librarian
-    research_question: str
-    background_report: str | Response = None
-    bkg_researcher: BackgroundResearcher = None
-    num_leads: int = 3
-    hyp_researcher_config: Dict = {}
-    _research_queue: List[Lead] = PrivateAttr([])
-    _hyp_researchers: List[HypothesisResearcher] = PrivateAttr([])
+    _background_report: Response = PrivateAttr(default=None)
+
+
+    async def generate_background(self, query: str) -> Response:
+        """Generate a background report using the librarian.
+
+        Returns:
+            Response: Librarian's response containing the background report.
+        """
+
+        if self._background_report:
+            logger.debug("Using cached background report.")
+            return self._background_report
+        
+        logger.debug("Generating background report using librarian.")
+
+        prompt = BACKGROUND_QUERY_LIBRARIAN.format(query=query)
+        librarian_response = await self.librarian.execute(prompt)
+
+        self._background_report = librarian_response
+
+        return librarian_response
+    
+    async def generate_domain_experts(self, query: str, n_experts: int = 5) -> Dict[str, str]:
+        """Generate a list of domain experts based on the research question.
+
+        Args:
+            query (str): The research question.
+
+        Returns:
+            Dict[str, str]: A dictionary mapping expert names to their expertise.
+        """
+
+        # GENERATE SAMPLE DOMAIN EXPERTS
+
+        messages = [
+            {"role": "system", "content": DOMAIN_EXPERTS_SYSTEM},
+            {"role": "user", "content": DOMAIN_EXPERTS_USER.format(query=query)}
+        ]
+
+        domains_response = await self.llm.async_generate(messages)
+        domains_str = domains_response.text
+
+        
+        # PARSE DOMAIN EXPERTS
+        experts = {}
+
+        curr_title = None
+        curr_desc = None
+        for line in domains_str.splitlines():
+            if not line or ':' not in line:
+                continue
+            
+            # Fast prefix checks
+            if line.startswith("Expert Title"):
+                title = line.split(':', 1)[1].strip()
+
+                if curr_title is None:
+                    curr_title = title
+            
+            elif line.startswith("Expert Description"):
+                desc = line.split(':', 1)[1].strip()
+
+                if curr_desc is None:
+                    curr_desc = desc
+            
+            if curr_title and curr_desc:
+                experts[curr_title] = curr_desc
+                curr_title = None
+                curr_desc = None
+
+        # SELECT THE BEST DOMAIN EXPERTS
+        messages = [
+            {"role": "system", "content": CHOOSE_EXPERTS_SYSTEM},
+            {"role": "user", "content": CHOOSE_EXPERTS_USER.format(query=query, n=n_experts)}
+        ]
+        choose_response = await self.llm.async_generate(messages)
+        choose_str = choose_response.text
+
+        # Parse the chosen experts
+        experts_str = choose_str.strip().split("Selected Experts:")[1].strip()
+        selected_experts_titles = [title.strip() for title in experts_str.split(',') if title.strip()]
+        selected_experts = {title: experts[title] for title in selected_experts_titles if title in experts}
+
+        logger.debug(f"Selected {len(selected_experts)} domain experts for query '{query}'")
+        return selected_experts
+        
+    async def initialize_research_forest(self, query: str, experts: Dict[str, str]):
+        # TODO: generate initial lead or hypothesis based on expert and background report
+        ...
+        
+
+        
+
+    async def execute(self, query: str) -> Response:
+
+
+
+
 
     @model_validator(mode='after')
     def check_background_report(self):
@@ -36,7 +133,7 @@ class Coordinator(Researcher):
             self.background_report = self.bkg_researcher.latest_report # could be None still, if bkg_researcher did not run anything yet
         return self
 
-    async def execute(self) -> List[Dict[str, Any]]:
+    async def execute_old(self) -> List[Dict[str, Any]]:
 
         if self.background_report is None:
             print("Executing background researcher...")
