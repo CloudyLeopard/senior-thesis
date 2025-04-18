@@ -147,6 +147,8 @@ class ReActResearcher(Researcher):
             stop=[f'\nObservation {step}'])
         thought_action = thought_action_response.text
 
+        # parse "reason" response
+
         # if the thought starts with "Thought {step}:", we assume it's in the correct format
         if thought_action.startswith(f"Thought {step}:"):
             thought_action = thought_action[len(f"Thought {step}:"):].strip()
