@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Tuple
 from pydantic import Field, PrivateAttr, model_validator
 from typing import Optional
 import chromadb
+from chromadb.utils.batch_utils import create_batches
 import logging
 
 from kruppe.functional.rag.vectorstore.base_store import BaseVectorStore
@@ -76,14 +77,17 @@ class ChromaVectorStore(BaseVectorStore):
             # add text for each document/chunk
             data["documents"].append(document.text)
 
-        # insert data into chromadb    
-        logger.info("Inserting documents into ChromaDB")   
-        self._collection.upsert(
-            ids=data["ids"],
-            metadatas=data["metadatas"],
-            documents=data["documents"],
-            embeddings=data["embeddings"],
-        )
+        # insert data into chromadb
+        batches = create_batches(api=self.client, ids=data["ids"], metadatas=data["metadatas"], documents=data["documents"], embeddings=data["embeddings"])
+        for batch in batches:
+            self._collection.upsert(
+                ids=batch[0],
+                documents=batch[3],
+                embeddings=batch[1],
+                metadatas=batch[2],
+            )
+        
+        logger.info("Inserted %d documents/chunks into ChromaDB", len(data["documents"]))
 
         return data["ids"]
     

@@ -158,9 +158,7 @@ class MongoDBStore(BaseDocumentStore):
             use_async=True
         )
     
-    @computed_field
-    @property
-    def document_count(self) -> int:
+    def size(self) -> int:
         return self._collection.estimated_document_count()
 
     def _parse_mongo_result(self, result: Dict[str, Any]) -> Document:

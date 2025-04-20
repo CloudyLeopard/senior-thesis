@@ -13,6 +13,9 @@ from kruppe.prompts.hypothesis import (
     CREATE_HYPOTHESIS_USER,
     REACT_HYPOTHESIS_SYSTEM,
     REACT_HYPOTHESIS_USER,
+    REACT_HYPOTHESIS_ACCEPT_END_USER,
+    REACT_HYPOTHESIS_REJECT_END_USER,
+    REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER,
     RANK_REASONS_SYSTEM,
     RANK_REASONS_USER,
 )
@@ -50,7 +53,8 @@ class Node(BaseModel):
             return Status.UNDISCOVERED
 
     def __str__(self):
-        return f"Node({super().__str__()})"
+        return (f"Node(step={self.step}, is_leaf={self.is_leaf},"
+                f" d_time={self.d_time}, f_time={self.f_time})")
 
 
 class HypothesisResearcher(ReActResearcher):
@@ -125,25 +129,43 @@ class HypothesisResearcher(ReActResearcher):
             # final report is in action
             action, answer = action.split("]", 1)
             action = f"{action}]"
-            answer = answer.strip()
 
             results["action"] = action
-            results["answer"] = answer
 
             if "accept" in action.lower():
                 results["accept_hypothesis"] = True
-            elif "reject" in action.lower():
-                results["accept_hypothesis"] = False  # False means reject hypothesis
+
+                # generate final report - accept hypothesis
+                final_report_response = await self.llm.async_generate(
+                    messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_ACCEPT_END_USER}]
+                )
+                final_report = final_report_response.text.strip()
+                results["answer"] = final_report
             else:
-                results["accept_hypothesis"] = False
+                # llm SHOULD respond with a FINISH[reject], but anything else will also get rejected
+                if "reject" not in action.lower():
+                    logger.warning(f"LLM's final action is not technically valid: FINISH[{action}]")
+                
+                results["accept_hypothesis"] = False  # False means reject hypothesis
+
+                #generate final report - reject hypothesis
+                final_report_response = await self.llm.async_generate(
+                    messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_END_USER}]
+                )
+                final_report = final_report_response.text.strip()
+                results["answer"] = final_report
 
         # max depth as a safeguard
         if step > self.max_depth:
             done = True
-            # TODO: ask LLM to summarize current research
-            max_depth_answer = ...
-            results["answer"] = max_depth_answer
             results["accept_hypothesis"] = False
+
+            # general final report - reject hypothesis due to max depth reached
+            final_report_response = await self.llm.async_generate(
+                messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER}]
+            )
+            final_report = final_report_response.text.strip()
+            results["answer"] = final_report
 
         reason_message = {
             "role": "assistant",
@@ -349,11 +371,12 @@ class HypothesisResearcher(ReActResearcher):
             node = stack[-1]  # stack.peek()
 
             if node.status == Status.UNDISCOVERED:
-                print(f"Discovering node: {node}")
 
                 # update discovery time
                 time += 1
                 node.d_time = time
+
+                print(f"Discovering node: {node}")
 
                 if node.is_leaf:
                     self.leaf_nodes.append(node)
@@ -417,15 +440,16 @@ class HypothesisResearcher(ReActResearcher):
                     stack.append(child)
 
             elif node.status == Status.DISCOVERED:
-                print(f"Finishing node: {node}")
 
                 # node is discovered, but not finished yet; remove from stack
                 time += 1
                 node.f_time = time
                 stack.pop()
-            else:
-                print(f"Visiting a finished node: {node}")
 
+                print(f"Finishing node: {node}")
+            else:
                 # node is already finished, pop it from the stack
                 # shouldn't happen here cuz i don't have backward edges, but maybe in the future
                 stack.pop()
+
+                print(f"Visiting a finished node: {node}")

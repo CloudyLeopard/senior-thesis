@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(
     params=[
         NewYorkTimesData(headers_path=".nyt-headers.json"),
-        # FinancialTimesData(headers_path=".ft-headers.json"),
+        FinancialTimesData(headers_path=".ft-headers.json"),
         # NewsAPIData(),
     ],
     ids=lambda data: data.shorthand

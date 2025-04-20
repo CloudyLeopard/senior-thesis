@@ -61,11 +61,11 @@ class BaseLLM(ABC, BaseModel):
     #     pass
 
     @abstractmethod
-    async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
+    async def async_generate(self, messages: List[Dict], **kwargs) -> Response:
         raise NotImplementedError
 
     @abstractmethod
-    def generate(self, messages: List[Dict], max_tokens=2000) -> Response:
+    def generate(self, messages: List[Dict], **kwargs) -> Response:
         raise NotImplementedError
     
     @abstractmethod
@@ -89,11 +89,11 @@ class BaseLLM(ABC, BaseModel):
         raise NotImplementedError
 
     async def batch_async_generate(
-        self, messages_list: List[List[Dict]], max_tokens=2000
+        self, messages_list: List[List[Dict]], **kwargs
     ) -> List[Response]:
         return await asyncio.gather(
             *(
-                self.async_generate(messages=messages, max_tokens=max_tokens)
+                self.async_generate(messages=messages, **kwargs)
                 for messages in messages_list
             )
         )
@@ -111,7 +111,7 @@ class BaseLLM(ABC, BaseModel):
             return 0
 
 class FakeLLM(BaseLLM):
-    def generate(self, messages: List[Dict], max_tokens=2000) -> Response:
+    def generate(self, messages: List[Dict], **kwargs) -> Response:
         """returns openai response based on given messages"""
         content = "This is a fake response."
 
@@ -125,8 +125,8 @@ class FakeLLM(BaseLLM):
         logger.info("\n[assistant] %s", content)
         return Response(text=content)
 
-    async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
-        return self.generate(messages, max_tokens)
+    async def async_generate(self, messages: List[Dict], **kwargs) -> Response:
+        return self.generate(messages, **kwargs)
     
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
@@ -185,11 +185,11 @@ class OpenAILLM(BaseLLM):
     )
 
     @log_io
-    def generate(self, messages: List[Dict], max_tokens=2000, **kwargs) -> Response:
+    def generate(self, messages: List[Dict], **kwargs) -> Response:
         """returns openai response based on given messages"""
 
         completion = self.sync_client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
+            model=self.model, messages=messages, **kwargs
         )
 
         # https://platform.openai.com/docs/api-reference/introduction
@@ -202,7 +202,8 @@ class OpenAILLM(BaseLLM):
 
         # log token usages
         logger.info(
-            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            "%s Total tokens used: %d (%d input tokens, %d output tokens)",
+            completion.id,
             total_tokens,
             completion.usage.prompt_tokens,
             completion.usage.completion_tokens,
@@ -212,23 +213,23 @@ class OpenAILLM(BaseLLM):
         if logger.isEnabledFor(logging.DEBUG):
             # only print out input messages if debug is on
             log_messages = [
-                f"\n[{message['role']}] {message['content']}" for message in messages
+                f"[{message['role']}] {message['content']}" for message in messages
             ]
-            logger.debug("".join(log_messages))
+            logger.debug("%s\n%s", completion.id, "\n".join(log_messages))
 
-        logger.info("\n[assistant] %s", content)
+        logger.info("%s\n[assistant] %s", completion.id, content)
 
         return Response(text=content)
 
     @log_io
     async def async_generate(
-        self, messages: List[Dict], max_tokens=2000, **kwargs
+        self, messages: List[Dict], **kwargs
     ) -> Response:
         """returns openai response based on given messages"""
 
         # TODO: add try/except for openai api key errors
         completion = await self.async_client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
+            model=self.model, messages=messages, **kwargs
         )
 
         # https://platform.openai.com/docs/api-reference/introduction
@@ -241,7 +242,8 @@ class OpenAILLM(BaseLLM):
 
         # log token usages
         logger.info(
-            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            "%s Total tokens used: %d (%d input tokens, %d output tokens)",
+            completion.id,
             total_tokens,
             completion.usage.prompt_tokens,
             completion.usage.completion_tokens,
@@ -251,11 +253,11 @@ class OpenAILLM(BaseLLM):
         if logger.isEnabledFor(logging.DEBUG):
             # only print out input messages if debug is on
             log_messages = [
-                f"\n[{message['role']}] {message['content']}" for message in messages
+                f"[{message['role']}] {message['content']}" for message in messages
             ]
-            logger.debug("".join(log_messages))
+            logger.debug("%s\n%s", completion.id, "".join(log_messages))
 
-        logger.info("\n[assistant] %s", content)
+        logger.info("%s\n[assistant] %s", completion.id, content)
 
         return Response(text=content)
 
@@ -293,7 +295,8 @@ class OpenAILLM(BaseLLM):
 
         # log token usages
         logger.info(
-            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            "%s Total tokens used: %d (%d input tokens, %d output tokens)",
+            completion.id,
             total_tokens,
             completion.usage.prompt_tokens,
             completion.usage.completion_tokens,
@@ -303,9 +306,9 @@ class OpenAILLM(BaseLLM):
         if logger.isEnabledFor(logging.DEBUG):
             # only print out input messages if debug is on
             log_messages = [
-                f"\n[{message['role']}] {message['content']}" for message in messages
+                f"[{message['role']}] {message['content']}" for message in messages
             ]
-            logger.debug("".join(log_messages))
+            logger.debug("%s\n%s", completion.id, "".join(log_messages))
         
         # get tools; if tool_choice = "none", the following var should all remain None
         tool_id = None
@@ -320,8 +323,8 @@ class OpenAILLM(BaseLLM):
             tool_id = tool_call.id
         
         # log tool output
-        logger.info("\n[assistant] %s\n[tool %s] %s (%s)",
-                    content, tool_id, tool_name, tool_args_str)
+        logger.info("%s\n[assistant] %s\n[tool %s] %s (%s)",
+                    completion.id, content, tool_id, tool_name, tool_args_str)
         
         return content, tool_id, tool_name, tool_args_str
 
@@ -337,7 +340,6 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     async def async_generate(
         self,
         messages: List[Dict],
-        max_tokens=2000,
         retries=3,
         backoff_factor=0.3,
         **kwargs,
@@ -345,8 +347,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
 
         body = {
             "messages": messages,
-            "openai_parameters": {"max_tokens": max_tokens},
-            **kwargs,
+            "openai_parameters": kwargs,
         }
 
         # init httpx client if not initialized in the model
@@ -370,7 +371,8 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
 
             # log token usages                        
             logger.info(
-                "Total tokens used: %d (%d input tokens, %d output tokens)",
+                "%s Total tokens used: %d (%d input tokens, %d output tokens)",
+                completion["id"],
                 total_tokens,
                 completion.usage.prompt_tokens,
                 completion.usage.completion_tokens,
@@ -380,11 +382,11 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             if logger.isEnabledFor(logging.DEBUG):
                 # only print out input messages if debug is on
                 log_messages = [
-                    f"\n[{message['role']}] {message['content']}" for message in messages
+                    f"[{message['role']}] {message['content']}" for message in messages
                 ]
-                logger.debug("".join(log_messages))
+                logger.debug("%s\n%s", completion['id'], "".join(log_messages))
 
-            logger.info("\n[assistant] %s", content)
+            logger.info("%s\n[assistant] %s", completion["id"], content)
             
             return Response(text=content)
         except httpx.HTTPStatusError as e:
@@ -398,7 +400,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             if retries > 0:
                 await asyncio.sleep(backoff_factor * 2 ** (3 - retries))
                 return await self.async_generate(
-                    messages, max_tokens, retries - 1, backoff_factor
+                    messages, retries - 1, backoff_factor
                 )
             else:
                 raise e
@@ -411,8 +413,8 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             if self._httpx_client is None:
                 await client.aclose()
 
-    def generate(self, messages, max_tokens=2000):
-        return asyncio.run(self.async_generate(messages, max_tokens))
+    def generate(self, messages, **kwargs):
+        return asyncio.run(self.async_generate(messages, **kwargs))
     
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="required", **kwargs

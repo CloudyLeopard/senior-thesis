@@ -144,12 +144,6 @@ REACT_HYPOTHESIS_SYSTEM = dedent(
     Research Direction N: [Update your research direction based on the new information and your analysis. If you want to keep exploring, it should be a clear and actionable direction that you want to explore next. If you are done, it should be NA.]
     Action N: FINISH[accept] or FINISH[reject]
 
-    // the following is the final output format for FINISH[accept] action
-    [Generate a final report that summarizes your findings, observations, and the final working hypothesis. The final report should follow a cohesive narrative where every piece of information flows logically into the next. It should include all the RELEVANT factual information you have gathered, and how it supports your working hypothesis.]
-    
-    // the following is the final output format for FINISH[reject] action
-    [General a final report that summarizes your findings. Be concise, and limit yourself to 2-3 sentences of feedback. Discuss why you have rejected the hypothesis, what you would have done differently, and what new hypothesis you would have explored if you were to start over.]
-
     """
 )
 
@@ -163,6 +157,23 @@ REACT_HYPOTHESIS_USER = dedent(
     
     Preliminary Research Direction: {direction}
     """
+)
+
+REACT_HYPOTHESIS_ACCEPT_END_USER = dedent(
+    """\
+    Generate a final report that summarizes your findings, observations, and the final accepted hypothesis. First restate your hypothesis. Then, write a final report follows a cohesive narrative where every piece of information flows logically into the next. It should include all the RELEVANT factual information you have gathered, and how it supports your final hypothesis.
+    """
+)
+
+REACT_HYPOTHESIS_REJECT_END_USER = dedent(
+    """\
+    General a final report that summarizes your findings. Be concise, and limit yourself to 3-4 sentences of feedback. Briefly restate your hypothseis, then discuss why you have rejected the hypothesis, factual information that helped you reject the hypothesis, what you would have done differently, and what new hypothesis you would have explored if you were to start over.
+    """
+)
+
+REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER = dedent(
+    """\
+    You have reached the maximum depth of exploration for this hypothesis. Please generate a final report that summarizes your findings. Be concise, and limit yourself to 4-5 sentences of feedback. Discuss your current working hypothesis, your findings, RELEVANT factual information, and the key takeaways from your exploration."""
 )
 
 RANK_REASONS_SYSTEM = dedent(

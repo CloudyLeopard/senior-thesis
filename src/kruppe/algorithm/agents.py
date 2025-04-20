@@ -229,11 +229,14 @@ class ReActResearcher(Researcher):
             the observation string, and a list of documents (sources) returned by the tool.
         """
 
+
         text, tool_id, tool_name, tool_args_str = await self.llm.async_generate_with_tools(
             messages,
             tools=self._tools_schemas,
             tool_choice="required" # text will be empty because of this
         )
+
+        print(f"Tool call: {tool_name} ({tool_args_str})")
 
         tool_args = json.loads(tool_args_str)
 

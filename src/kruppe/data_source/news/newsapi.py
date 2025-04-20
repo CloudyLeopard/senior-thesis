@@ -27,7 +27,7 @@ class NewsAPIData(NewsSource):
         self, articles: list, client: httpx.AsyncClient, query: str = None
     ) -> AsyncGenerator[Document, None]:
         """Internal method to parse the response from NewsAPI and yield Document objects."""
-        logger.debug("Fetched %d documents from NewsAPI API", len(articles))
+        logger.info("Fetched %d documents from NewsAPI API... Attempting to scrape.", len(articles))
     
         # scrape list of links
         logger.debug("Scraping documents from links")
@@ -66,6 +66,7 @@ class NewsAPIData(NewsSource):
         params["language"] = "en"
         params["sortBy"] = {"date": "publishedAt", "relevance": "relevancy", "popularity": "popularity"}[sort] # valid options are: relevancy, popularity, publishedAt.
         params["page"] = 1 # TODO: modify this code so that we can do multiple pages
+
         params["pageSize"] = min(max_results, 100)
 
         async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
@@ -103,8 +104,8 @@ class NewsAPIData(NewsSource):
     ) -> AsyncGenerator[Document, None]:
         params = {"apiKey": self.apiKey}
         params["country"] = "us"
-        params["page"] = 1 # TODO: modify this code so that we can do multiple pages
-        params["pageSize"] = min(max_results, 100)
+        params["page"] = 1 # newsapi developer account can only do 100 results per request (no page > 1)
+        params["pageSize"] = 100 # newsapi developer account has a limit of 100 results per request
 
         categories = ["business", "technology"]
 
@@ -136,6 +137,7 @@ class NewsAPIData(NewsSource):
             
             articles.sort(key = lambda x: x.get("publishedAt", ""), reverse=True)
             articles = articles[:max_results]
+
             generator = self._parse_newsapi_response(articles, client)
             async for doc in generator:
                 yield doc

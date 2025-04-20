@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 import os
 from pydantic import Field
-import time
+import asyncio
 
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.data_source.scraper import WebScraper, RequestSourceException, load_headers
@@ -12,6 +12,11 @@ from kruppe.models import Document
 from kruppe.common.log import log_io
 
 logger = logging.getLogger(__name__)
+
+async def nyt_sleep():
+    # Sleep for 13 seconds to avoid hitting the rate limit
+    logger.info("NYT sleeping for 13 seconds to avoid hitting the rate limit")
+    await asyncio.sleep(13)
 
 class NewYorkTimesData(NewsSource):
     headers_path: str
@@ -22,7 +27,8 @@ class NewYorkTimesData(NewsSource):
     shorthand: str= "nyt"
 
     async def _nyt_scraper_helper(self, article_metadata: List[Dict[str, str]], query: str = None) -> AsyncGenerator[Document, None]:
-        logger.info("Scraping %s NYT article links", len(article_metadata))
+        logger.info("Fetched %d documents from New York Times API... Attempting to scrape.", len(article_metadata))
+
         urls = [article.get("web_url") or article.get("url") for article in article_metadata]
         meta_dict = {url: article for url, article in zip(urls, article_metadata)}
 
@@ -95,7 +101,7 @@ class NewYorkTimesData(NewsSource):
                     logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))
                     retries -= 1
                     if retries > 0:
-                        time.sleep(13)
+                        await nyt_sleep()
                         continue
                     
                     logger.warning("Failed to fetch more articles from New York Times, returning what we have")
@@ -109,7 +115,7 @@ class NewYorkTimesData(NewsSource):
                 article_metadata.extend(data["response"]["docs"])
 
                 # Sleep to avoid hitting the rate limit
-                time.sleep(13)
+                await nyt_sleep()
         
         if len(article_metadata) == 0:
             logger.warning("No articles found from New York Times for query: %s", query)
@@ -135,7 +141,7 @@ class NewYorkTimesData(NewsSource):
         retries = 3
         article_metadata = []
         async with httpx.AsyncClient() as client:
-            logger.info("Fetching links from newsfeed")
+            logger.debug("Fetching links from newsfeed")
             for section in sections:
                 url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={max_results}"
                 try:
@@ -159,7 +165,7 @@ class NewYorkTimesData(NewsSource):
                     logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))
                     retries -= 1
                     if retries > 0:
-                        time.sleep(13)
+                        await nyt_sleep()
                         continue
                     
                     logger.warning("Failed to fetch more articles from New York Times, returning what we have")
@@ -170,7 +176,7 @@ class NewYorkTimesData(NewsSource):
                 
 
                 # Sleep to avoid hitting the rate limit
-                time.sleep(13)
+                await nyt_sleep()
         
         if len(article_metadata) == 0:
             logger.warning("No recent articles found from New York Times")
@@ -242,7 +248,7 @@ class NewYorkTimesData(NewsSource):
 
                     except httpx.RequestError as e:
                         logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", retry, 3, repr(e))
-                        time.sleep(13)
+                        await nyt_sleep()
                         
                         continue # try again
                 
@@ -255,7 +261,7 @@ class NewYorkTimesData(NewsSource):
                 if len(article_metadata) >= max_results:
                     break
 
-                time.sleep(13)
+                await nyt_sleep()
         
         if len(article_metadata) == 0:
             logger.warning("No articles found from New York Times for the specified date range")

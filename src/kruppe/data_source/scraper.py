@@ -175,7 +175,7 @@ class WebScraper:
             driver.get(url)
             time.sleep(2)  # Give the page time to load
             page_content = driver.page_source
-            logger.info("[Selenium] Successfully scraped %s", url)
+            logger.debug("[Selenium] Successfully scraped %s", url)
 
             return page_content
         except Exception:
@@ -200,7 +200,7 @@ class WebScraper:
             return None
 
         html = r.text
-        logger.info("[httpx] Successfully scraped %s", url)
+        logger.debug("[httpx] Successfully scraped %s", url)
         return html
 
 
@@ -234,7 +234,6 @@ class WebScraper:
             if driver:
                 html = self._scrape_with_selenium(driver, url, **kwargs)
             else:
-                logger.warning("No Selenium driver available for %s", url)
                 return None
         finally:
             # close async client
@@ -263,7 +262,7 @@ class WebScraper:
         self,
         links: List[str],
         headers: Dict[str, str] = None,
-        selenium_fallback: bool = True,
+        selenium_fallback: bool = False, # turn this one on if you want to use selenium, but will be slow
         progress_bar: bool = False,
     ) -> AsyncGenerator[Dict[str, str], None]:
         """Scrape multiple links and returns a list of dicts (scraped info). Returns None if neither method works.
@@ -273,10 +272,12 @@ class WebScraper:
             Additional arguments to pass to the html_parser function
         """
 
-        logger.info("Async scraping %d links", len(links))
-
-        logger.debug("Creating Selenium driver in async_scrape_links")
+        logger.debug("Async scraping %d links", len(links))
+        
+        if selenium_fallback:
+            logger.debug("Creating Selenium driver in async_scrape_links")
         driver = self._create_selenium_driver() if selenium_fallback else None
+        
         if self.async_client is None:
             logger.debug("Initializing new async httpx client in async_scrape_links")
             client = httpx.AsyncClient(headers=headers, limits=HTTPX_CONNECTION_LIMITS)

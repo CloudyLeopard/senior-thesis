@@ -146,9 +146,6 @@ class FinancialTimesData(NewsSource):
 
             await asyncio.gather(*map(send_requests_for_links, search_requests))
 
-            logger.info(
-                "Fetched %d links from Financial Times on query %s", len(links), query
-            )
             # FT articles has two types: regular articles that can be
             # scraped with default parser, and blogs where we just want to
             # extract the relevant blog portion
@@ -228,7 +225,7 @@ class FinancialTimesData(NewsSource):
         try:
             # scraping links of news feed
             while not end:
-                logger.info("Current page: %d", pages)
+                logger.debug("Fetching news feed page: %d", pages)
                 params = {
                     "page": pages,
                 }
@@ -262,7 +259,9 @@ class FinancialTimesData(NewsSource):
 
                         # limit to max_results
                         if len(links) >= max_results:
-                            break;
+                            end = True
+                            break
+
                 except httpx.HTTPStatusError as e:
                     logger.error(
                         "Financial Times HTTP Status Error %d: %s",
@@ -281,8 +280,6 @@ class FinancialTimesData(NewsSource):
             # this shouldn't be necessary
             if max_results:
                 links = links[:max_results]
-
-            logger.info("Fetched %d links from Financial Times news feed", len(links))
 
             async for document in self._async_scrape_links(links=links, client=client):
                 yield document
@@ -307,10 +304,10 @@ class FinancialTimesData(NewsSource):
         logger.debug("Initialize Async WebScraper")
         scraper = WebScraper(async_client=client)
 
-        logger.debug("Async scraping %d Financial Times articles", len(links))
+        logger.info("Fetched %d links from Financial Times... Attempting to scrape.", len(links))
         async for data in scraper.async_scrape_links(links):
             if data is None:
-                # if both selenium scrape and httpx scrape fails, article will return None
+                # if scrape fails, article will return None
                 # in this case, we can't parse the metadata, so we skip
                 continue
             metadata = self.parse_metadata(query=query, **data["meta"])
