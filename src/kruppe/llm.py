@@ -32,7 +32,7 @@ logger.setLevel(logging.WARNING)
 
 class BaseNYUModel(BaseModel):
     # TODO: deal with (read) timeout error
-    api_key: str = Field(default_factory=lambda: os.getenv("NYU_API_KEY"))
+    api_key: str = Field(default_factory=lambda: os.getenv("NYU_API_KEY"), exclude=True)
     project_id: str = Field(default_factory=lambda: os.getenv("NYU_PROJECT_ID"))
     net_id: str = Field(default_factory=lambda: os.getenv("NYU_NET_ID"))
     _httpx_client: httpx.AsyncClient = PrivateAttr(default=None)
@@ -110,6 +110,59 @@ class BaseLLM(ABC, BaseModel):
         else:
             return 0
 
+class FakeLLM(BaseLLM):
+    def generate(self, messages: List[Dict], max_tokens=2000) -> Response:
+        """returns openai response based on given messages"""
+        content = "This is a fake response."
+
+        if logger.isEnabledFor(logging.DEBUG):
+            # only print out input messages if debug is on
+            log_messages = [
+                f"\n[{message['role']}] {message['content']}" for message in messages
+            ]
+            logger.debug("".join(log_messages))
+
+        logger.info("\n[assistant] %s", content)
+        return Response(text=content)
+
+    async def async_generate(self, messages: List[Dict], max_tokens=2000) -> Response:
+        return self.generate(messages, max_tokens)
+    
+    async def async_generate_with_tools(
+        self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
+    ) -> Tuple[str, str, str, str]: 
+        
+        import random
+        import json
+        
+        chosen_tool = random.choice(tools)
+        name = chosen_tool["function"]["name"]
+        arguments = chosen_tool["function"]["parameters"]["properties"].keys()
+        arguments = {arg: str(random.randint(1, 100)) for arg in arguments}
+
+        content = None if tool_choice == "required" else "Fake response from tool call"
+        
+        if tool_choice == "none":
+            tool_id = None
+            tool_name = None
+            tool_args_str = None
+        else:
+            tool_id = "call_123fake"
+            tool_name = name
+            tool_args_str = json.dumps(arguments)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            # only print out input messages if debug is on
+            log_messages = [
+                f"\n[{message['role']}] {message['content']}" for message in messages
+            ]
+            logger.debug("".join(log_messages))
+
+        logger.info("\n[assistant] %s\n[tool %s] %s (%s)",
+                    content, tool_id, tool_name, tool_args_str)
+
+        return content, tool_id, tool_name, tool_args_str
+
 
 class OpenAILLM(BaseLLM):
     model: Literal[
@@ -123,7 +176,7 @@ class OpenAILLM(BaseLLM):
         "o3",
         "o4-mini"
     ] = "gpt-4.1-mini"
-    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
+    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"), exclude=True)
     sync_client: OpenAI = Field(
         default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     )
@@ -139,15 +192,16 @@ class OpenAILLM(BaseLLM):
             model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
 
-        # TODO: add logger to track openai response, token usage here
         # https://platform.openai.com/docs/api-reference/introduction
         total_tokens = completion.usage.total_tokens
         self._session_token_usage += total_tokens
         self._input_token_usage += completion.usage.prompt_tokens
         self._output_token_usage += completion.usage.completion_tokens
 
+        content = completion.choices[0].message.content
+
         # log token usages
-        logger.debug(
+        logger.info(
             "Total tokens used: %d (%d input tokens, %d output tokens)",
             total_tokens,
             completion.usage.prompt_tokens,
@@ -155,14 +209,16 @@ class OpenAILLM(BaseLLM):
         )
 
         # log llm output
-        if logger.isEnabledFor(logging.INFO):
+        if logger.isEnabledFor(logging.DEBUG):
+            # only print out input messages if debug is on
             log_messages = [
-                f"[{message['role']}] {message['content']}" for message in messages
+                f"\n[{message['role']}] {message['content']}" for message in messages
             ]
-            log_messages.append(f"[assistant] {completion.choices[0].message.content}")
-            logger.info("\n".join(log_messages))
+            logger.debug("".join(log_messages))
 
-        return Response(text=completion.choices[0].message.content)
+        logger.info("\n[assistant] %s", content)
+
+        return Response(text=content)
 
     @log_io
     async def async_generate(
@@ -175,15 +231,33 @@ class OpenAILLM(BaseLLM):
             model=self.model, messages=messages, max_tokens=max_tokens, **kwargs
         )
 
-        # log llm output
-        if logger.isEnabledFor(logging.INFO):
-            log_messages = [
-                f"[{message['role']}] {message['content']}" for message in messages
-            ]
-            log_messages.append(f"[assistant] {completion.choices[0].message.content}")
-            logger.info("\n".join(log_messages))
+        # https://platform.openai.com/docs/api-reference/introduction
+        total_tokens = completion.usage.total_tokens
+        self._session_token_usage += total_tokens
+        self._input_token_usage += completion.usage.prompt_tokens
+        self._output_token_usage += completion.usage.completion_tokens
 
-        return Response(text=completion.choices[0].message.content)
+        content = completion.choices[0].message.content
+
+        # log token usages
+        logger.info(
+            "Total tokens used: %d (%d input tokens, %d output tokens)",
+            total_tokens,
+            completion.usage.prompt_tokens,
+            completion.usage.completion_tokens,
+        )
+
+        # log llm output
+        if logger.isEnabledFor(logging.DEBUG):
+            # only print out input messages if debug is on
+            log_messages = [
+                f"\n[{message['role']}] {message['content']}" for message in messages
+            ]
+            logger.debug("".join(log_messages))
+
+        logger.info("\n[assistant] %s", content)
+
+        return Response(text=content)
 
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
@@ -207,23 +281,33 @@ class OpenAILLM(BaseLLM):
             **kwargs
         )
         
-        self._session_token_usage += completion.usage.total_tokens
+        total_tokens = completion.usage.total_tokens
+        self._session_token_usage += total_tokens
         self._input_token_usage += completion.usage.prompt_tokens
         self._output_token_usage += completion.usage.completion_tokens
 
+        # NOTE: if `tool_choice` is set to 'required', i do not think gpt returns a text output.
+        # NOTE: or, if instruction does not require GPT to think out loud, it may also not return a text output.
+
+        content = completion.choices[0].message.content # so this could be null
+
         # log token usages
-        logger.debug(
+        logger.info(
             "Total tokens used: %d (%d input tokens, %d output tokens)",
-            completion.usage.total_tokens,
+            total_tokens,
             completion.usage.prompt_tokens,
             completion.usage.completion_tokens,
         )
-        logger.debug(completion)
 
-        # NOTE: if `tool_choice` is set to 'required', i do not think gpt returns a text output.
-        # NOTE: or, if instruction does not require GPT to think out loud, it may also not return a text output.
-        text = completion.choices[0].message.content # so this could be null
+        # log llm output
+        if logger.isEnabledFor(logging.DEBUG):
+            # only print out input messages if debug is on
+            log_messages = [
+                f"\n[{message['role']}] {message['content']}" for message in messages
+            ]
+            logger.debug("".join(log_messages))
         
+        # get tools; if tool_choice = "none", the following var should all remain None
         tool_id = None
         tool_name = None
         tool_args_str = None
@@ -235,7 +319,11 @@ class OpenAILLM(BaseLLM):
             tool_args_str = tool_call.function.arguments
             tool_id = tool_call.id
         
-        return text, tool_id, tool_name, tool_args_str
+        # log tool output
+        logger.info("\n[assistant] %s\n[tool %s] %s (%s)",
+                    content, tool_id, tool_name, tool_args_str)
+        
+        return content, tool_id, tool_name, tool_args_str
 
 
 class NYUOpenAILLM(BaseLLM, BaseNYUModel):
@@ -244,6 +332,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
         default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT")
     )
 
+    # TODO: rewrite this with stamina retry
     @log_io
     async def async_generate(
         self,
@@ -279,24 +368,24 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             self._input_token_usage += completion["usage"]["prompt_tokens"]
             self._output_token_usage += completion["usage"]["completion_tokens"]
 
-            # log token usages
-            logger.debug(
+            # log token usages                        
+            logger.info(
                 "Total tokens used: %d (%d input tokens, %d output tokens)",
                 total_tokens,
-                completion["usage"]["prompt_token"],
-                completion["usage"]["completion_token"],
+                completion.usage.prompt_tokens,
+                completion.usage.completion_tokens,
             )
 
             # log llm output
-            if logger.isEnabledFor(logging.INFO):
+            if logger.isEnabledFor(logging.DEBUG):
+                # only print out input messages if debug is on
                 log_messages = [
-                    f"[{message['role']}] {message['content']}" for message in messages
+                    f"\n[{message['role']}] {message['content']}" for message in messages
                 ]
-                log_messages.append(
-                    f"[assistant] {completion['choices'][0]['message']['content']}"
-                )
-                logger.info("\n".join(log_messages))
+                logger.debug("".join(log_messages))
 
+            logger.info("\n[assistant] %s", content)
+            
             return Response(text=content)
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error: {response}")
@@ -356,7 +445,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
     model: Literal["text-embedding-3-small", "text-embedding-3-large"] = (
         "text-embedding-3-small"
     )
-    api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"))
+    api_key: str = Field(default_factory=lambda x: os.getenv("OPENAI_API_KEY"), exclude=True)
     sync_client: OpenAI = None
     async_client: AsyncOpenAI = None
 

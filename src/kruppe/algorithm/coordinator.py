@@ -1,16 +1,13 @@
 import re
 from pydantic import BaseModel, computed_field, PrivateAttr, model_validator
-from typing import List, Dict, Any
+from typing import Callable, List, Dict, Any
 import logging
 from tqdm import tqdm
 
-from kruppe.algorithm.agents import Researcher, Lead
+from kruppe.algorithm.agents import Researcher
 from kruppe.algorithm.hypothesis import HypothesisResearcher
-from kruppe.algorithm.background import BackgroundResearcher
 from kruppe.algorithm.librarian import Librarian
 from kruppe.prompts.coordinator import (
-    CREATE_LEAD_SYSTEM,
-    CREATE_LEAD_USER,
     BACKGROUND_QUERY_LIBRARIAN,
     DOMAIN_EXPERTS_SYSTEM,
     DOMAIN_EXPERTS_USER,
@@ -43,11 +40,10 @@ class Coordinator(Researcher):
         prompt = BACKGROUND_QUERY_LIBRARIAN.format(query=query)
         librarian_response = await self.librarian.execute(prompt)
 
-        self._background_report = librarian_response
 
         return librarian_response
     
-    async def generate_domain_experts(self, query: str, n_experts: int = 5) -> Dict[str, str]:
+    async def generate_domain_experts(self, query: str) -> Dict[str, str]:
         """Generate a list of domain experts based on the research question.
 
         Args:
@@ -94,11 +90,29 @@ class Coordinator(Researcher):
                 experts[curr_title] = curr_desc
                 curr_title = None
                 curr_desc = None
+        return experts
+    
+    async def filter_domain_experts(self, query: str, experts: Dict[str, str], n_experts: int = 5) -> Dict[str, str]:
+
+        if len(experts) == 0:
+            logger.warning("No domain experts found.")
+            return {}
+
+
+        if len(experts) <= n_experts:
+            logger.debug("No need to filter domain experts.")
+            return experts
+
 
         # SELECT THE BEST DOMAIN EXPERTS
+        expert_choices = "\n".join(f"{title}: {desc}" for title, desc in experts.items())
         messages = [
             {"role": "system", "content": CHOOSE_EXPERTS_SYSTEM},
-            {"role": "user", "content": CHOOSE_EXPERTS_USER.format(query=query, n=n_experts)}
+            {"role": "user", "content": CHOOSE_EXPERTS_USER.format(
+                query=query,
+                n=n_experts,
+                experts=expert_choices
+            )}
         ]
         choose_response = await self.llm.async_generate(messages)
         choose_str = choose_response.text
@@ -111,130 +125,58 @@ class Coordinator(Researcher):
         logger.debug(f"Selected {len(selected_experts)} domain experts for query '{query}'")
         return selected_experts
         
-    async def initialize_research_forest(self, query: str, experts: Dict[str, str]):
+    def initialize_research_forest(
+        self, 
+        experts: Dict[str, str],
+        toolkit: List[Callable]
+    ) -> List[HypothesisResearcher]:
         # TODO: generate initial lead or hypothesis based on expert and background report
-        ...
         
-
-        
-
-    async def execute(self, query: str) -> Response:
-
-
-
-
-
-    @model_validator(mode='after')
-    def check_background_report(self):
-        if self.background_report is None and self.bkg_researcher is None:
-            raise ValueError("Either a background report or a background researcher must be provided.")
-        
-        if self.bkg_researcher is not None:
-            self.background_report = self.bkg_researcher.latest_report # could be None still, if bkg_researcher did not run anything yet
-        return self
-
-    async def execute_old(self) -> List[Dict[str, Any]]:
-
-        if self.background_report is None:
-            print("Executing background researcher...")
-            bkg_report = await self.bkg_researcher.execute()
-            self.background_report = bkg_report
-        
-        print("Creating leads...")
-
-        # Create leads
-        leads = await self.create_leads(self.research_question, self.background_report)
-        self._research_queue.extend(leads)
-
-        print(f"Created {len(leads)} leads")
-
-        # Create hypothesis researchers
-        print("Creating hypothesis researchers...")
-
-        for lead in tqdm(self._research_queue, desc="hypothesis researchers"):
+        hyp_researchers = []
+        for expert_name, expert_desc in experts.items():
             hyp_researcher = HypothesisResearcher(
-                new_lead=lead,
-                research_question=self.research_question,
-                **self.hyp_researcher_config
+                llm=self.llm,
+                toolkit=toolkit,
+                role=expert_name,
+                role_description=expert_desc,
             )
-            self._hyp_researchers.append(hyp_researcher)
-
-        print("Executing hypothesis researchers...")
+            hyp_researchers.append(hyp_researcher)
         
-        # Execute hypothesis researchers
-        i = 1
-        for hyp_researcher in self._hyp_researchers:
-            await hyp_researcher.execute()
-            print("Finished executing hypothesis researcher", i)
-            i += 1
+        return hyp_researchers
 
-        # return final reports
-        print("Compiling reports...")
-        results = []
-        for i in range(len(self._hyp_researchers)):
-            hyp_researcher = self._hyp_researchers[i]
-            if hyp_researcher.report_ready:
-                results.append({
-                    "original_lead": self._research_queue[i],
-                    "report": hyp_researcher.latest_report,
-                    "hypothesis": hyp_researcher.latest_hypothesis
-                })
-        
-        return results
-
-    @log_io
-    async def create_leads(self) -> List[Lead]:
-        """
-        Given a research question and a preliminary background report, generate research leads.
+    async def execute(self, query: str, n_experts: int = 5) -> Response:
+        """Execute the coordinator's research process.
 
         Args:
-            query (str): research question
-            report (str | Response): preliminary background report
+            query (str): The research question.
 
         Returns:
-            List[Lead]: list of research leads
+            Response: The final response containing the research results.
         """
-
-        if self.background_report is None:
-            raise ValueError("A background report must be provided to generate leads.")
-
-        # Convert Response object to text
-        report_text = self.background_report
-        if isinstance(report_text, Response):
-            report_text = report_text.text
         
-        user_message = CREATE_LEAD_USER.format(
-            query=self.research_question,
-            report=report_text,
-            n=self.num_leads
-        )
+        # Generate background report
+        background_report = await self.generate_background(query)
+        self._background_report = background_report
+        logger.debug("Background report generated.")
 
-        messages = [
-            {"role": "system", "content": CREATE_LEAD_SYSTEM},
-            {"role": "user", "content": user_message},
-        ]
+        # Generate domain experts
+        experts = await self.generate_domain_experts(query)
+        filtered_experts = await self.filter_domain_experts(query, experts, n_experts)
+        logger.debug(f"Domain experts generated: {len(filtered_experts)} experts found from {len(experts)} generated.")
 
-        llm_response = await self.llm.async_generate(messages)
-        llm_string = llm_response.text
+        # Initialize hypothesis researchers
+        toolkit = self.librarian.toolkit # using librarian's toolkit for hypothesis researchers
+        hyp_researchers = await self.initialize_research_forest(filtered_experts, toolkit)
 
-        # -- REGEX TO PARSE LEADS --
-        # This regex pattern captures three groups corresponding to observation, lead, and working hypothesis.
-        # It looks for the pattern "Observation <number>:", "Research Lead <number>:", and "Working Hypothesis <number>:".
-        pattern = (
-            r"\*{0,2}Observation \d+:\*{0,2}\s*(.*?)\s*[\r\n]+"
-            r"\*{0,2}Research Lead \d+:\*{0,2}\s*(.*?)\s*[\r\n]+"
-            r"\*{0,2}Working Hypothesis \d+:\*{0,2}\s*(.*?)(?:\s*[\r\n]+|$)"
-        )
+        # Execute hypothesis researchers
+        # TODO: parallelize this, but max like 2 at a time.
+        for hyp_researcher in hyp_researchers:
+            await hyp_researcher.execute(
+                query=query,
+                background=background_report.text,
+            )
+
+        # Compile final report
+        final_report = Response(text="Research completed successfully.")
         
-        # re.DOTALL ensures that the dot (.) matches newlines as well.
-        matches = re.findall(pattern, llm_string, re.DOTALL)
-        leads = []
-        
-        for obs, lead, hypothesis in matches:
-            leads.append(Lead(
-                observation=obs.strip(),
-                lead=lead.strip(),
-                hypothesis=hypothesis.strip()
-            ))
-
-        return leads
+        return final_report

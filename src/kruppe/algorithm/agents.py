@@ -156,9 +156,16 @@ class ReActResearcher(Researcher):
         done = False
 
         # check if the action is a termination command
-        if action.lower().startswith("finish[") and action.endswith("]"):
+        if action.lower().startswith("finish["):
             done = True
-            results["answer"] = action[len("finish["):-1].strip()
+
+            # final report is in action
+            action, answer = action.split("]", 1)
+            action = f"{action}]"
+            answer = answer.strip()
+            
+            results['action'] = action
+            results['answer'] = answer
 
         return [reason_message], results, done
     
@@ -166,7 +173,7 @@ class ReActResearcher(Researcher):
             self,
             messages: List[Dict[str, str]],
             step: int
-        ) -> Tuple[List[Dict], Dict[str, Any], bool]:
+        ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], bool]:
         """Generates the reasoning and action for the given step.
         This method uses the LLM to generate the reasoning and action based on the current messages.
         It initializes the messages for the first step, and uses the existing messages for subsequent steps.
@@ -193,10 +200,20 @@ class ReActResearcher(Researcher):
         reason_response = reason_response.text
 
         # parse "reason" response
-        reason_messages, reason_results = await self._parse_reason(reason_response, step)
+        reason_messages, reason_results, done = await self._parse_reason(
+            messages=messages,
+            reason_response=reason_response,
+            step=step
+        )
 
+        # assert to check parsed output is in right format
+        # this is because _parse_reason may be overridden
+        assert isinstance(reason_messages, list), "Reasoning messages should be a list."
+        assert all(isinstance(msg, dict) for msg in reason_messages), "Each message should be a dictionary."
+        assert isinstance(reason_results, dict), "Reasoning results should be a dictionary."
+        assert isinstance(done, bool), "Done should be a boolean."
 
-        return reason_messages, reason_results
+        return reason_messages, reason_results, done
         
     
     async def act(self, messages: List[Dict[str, str]], step: int) -> Tuple[List[Dict], Dict[str, Any]]:
@@ -211,7 +228,6 @@ class ReActResearcher(Researcher):
             Tuple[List[Dict], str, List[Document]]: messages containing the tool call and observation,
             the observation string, and a list of documents (sources) returned by the tool.
         """
-        messages = self._messages
 
         text, tool_id, tool_name, tool_args_str = await self.llm.async_generate_with_tools(
             messages,
@@ -222,7 +238,6 @@ class ReActResearcher(Researcher):
         tool_args = json.loads(tool_args_str)
 
         obs, sources = await self.call_tool(tool_name, tool_args)
-        obs = f"Observation {step}: {obs}\n"
 
         # message that describes what tool was called
         tool_call_message = {
@@ -242,7 +257,7 @@ class ReActResearcher(Researcher):
         tool_obs_message = {
             "role": "tool",
             "tool_call_id": tool_id,
-            "content": obs
+            "content": f"Observation {step}: {obs}\n\n"
         }
 
         act_results = {
