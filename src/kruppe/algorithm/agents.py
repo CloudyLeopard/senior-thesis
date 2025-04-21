@@ -24,6 +24,7 @@ class ReActResearcher(Researcher):
     llm: BaseLLM
     toolkit: List[Callable]
     max_steps: int = 20
+    verbose: bool = True
     _messages: List[Dict[str, str]] = PrivateAttr(default_factory=list)
 
     @field_validator('toolkit', mode='after')
@@ -117,8 +118,53 @@ class ReActResearcher(Researcher):
 
 
         return str(result), docs
+    
+    async def reason(
+            self,
+            messages: List[Dict[str, str]],
+            step: int
+        ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], bool]:
+        """Generates the reasoning and action for the given step.
+        This method uses the LLM to generate the reasoning and action based on the current messages.
+        It initializes the messages for the first step, and uses the existing messages for subsequent steps.
+        It expects the LLM to return a thought and action in the format:
 
+        Thought {step}: [your thought process]\\
+        Action {step}: [action to take]
 
+        If it fails to extract the thought and action, it will generate a new action based on the thought.
+
+        Args:
+            step (int): the current step in the reasoning process, starting from 1.
+
+        Returns:
+            Tuple[List[Dict], str]: messages containing the reasoning and action, 
+            and the action string.
+        """
+
+        reason_response = await self.llm.async_generate(
+            messages,
+            tools=self._tools_schemas,
+            tool_choice="none", # does not use tool, but gives model the tools' schema
+            stop=[f'\nObservation {step}'])
+        reason_response = reason_response.text
+
+        # parse "reason" response
+        reason_messages, reason_results, done = await self._parse_reason(
+            messages=messages,
+            reason_response=reason_response,
+            step=step
+        )
+
+        # assert to check parsed output is in right format
+        # this is because _parse_reason may be overridden
+        assert isinstance(reason_messages, list), "Reasoning messages should be a list."
+        assert all(isinstance(msg, dict) for msg in reason_messages), "Each message should be a dictionary."
+        assert isinstance(reason_results, dict), "Reasoning results should be a dictionary."
+        assert isinstance(done, bool), "Done should be a boolean."
+
+        return reason_messages, reason_results, done
+    
     async def _parse_reason (
             self,
             messages: List[Dict[str, str]],
@@ -168,52 +214,6 @@ class ReActResearcher(Researcher):
             results['answer'] = answer
 
         return [reason_message], results, done
-    
-    async def reason(
-            self,
-            messages: List[Dict[str, str]],
-            step: int
-        ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], bool]:
-        """Generates the reasoning and action for the given step.
-        This method uses the LLM to generate the reasoning and action based on the current messages.
-        It initializes the messages for the first step, and uses the existing messages for subsequent steps.
-        It expects the LLM to return a thought and action in the format:
-
-        Thought {step}: [your thought process]\\
-        Action {step}: [action to take]
-
-        If it fails to extract the thought and action, it will generate a new action based on the thought.
-
-        Args:
-            step (int): the current step in the reasoning process, starting from 1.
-
-        Returns:
-            Tuple[List[Dict], str]: messages containing the reasoning and action, 
-            and the action string.
-        """
-
-        reason_response = await self.llm.async_generate(
-            messages,
-            tools=self._tools_schemas,
-            tool_choice="none", # does not use tool, but gives model the tools' schema
-            stop=[f'\nObservation {step}'])
-        reason_response = reason_response.text
-
-        # parse "reason" response
-        reason_messages, reason_results, done = await self._parse_reason(
-            messages=messages,
-            reason_response=reason_response,
-            step=step
-        )
-
-        # assert to check parsed output is in right format
-        # this is because _parse_reason may be overridden
-        assert isinstance(reason_messages, list), "Reasoning messages should be a list."
-        assert all(isinstance(msg, dict) for msg in reason_messages), "Each message should be a dictionary."
-        assert isinstance(reason_results, dict), "Reasoning results should be a dictionary."
-        assert isinstance(done, bool), "Done should be a boolean."
-
-        return reason_messages, reason_results, done
         
     
     async def act(self, messages: List[Dict[str, str]], step: int) -> Tuple[List[Dict], Dict[str, Any]]:
@@ -236,7 +236,8 @@ class ReActResearcher(Researcher):
             tool_choice="required" # text will be empty because of this
         )
 
-        print(f"Tool call: {tool_name} ({tool_args_str})")
+        if self.verbose:
+            print(f"Tool call: {tool_name} ({tool_args_str})")
 
         tool_args = json.loads(tool_args_str)
 
@@ -272,9 +273,21 @@ class ReActResearcher(Researcher):
             "sources": sources
         }
 
-        return [tool_call_message, tool_obs_message], act_results
+        # override this method to do something with the act results
+        new_act_results = await self._post_act(act_results)
 
-    async def execute(self, query: str, to_print=True) -> Response:
+        assert isinstance(new_act_results, dict), "Act results should be a dictionary."
+        assert isinstance(new_act_results['sources'], list), "Act results should contain a list of sources."
+
+        return [tool_call_message, tool_obs_message], new_act_results
+
+    async def _post_act(self, act_results: Dict[str, Any]) -> None:
+        """Override this method to do something with the act results.
+        For example, you can save the documents to the index or do something else with them."""
+        
+        return act_results
+
+    async def execute(self, query: str) -> Response:
         """Executes the research task using the ReAct framework."""
         all_sources = []
         ans = None
@@ -287,12 +300,14 @@ class ReActResearcher(Researcher):
         ]
 
         for i in range(1, self.max_steps + 1):
+            
+            # print the current step
+            if self.verbose:
+                print(f"Thinking (step {i})")
+
             # reason step
             reason_messages, reason_results, done = await self.reason(self._messages, i)
             self._messages.extend(reason_messages)
-
-            if to_print:
-                print(reason_messages[0]['content'], end='')
 
             if done:
                 ans = reason_results['answer']
@@ -305,10 +320,6 @@ class ReActResearcher(Researcher):
             tool_call_messages, act_results = await self.act(self._messages, i)
             self._messages.extend(tool_call_messages)
             all_sources.extend(act_results['sources'])
-
-            if to_print:
-                print(f"{act_results['tool_name']}({act_results['tool_args_str']})")
-                print(tool_call_messages[-1]['content'], end='')
         
         if not done:
             logger.warning("Reached max steps without finishing the research task.")

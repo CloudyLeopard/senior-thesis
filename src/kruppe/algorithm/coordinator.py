@@ -166,7 +166,7 @@ class Coordinator(Researcher):
 
         # Initialize hypothesis researchers
         toolkit = self.librarian.toolkit # using librarian's toolkit for hypothesis researchers
-        hyp_researchers = await self.initialize_research_forest(filtered_experts, toolkit)
+        hyp_researchers = self.initialize_research_forest(filtered_experts, toolkit)
 
         # Execute hypothesis researchers
         # TODO: parallelize this, but max like 2 at a time.
@@ -176,7 +176,7 @@ class Coordinator(Researcher):
                 background=background_report.text,
             )
 
-        # Compile final report
+        # TODO: group reports by the content of the report/narrative
         final_report = Response(text="Research completed successfully.")
         
         return final_report

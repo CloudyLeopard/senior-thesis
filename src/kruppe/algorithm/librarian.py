@@ -1,5 +1,5 @@
 from pydantic import computed_field
-from typing import List, override
+from typing import Any, Dict, List, override
 
 import logging
 
@@ -45,65 +45,23 @@ class Librarian(ReActResearcher):
     def _react_user_prompt(self, query: str) -> str:
         return REACT_RESEARCH_USER.format(query=query)
 
-    
     @override
-    async def execute(self, query: str, to_print=True) -> Response:
-        """Executes the research task using the ReAct framework."""
-        all_sources: List[Chunk | Document] = []
-        done = False
-        ans = None
+    async def _post_act(self, act_results: Dict[str, Any]) -> Dict[str, Any]:
+        # if the returned sources are documents, not chunks
+        # -> assume they are not in index and must be added
+        # also, not indexing FinancialDocuments
+        sources = act_results['sources']
+        if len(sources) > 0 and type(sources[0]) is Document:
+            # `asave_documents` will return documents successfully saved, and omit duplicates
+            saved_docs = await self.docstore.asave_documents(sources)
 
-        # initialize the messages with the system prompt
-        self._messages = [
-            {"role": "system", "content": self._react_system_prompt()},
-            {"role": "user", "content": self._react_user_prompt(query)}
-        ]
+            # add the saved documents to the index
+            await self.index.async_add_documents(saved_docs)
 
-        for i in range(1, self.max_steps + 1):
-            # reason step
-            reason_messages, reason_results, done = await self.reason(self._messages, i)
-            self._messages.extend(reason_messages)
-
-            if to_print:
-                print(reason_messages[0]['content'], end='')
-
-            if done:
-                ans = reason_results['answer']
-                break
+            logger.debug("Added %d documents to index and docstore (out of %d total documents)", len(saved_docs), len(sources))
             
-            if i == self.max_steps - 1:
-                break
-
-             # act step
-            tool_call_messages, act_results = await self.act(self._messages, i)
-            self._messages.extend(tool_call_messages)
-            all_sources.extend(act_results['sources'])
-
-            if to_print:
-                print(f"{act_results['tool_name']}({act_results['tool_args_str']})")
-                print(tool_call_messages[-1]['content'], end='')
-
-            # librarian exclusive code
-            # if the returned sources are documents, not chunks -> assume they are not in index and must be added
-            sources = act_results['sources']
-            if len(sources) > 0 and type(sources[0]) is Document:
-                # `asave_documents` will return documents successfully saved, and omit duplicates
-                saved_docs = await self.docstore.asave_documents(sources)
-
-                # add the saved documents to the index
-                await self.index.async_add_documents(saved_docs)
-
-                logger.debug("Added %d documents to index and docstore (out of %d total documents)", len(saved_docs), len(sources))
-                if to_print:
-                    print(f"Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
+            if self.verbose:
+                print(f"Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
         
-        
-        if not done:
-            logger.warning("Reached max steps without finishing the research task.")
-            ans = ("Could not complete research task within the maximum number of steps. " +
-                "Please try something else or discontinue this research.")
-        
-        return Response(text=ans, sources=all_sources)
+        return act_results
 
-        
-    

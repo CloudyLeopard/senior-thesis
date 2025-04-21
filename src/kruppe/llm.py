@@ -116,13 +116,10 @@ class FakeLLM(BaseLLM):
         content = "This is a fake response."
 
         if logger.isEnabledFor(logging.DEBUG):
-            # only print out input messages if debug is on
-            log_messages = [
-                f"\n[{message['role']}] {message['content']}" for message in messages
-            ]
-            logger.debug("".join(log_messages))
+            # only print out last input message if debug is on
+            logger.debug("%s\n[%s] %s", 'completion_abc123', messages[-1]['role'], messages[-1]['content'])
 
-        logger.info("\n[assistant] %s", content)
+        logger.info("%s\n[assistant] %s", 'completion_abc123', content)
         return Response(text=content)
 
     async def async_generate(self, messages: List[Dict], **kwargs) -> Response:
@@ -152,11 +149,8 @@ class FakeLLM(BaseLLM):
             tool_args_str = json.dumps(arguments)
 
         if logger.isEnabledFor(logging.DEBUG):
-            # only print out input messages if debug is on
-            log_messages = [
-                f"\n[{message['role']}] {message['content']}" for message in messages
-            ]
-            logger.debug("".join(log_messages))
+            # only print out last input message if debug is on
+            logger.debug("%s\n[%s] %s", "completion_abc123", messages[-1]['role'], messages[-1]['content'])
 
         logger.info("\n[assistant] %s\n[tool %s] %s (%s)",
                     content, tool_id, tool_name, tool_args_str)
@@ -177,6 +171,7 @@ class OpenAILLM(BaseLLM):
         "o4-mini"
     ] = "gpt-4.1-mini"
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"), exclude=True)
+    params: Dict[str, Any] = Field(default={}, description="OpenAI parameters") # can be overridden by method call
     sync_client: OpenAI = Field(
         default_factory=lambda: OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     )
@@ -188,8 +183,12 @@ class OpenAILLM(BaseLLM):
     def generate(self, messages: List[Dict], **kwargs) -> Response:
         """returns openai response based on given messages"""
 
+        # override params with kwargs
+        params = self.params.copy()
+        params.update(kwargs)
+
         completion = self.sync_client.chat.completions.create(
-            model=self.model, messages=messages, **kwargs
+            model=self.model, messages=messages, **params
         )
 
         # https://platform.openai.com/docs/api-reference/introduction
@@ -211,11 +210,8 @@ class OpenAILLM(BaseLLM):
 
         # log llm output
         if logger.isEnabledFor(logging.DEBUG):
-            # only print out input messages if debug is on
-            log_messages = [
-                f"[{message['role']}] {message['content']}" for message in messages
-            ]
-            logger.debug("%s\n%s", completion.id, "\n".join(log_messages))
+            # only print out last input message if debug is on
+            logger.debug("%s\n[%s] %s", completion.id, messages[-1]['role'], messages[-1]['content'])
 
         logger.info("%s\n[assistant] %s", completion.id, content)
 
@@ -227,9 +223,12 @@ class OpenAILLM(BaseLLM):
     ) -> Response:
         """returns openai response based on given messages"""
 
-        # TODO: add try/except for openai api key errors
+        # override params with kwargs
+        params = self.params.copy()
+        params.update(kwargs)
+
         completion = await self.async_client.chat.completions.create(
-            model=self.model, messages=messages, **kwargs
+            model=self.model, messages=messages, **params
         )
 
         # https://platform.openai.com/docs/api-reference/introduction
@@ -251,11 +250,8 @@ class OpenAILLM(BaseLLM):
 
         # log llm output
         if logger.isEnabledFor(logging.DEBUG):
-            # only print out input messages if debug is on
-            log_messages = [
-                f"[{message['role']}] {message['content']}" for message in messages
-            ]
-            logger.debug("%s\n%s", completion.id, "".join(log_messages))
+            # only print out last input message if debug is on
+            logger.debug("%s\n[%s] %s", completion.id, messages[-1]['role'], messages[-1]['content'])
 
         logger.info("%s\n[assistant] %s", completion.id, content)
 
@@ -264,7 +260,6 @@ class OpenAILLM(BaseLLM):
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
     ) -> Tuple[str, str, str, str]: 
-
         
         if messages[0].get("role") != "system":
             logger.warning("Make sure the first message is a system message.")
@@ -274,13 +269,16 @@ class OpenAILLM(BaseLLM):
                 logger.warning("Tool should follows chat completion schema.")
                 raise ValueError("Tool should follows chat completion schema.")
 
+        # override params with kwargs
+        params = self.params.copy()
+        params.update(kwargs)
 
         completion = await self.async_client.chat.completions.create(
             model=self.model,
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
-            **kwargs
+            **params
         )
         
         total_tokens = completion.usage.total_tokens
@@ -334,6 +332,8 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
     endpoint_url: str = Field(
         default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_CHAT")
     )
+    params: Dict[str, Any] = Field(default={}, description="OpenAI parameters") # can be overridden by method call
+
 
     # TODO: rewrite this with stamina retry
     @log_io
@@ -354,6 +354,11 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
         client = self._httpx_client or init_httpx_client()
 
         try:
+            # override params with kwargs
+            params = self.params.copy()
+            params.update(kwargs)
+
+            # TODO: add params
             response = await client.post(
                 self.endpoint_url,
                 headers=self.headers,
@@ -380,11 +385,8 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
 
             # log llm output
             if logger.isEnabledFor(logging.DEBUG):
-                # only print out input messages if debug is on
-                log_messages = [
-                    f"[{message['role']}] {message['content']}" for message in messages
-                ]
-                logger.debug("%s\n%s", completion['id'], "".join(log_messages))
+                # only print out last input message if debug is on
+                logger.debug("%s\n[%s] %s", completion["id"], messages[-1]['role'], messages[-1]['content'])
 
             logger.info("%s\n[assistant] %s", completion["id"], content)
             

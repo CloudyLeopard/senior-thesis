@@ -171,7 +171,7 @@ REACT_HYPOTHESIS_REJECT_END_USER = dedent(
     """
 )
 
-REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER = dedent(
+REACT_HYPOTHESIS_REJECT_MAX_STEPS_USER = dedent(
     """\
     You have reached the maximum depth of exploration for this hypothesis. Please generate a final report that summarizes your findings. Be concise, and limit yourself to 4-5 sentences of feedback. Discuss your current working hypothesis, your findings, RELEVANT factual information, and the key takeaways from your exploration."""
 )

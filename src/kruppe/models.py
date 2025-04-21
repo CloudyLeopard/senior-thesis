@@ -63,6 +63,9 @@ class Document(Embeddable):
     def set_db_id(self, id: str):
         self.db_id = id
 
+class FinancialDocument(Document):
+    ...
+
 class Chunk(Document):
     document_id: UUID
     metadata: Annotated[Dict[str, Any], AfterValidator(validate_metadata)]

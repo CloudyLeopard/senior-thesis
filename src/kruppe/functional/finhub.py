@@ -9,6 +9,7 @@ from kruppe.data_source.finance.base_fin import FinancialSource
 from kruppe.functional.base_tool import BaseTool
 from kruppe.llm import BaseLLM
 from kruppe.prompts.functional import ANALYZE_FINANCIALS_SYSTEM, ANALYZE_FINANCIALS_USER, ANALYZE_FINANCIALS_TOOL_DESCRIPTION
+from kruppe.models import FinancialDocument
 
 logger = logging.getLogger(__name__)
 
@@ -18,43 +19,70 @@ class FinHub(BaseTool):
     fin_source: FinancialSource
     llm: BaseLLM
 
-    async def get_company_background(self, ticker: str) -> Tuple[str, List]:
+    async def get_company_background(self, ticker: str) -> Tuple[str, List[FinancialDocument]]:
         obs = await self.fin_source.get_company_background(ticker)
 
         if obs is None:
             obs = f"Failed to find any information about the company {ticker}. Are you sure it exists?"
+            return obs, []
 
-        return obs, []
+        metadata = {
+            "ticker": ticker,
+            "datasource": self.fin_source.source,
+            "title": f"{ticker} Company Background"
+        }
+
+        return obs, [FinancialDocument(text=obs, metadata=metadata)]
     
-    async def get_company_income_stmt(self, ticker: str, years: int = 0) -> Tuple[str, List]:
+    async def get_company_income_stmt(self, ticker: str, years: int = 0) -> Tuple[str, List[FinancialDocument]]:
         df = await self.fin_source.get_company_income_stmt(ticker, years)
         
         if df is None:
             return f"Failed to find any income statement for {ticker}. Are you sure it exists?", []
 
-        return f"\n{df.to_string()}", []
+        # Convert the DataFrame to a string representation
+        df_str = df.to_string()
+        obs = f"\n{df_str}"
+
+        metadata = {
+            "ticker": ticker,
+            "datasource": self.fin_source.source,
+            "title": f"{ticker} Income Statement"
+        }
+
+        return obs, [FinancialDocument(text=df_str, metadata=metadata)]
     
     async def get_company_balance_sheet(self, ticker: str, years: int = 0) -> Tuple[str, List]:
         df = await self.fin_source.get_company_balance_sheet(ticker, years)
         
         if df is None:
             return f"Failed to find any balance sheet for {ticker}. Are you sure it exists?", []
+        
+        # Convert the DataFrame to a string representation
+        df_str = df.to_string()
+        obs = f"\n{df_str}"
 
-        return f"\n{df.to_string()}", []
+        metadata = {
+            "ticker": ticker,
+            "datasource": self.fin_source.source,
+            "title": f"{ticker} Balance Sheet"
+        }
+
+        return obs, [FinancialDocument(text=df_str, metadata=metadata)]
 
 
-    async def analyze_company_financial_stmts(self, ticker: str, years: int = 3) -> Tuple[str, List]:
-        background = await self.fin_source.get_company_background(ticker)
-        df_income_stmt = await self.fin_source.get_company_income_stmt(ticker, years)
-        df_balance_sheet = await self.fin_source.get_company_balance_sheet(ticker, years)
+    async def analyze_company_financial_stmts(self, ticker: str, years: int = 3) -> Tuple[str, List[FinancialDocument]]:
+        background, bkg_sources = await self.get_company_background(ticker)
+        income_stmt, inc_sources = await self.get_company_income_stmt(ticker, years)
+        balance_sheet, bal_sources = await self.get_company_balance_sheet(ticker, years)
 
         messages = [
             {"role": "system", "content": ANALYZE_FINANCIALS_SYSTEM},
             {"role": "user", "content": ANALYZE_FINANCIALS_USER.format(
                 ticker=ticker,
                 firm_background=background,
-                income_statement=df_income_stmt.to_string(),
-                balance_sheet=df_balance_sheet.to_string()
+                income_statement=income_stmt,
+                balance_sheet=balance_sheet
             )}
         ]
 
@@ -69,8 +97,10 @@ class FinHub(BaseTool):
             logger.warning("Failed to parse analysis response. Falling back to raw response.")
             thought = "No specific thought provided."
             analysis = analysis_str.strip()
+
+        sources = bkg_sources + inc_sources + bal_sources
         
-        return analysis, []
+        return analysis, sources
     
     # basically there is a lot...
 

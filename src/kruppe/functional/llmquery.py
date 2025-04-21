@@ -16,9 +16,10 @@ class LLMQuery(BaseTool):
         ]
 
         response = await self.llm.async_generate(messages)
-        llm_knowledge = f"Knowledge: {response.content.strip()}"
+        llm_knowledge = response.text.strip()
+        obs = f"Knowledge: {llm_knowledge}"
 
-        return llm_knowledge, []
+        return obs, []
     
     @computed_field
     @property

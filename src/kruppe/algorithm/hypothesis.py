@@ -1,13 +1,14 @@
 import re
-from pydantic import BaseModel, Field, computed_field, PrivateAttr
-from typing import List, Dict, Literal, Tuple, Any, override
+from pydantic import BaseModel, Field, computed_field
+from typing import List, Dict, Tuple, Any, override
 import logging
-from tqdm import tqdm
 from enum import Enum
 import asyncio
 
 from kruppe.algorithm.agents import ReActResearcher
 
+from kruppe.functional.docstore.base_docstore import BaseDocumentStore
+from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.prompts.hypothesis import (
     CREATE_HYPOTHESIS_SYSTEM,
     CREATE_HYPOTHESIS_USER,
@@ -15,11 +16,11 @@ from kruppe.prompts.hypothesis import (
     REACT_HYPOTHESIS_USER,
     REACT_HYPOTHESIS_ACCEPT_END_USER,
     REACT_HYPOTHESIS_REJECT_END_USER,
-    REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER,
+    REACT_HYPOTHESIS_REJECT_MAX_STEPS_USER,
     RANK_REASONS_SYSTEM,
     RANK_REASONS_USER,
 )
-from kruppe.models import Response
+from kruppe.models import Document, Response
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,10 @@ class Node(BaseModel):
     is_leaf: bool = False
     d_time: int = None
     f_time: int = None
-    parent: "Node" = None
-    children: List["Node"] = []
-    act_results: Dict[str, Any] = Field(default={}, exclude=True)
-    reason_results: Dict[str, Any] = Field(default={}, exclude=True)
+    parent: "Node" = Field(default=None, exclude=True)
+    children: List["Node"] = Field(default=[], exclude=True)
+    act_results: Dict = Field(default={}, exclude=True)
+    reason_results: Dict = Field(default={}, exclude=True)
 
     @computed_field
     @property
@@ -53,8 +54,10 @@ class Node(BaseModel):
             return Status.UNDISCOVERED
 
     def __str__(self):
-        return (f"Node(step={self.step}, is_leaf={self.is_leaf},"
-                f" d_time={self.d_time}, f_time={self.f_time})")
+        return (
+            f"Node(step={self.step}, is_leaf={self.is_leaf},"
+            f" d_time={self.d_time}, f_time={self.f_time})"
+        )
 
 
 class HypothesisResearcher(ReActResearcher):
@@ -66,7 +69,8 @@ class HypothesisResearcher(ReActResearcher):
     role: str = "Financial Analyst"
     role_description: str = "You are a financial analyst who is has great insight into financial markets, standard business practices, and financial statement analysis."
     max_degree: int = 3  # maximum number of children per node. linear if degree = 1
-    max_depth: int = 10  # maximum depth of the search tree
+    docstore: BaseDocumentStore = None # optional for if i want to save documents
+    index: BaseIndex = None # optional for if i want to save documents
     root_nodes: List[Node] = []
     leaf_nodes: List[Node] = []
     research_reports: List[Response] = []
@@ -86,10 +90,10 @@ class HypothesisResearcher(ReActResearcher):
         self, messages: List[Dict[str, str]], reason_response: str, step: int
     ) -> Tuple[List[Dict], Dict[str, Any], bool]:
         pattern = re.compile(
-            r"Thought \d+:\s*(?P<thought>.*?)\s*"
-            r"Working Hypothesis \d+:\s*(?P<hypothesis>.*?)\s*"
-            r"Research Direction \d+:\s*(?P<research_direction>.*?)\s*"
-            r"Action \d+:\s*(?P<action>.*)",
+            r"Thought.*:\s*(?P<thought>.*?)\s*"
+            r"Working Hypothesis.*:\s*(?P<hypothesis>.*?)\s*"
+            r"Research Direction.*:\s*(?P<research_direction>.*?)\s*"
+            r"Action.*:\s*(?P<action>.*)$",
             re.S,
         )
         match = pattern.search(reason_response.strip())
@@ -105,11 +109,16 @@ class HypothesisResearcher(ReActResearcher):
                 line for line in reason_response.strip().splitlines() if line
             ]
 
+            thought = "\n".join(reason_response_lines[:-3])
+            hypothesis = reason_response_lines[-3]
+            research_direction = reason_response_lines[-2]
+            action = reason_response_lines[-1]
+
             results = {
-                "thought": "\n".join(reason_response_lines[:-3]).strip(),
-                "hypothesis": reason_response_lines[-3].strip(),
-                "research_direction": reason_response_lines[-2].strip(),
-                "action": reason_response_lines[-1].strip(),
+                "thought": thought.split(":", 1)[-1].strip(),
+                "hypothesis": hypothesis.split(":", 1)[-1].strip(),
+                "research_direction": research_direction.split(":", 1)[-1].strip(),
+                "action": action.split(":", 1)[-1].strip(),
             }
         else:
             results = {
@@ -137,32 +146,44 @@ class HypothesisResearcher(ReActResearcher):
 
                 # generate final report - accept hypothesis
                 final_report_response = await self.llm.async_generate(
-                    messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_ACCEPT_END_USER}]
+                    messages=messages
+                    + [{"role": "user", "content": REACT_HYPOTHESIS_ACCEPT_END_USER}]
                 )
                 final_report = final_report_response.text.strip()
+
+                if final_report.lower().startswith("thought"):
+                    # remove the thoughts from the final report
+                    # NOTE: im assuming its always just one (and the first) paragraph...
+                    # could be dangerous
+                    final_report = final_report.split("\n\n", 1)[-1].strip()
+
                 results["answer"] = final_report
             else:
                 # llm SHOULD respond with a FINISH[reject], but anything else will also get rejected
                 if "reject" not in action.lower():
-                    logger.warning(f"LLM's final action is not technically valid: FINISH[{action}]")
-                
+                    logger.warning(
+                        f"LLM's final action is not technically valid: FINISH[{action}]"
+                    )
+
                 results["accept_hypothesis"] = False  # False means reject hypothesis
 
-                #generate final report - reject hypothesis
+                # generate final report - reject hypothesis
                 final_report_response = await self.llm.async_generate(
-                    messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_END_USER}]
+                    messages=messages
+                    + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_END_USER}]
                 )
                 final_report = final_report_response.text.strip()
                 results["answer"] = final_report
 
-        # max depth as a safeguard
-        if step > self.max_depth:
+        # max step as a safeguard
+        if step > self.max_steps:
             done = True
             results["accept_hypothesis"] = False
 
             # general final report - reject hypothesis due to max depth reached
             final_report_response = await self.llm.async_generate(
-                messages = messages + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_MAX_DEPTH_USER}]
+                messages=messages
+                + [{"role": "user", "content": REACT_HYPOTHESIS_REJECT_MAX_STEPS_USER}]
             )
             final_report = final_report_response.text.strip()
             results["answer"] = final_report
@@ -178,16 +199,43 @@ class HypothesisResearcher(ReActResearcher):
         return [reason_message], results, done
 
     @override
-    async def execute(
-        self, query: str, background: str, to_print=True
-    ) -> List[Response]:
+    async def _post_act(self, act_results: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.docstore and not self.index:
+            # no need to save documents if no docstore or index
+            return act_results
+
+        if not self.docstore or not self.index:
+            logger.warning("Only one of docstore or index is set. Not saving documents.")
+            return act_results
+
+        # if the returned sources are documents, not chunks
+        # -> assume they are not in index and must be added
+        # also, not indexing FinancialDocuments
+        sources = act_results['sources']
+        if len(sources) > 0 and type(sources[0]) is Document:
+            # `asave_documents` will return documents successfully saved, and omit duplicates
+            saved_docs = await self.docstore.asave_documents(sources)
+
+            # add the saved documents to the index
+            await self.index.async_add_documents(saved_docs)
+
+            logger.debug("Added %d documents to index and docstore (out of %d total documents)", len(saved_docs), len(sources))
+            
+            if self.verbose:
+                print(f"Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
+        
+        return act_results
+
+
+    @override
+    async def execute(self, query: str, background: str) -> List[Response]:
         # reset variables
         self.root_nodes = []
         self.leaf_nodes = []
         self.research_reports = []
 
         # initialize root nodes: each root node should have a starting claim
-        with asyncio.TaskGroup() as tg:
+        async with asyncio.TaskGroup() as tg:
             initial_node_tasks = [
                 tg.create_task(self.init_starting_node(query, background=background))
                 for i in range(self.max_degree)
@@ -198,11 +246,22 @@ class HypothesisResearcher(ReActResearcher):
         # set the root nodes
         self.root_nodes = initial_nodes
 
+        if self.verbose:
+            print(f"Initialized {len(self.root_nodes)} root nodes.")
+
         # conduct dfs search over each node
         # TODO: parallelize this
-        for root_node in self.root_nodes:
-            report = await self.dfs_research(root_node, query)
+        for i in range(len(self.root_nodes)):
+            if self.verbose:
+                print(f"Conducting research on root node {i + 1}/{len(self.root_nodes)}")
+            
+            # conduct dfs search
+            report = await self.dfs_research(self.root_nodes[i], query)
             self.research_reports.append(report)
+
+            if self.verbose:
+                print(f"Finished research on root node {i + 1}/{len(self.root_nodes)}")
+                print("=" * 20)
 
         return self.research_reports
 
@@ -230,7 +289,7 @@ class HypothesisResearcher(ReActResearcher):
         except ValueError:
             # TODO: make this a retry
             logger.error(
-                "LLM did not return a valid response for the initial claim. "
+                "LLM did not return a valid response when initializing the claim. "
                 "Make sure the LLM is set up correctly and the prompt is correct."
             )
             raise ValueError(
@@ -371,32 +430,35 @@ class HypothesisResearcher(ReActResearcher):
             node = stack[-1]  # stack.peek()
 
             if node.status == Status.UNDISCOVERED:
-
                 # update discovery time
                 time += 1
                 node.d_time = time
 
-                print(f"Discovering node: {node}")
+                if self.verbose:
+                    print(f"Discovering node: {node}")
 
                 if node.is_leaf:
                     self.leaf_nodes.append(node)
 
-                    # case 1: FINISHED - we found our hypothesis, return
+                    # case 1: ACCEPT - we found our hypothesis, return
                     if node.reason_results["accept_hypothesis"]:
                         # collect all sources from the node and its parents
                         all_sources = []
                         curr = node
                         while curr is not None:
-                            all_sources.extend(node.act_results.get("sources", []))
+                            all_sources.extend(curr.act_results.get("sources", []))
                             curr = curr.parent
 
                         return Response(
                             text=node.reason_results["answer"], sources=all_sources
                         )
-                    else:  # case 2: DEADEND - we need to backtrack
+                    else:  # case 2: REJECT hypothesis or MAX_STEP reached - we need to backtrack
                         # done with this node, so just not do anything.
 
+                        feedback = node.reason_results["answer"]
+
                         # TODO: add feedback to somewhere that can be used later
+                        
 
                         continue
 
@@ -430,9 +492,7 @@ class HypothesisResearcher(ReActResearcher):
 
                 # rank nodes and remove duplicates
                 ranked_child_nodes = await self.rank_child_nodes(child_nodes, query)
-                node.children = (
-                    ranked_child_nodes  # update the children of the current node
-                )
+                node.children = ranked_child_nodes  # update children
 
                 # stack is last-in-first-out, so need to reverse the order (i.e. push the best child last)
                 # push the children to the stack
@@ -440,16 +500,17 @@ class HypothesisResearcher(ReActResearcher):
                     stack.append(child)
 
             elif node.status == Status.DISCOVERED:
-
                 # node is discovered, but not finished yet; remove from stack
                 time += 1
                 node.f_time = time
                 stack.pop()
 
-                print(f"Finishing node: {node}")
+                if self.verbose:
+                    print(f"Finishing node: {node}")
             else:
                 # node is already finished, pop it from the stack
                 # shouldn't happen here cuz i don't have backward edges, but maybe in the future
                 stack.pop()
 
-                print(f"Visiting a finished node: {node}")
+                if self.verbose:
+                    print(f"Visiting a finished node: {node}")
