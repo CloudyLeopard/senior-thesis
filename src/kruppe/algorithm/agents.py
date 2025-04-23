@@ -6,7 +6,6 @@ from pydantic import BaseModel, PrivateAttr, computed_field, field_validator
 import logging
 import inspect
 
-from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.llm import BaseLLM
 from kruppe.models import Document, Response
 from kruppe.functional.base_tool import BaseTool

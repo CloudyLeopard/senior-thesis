@@ -71,12 +71,23 @@ class HypothesisResearcher(ReActResearcher):
     role: str = "Financial Analyst"
     role_description: str = "You are a financial analyst who is has great insight into financial markets, standard business practices, and financial statement analysis."
     max_degree: int = 3  # maximum number of children per node. linear if degree = 1
-    background_report: Response = None  # optional background report
+    background_report: Response | str = None  # optional background report
     docstore: BaseDocumentStore = None # optional for if i want to save documents
     index: BaseIndex = None # optional for if i want to save documents
     root_nodes: List[Node] = []
     leaf_nodes: Dict[int, List[Node]] = {}
     research_reports: List[Response] = []
+
+    @computed_field
+    @property
+    def background(self) -> str:
+        if self.background_report is None:
+            return ""
+        if isinstance(self.background_report, str):
+            return self.background_report
+        if isinstance(self.background_report, Response):
+            return self.background_report.text
+        return self.background_report
 
     def _react_system_prompt(self):
         return REACT_HYPOTHESIS_SYSTEM.format(
@@ -160,13 +171,28 @@ class HypothesisResearcher(ReActResearcher):
 
             # final report is in action
             action, answer = action.split("]", 1)
-            action = f"{action}]"
+            action = action[len("finish[") :].strip().lower()
 
-            results["action"] = action
+            results["action"] = f"FINISH[{action}]"
 
-            if "accept" in action.lower():
+            # determine if we have a completed or incomplete research
+            if "incomplete" in action:
+                # false = not enough info to accept or reject
+                results["accept_hypothesis"] = False
+
+            if "complete" in action:
+                # true = enough info to accept hypo or reject hypo
                 results["accept_hypothesis"] = True
+            else:
+                # llm SHOULD respond with a FINISH[incomplete], but anything else will also get rejected
+                logger.warning(
+                    f"LLM's final action is not technically valid: {results["action"]}"
+                )
 
+                results["accept_hypothesis"] = False  
+            
+            # generatel final report
+            if results["accept_hypothesis"]:
                 # generate final report - accept hypothesis
                 final_report_response = await self.llm.async_generate(
                     messages=messages
@@ -182,14 +208,6 @@ class HypothesisResearcher(ReActResearcher):
 
                 results["answer"] = final_report
             else:
-                # llm SHOULD respond with a FINISH[reject], but anything else will also get rejected
-                if "reject" not in action.lower():
-                    logger.warning(
-                        f"LLM's final action is not technically valid: FINISH[{action}]"
-                    )
-
-                results["accept_hypothesis"] = False  # False means reject hypothesis
-
                 # generate final report - reject hypothesis
                 final_report_response = await self.llm.async_generate(
                     messages=messages
@@ -197,6 +215,7 @@ class HypothesisResearcher(ReActResearcher):
                 )
                 final_report = final_report_response.text.strip()
                 results["answer"] = final_report
+
 
         # max step as a safeguard
         if step > self.max_steps:
@@ -261,7 +280,7 @@ class HypothesisResearcher(ReActResearcher):
         async with asyncio.TaskGroup() as tg:
             initial_node_tasks = [
                 tg.create_task(self.init_starting_node(
-                    query, background=self.background_report.text))
+                    query, background=self.background))
                 for i in range(self.max_degree)
             ]
 

@@ -99,9 +99,9 @@ REACT_HYPOTHESIS_SYSTEM = dedent(
 
     For every step and every action, you must only make a single tool call at a time. So, before every tool call, you must think about what you want to achieve with this tool call, and decide among all the tools, which is the best tool to call RIGHT NOW.
     
-    When you think you have completely developed the hypothesis into a cohesive narrative that comprehensively answers the research question, you should use the FINISH[accept] action to mark the end of your exploration, and then generate a final report that summarizes your findings, observations, and the final working hypothesis. The final report should follow a cohesive narrative where every piece of information flows logically into the next. It should include all the RELEVANT factual information you have gathered, and how it supports your working hypothesis.
+    When you think you have COMPLETELY developed the hypothesis into a cohesive narrative that comprehensively answers the research question, or you have found enough evidence to reject the current wroking hypothesis, you should use the FINISH[complete] action to mark the end of your exploration. Then, generate a final report that summarizes your findings, observations, and the final working hypothesis. The final report should follow a cohesive narrative where every piece of information flows logically into the next. It should include all the RELEVANT factual information you have gathered, and how it supports (or rejects) your hypothesis.
 
-    If you believe that the working hypothesis is not viable or does not lead to a meaningful exploration, you should reject the hypothesis by first using the FINISH[reject] action to mark the end of your exploration, and then generate a final report that explains why the hypothesis is not viable, and what you would have done differently if you were to explore a different hypothesis. Unlike the final report where you accept the hypothesis, this report first restate the hypothesis you tried to explore but rejected, then discuss why you have rejected the hypothesis. Reference the factual information that helped you reject the hypothesis, and what new hypothesis you would have explored if you were to start over.
+    You should use the FINISH[incomplete] action if, after trying and exhausting all research options, you find that there is not enough information to either support or reject your hypothesis with your current line of research. This action states that there is not enough information to continue researching in this direction, and you must backtrack and try a different research hypothesis or research direction. Generate a final report, but unlike the final report where you have completed the research, this report first restate the hypothesis you tried to explore but failed to conclude. Then, report on all the information you have found RELEVANT to the query, and discuss what new hypothesis or direction you would have explored if you were to start over.
 
     # Output Format
     - Always respond with an Action at the end, and call on a tool (unless the action is FINISH, in which case you should generate a final report).
@@ -142,7 +142,7 @@ REACT_HYPOTHESIS_SYSTEM = dedent(
     Thought N: [Anayze the results of the action taken in the previous step. Think through the information, and determine if you have fully developed the hypothesis, or if you need to take more actions.]
     Working Hypothesis N: [Update your working hypothesis based on the new information and your analysis. It should builds upon the previous hypothesis.]
     Research Direction N: [Update your research direction based on the new information and your analysis. If you want to keep exploring, it should be a clear and actionable direction that you want to explore next. If you are done, it should be NA.]
-    Action N: FINISH[accept] or FINISH[reject]
+    Action N: FINISH[complete] or FINISH[incomplete]
 
     """
 )
@@ -161,19 +161,19 @@ REACT_HYPOTHESIS_USER = dedent(
 
 REACT_HYPOTHESIS_ACCEPT_END_USER = dedent(
     """\
-    Generate a final report that summarizes your findings, observations, and the final accepted hypothesis. First restate your hypothesis. Then, write a final report follows a cohesive narrative where every piece of information flows logically into the next. It should include ALL the RELEVANT factual information you have gathered, and how it supports your final hypothesis.
+    Generate a final research report around your hypothesis, and summarize your findings and observations. First, restate your fully developed hypothesis. If your research indicates that you reject the initial hypothesis, you should write that as your final hypothesis. Then, write a final report that follows a cohesive narrative where every piece of information flows logically into the next. It should include ALL the RELEVANT factual information you have gathered, and how it supports your final hypothesis.
     """
 )
 
 REACT_HYPOTHESIS_REJECT_END_USER = dedent(
     """\
-    Generate a final report that summarizes your findings. This report first restate the hypothesis you tried to explore but rejected, then discuss why you have rejected the hypothesis. Reference ALL the factual information that helped you reject the hypothesis, and what new hypothesis you would have explored if you were to start over.
+    Generate a final report that summarizes your findings. This report first restate the hypothesis you tried to explore but failed to conclude, then discuss why you have failed to accept or reject this hypothesis. Reference ALL the factual information that you have found to try to develop the hypothesis, and what new hypothesis you would have explored if you were to start over.
     """
 )
 
 REACT_HYPOTHESIS_REJECT_MAX_STEPS_USER = dedent(
     """\
-    You have reached the maximum depth of exploration for this hypothesis. Please generate a final report that summarizes your findings. Discuss your current working hypothesis, your findings, ALL RELEVANT factual information, and the key takeaways from your exploration."""
+    You have reached the maximum depth of exploration for this hypothesis. Please generate a final report that summarizes your findings. First, restate the most recent version of your working hypothesis. Discuss your current working hypothesis, your findings, ALL RELEVANT factual information, and the key takeaways from your exploration."""
 )
 
 REACT_HYPOTHESIS_REJECT_COMBINE_USER = dedent(
