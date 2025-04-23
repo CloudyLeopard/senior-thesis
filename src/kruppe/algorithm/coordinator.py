@@ -1,9 +1,11 @@
+import asyncio
 import re
 from pydantic import BaseModel, computed_field, PrivateAttr, model_validator
 from typing import Callable, List, Dict, Any
 import logging
 from tqdm import tqdm
 
+from kruppe.llm import OpenAILLM
 from kruppe.algorithm.agents import Researcher
 from kruppe.algorithm.hypothesis import HypothesisResearcher
 from kruppe.algorithm.librarian import Librarian
@@ -12,7 +14,9 @@ from kruppe.prompts.coordinator import (
     DOMAIN_EXPERTS_SYSTEM,
     DOMAIN_EXPERTS_USER,
     CHOOSE_EXPERTS_SYSTEM,
-    CHOOSE_EXPERTS_USER
+    CHOOSE_EXPERTS_USER,
+    SUMMARIZE_REPORTS_SYSTEM,
+    SUMMARIZE_REPORTS_USER
 )
 from kruppe.common.log import log_io
 from kruppe.models import Response
@@ -21,7 +25,19 @@ logger = logging.getLogger(__name__)
 
 class Coordinator(Researcher):
     librarian: Librarian
+    tree_configs: Dict[str, Any] = {
+        "llm": OpenAILLM(),
+        "toolkit": [],
+        "max_step": 10,
+        "max_degree": 3,
+        "docstore": None,
+        "index": None
+    }
+
+    research_reports: List[Response] = []
+    
     _background_report: Response = PrivateAttr(default=None)
+    _research_forest: List[HypothesisResearcher] = PrivateAttr(default=None)
 
 
     async def generate_background(self, query: str) -> Response:
@@ -100,7 +116,7 @@ class Coordinator(Researcher):
 
 
         if len(experts) <= n_experts:
-            logger.debug("No need to filter domain experts.")
+            logger.info("No need to filter domain experts.")
             return experts
 
 
@@ -125,26 +141,35 @@ class Coordinator(Researcher):
         logger.debug(f"Selected {len(selected_experts)} domain experts for query '{query}'")
         return selected_experts
         
-    def initialize_research_forest(
+    async def initialize_research_forest(
         self, 
-        experts: Dict[str, str],
-        toolkit: List[Callable]
+        query: str,
+        background: Response,
+        n_experts: int = 5,
     ) -> List[HypothesisResearcher]:
-        # TODO: generate initial lead or hypothesis based on expert and background report
-        
+
+        # Generate domain experts
+        experts = await self.generate_domain_experts(query)
+        filtered_experts = await self.filter_domain_experts(query, experts, n_experts)
+        print(f"Domain experts generated: {len(filtered_experts)} experts found from {len(experts)} generated.")
+
+        # Initialize hypothesis researchers or "research forest"
         hyp_researchers = []
-        for expert_name, expert_desc in experts.items():
+        for expert_name, expert_desc in filtered_experts.items():
             hyp_researcher = HypothesisResearcher(
-                llm=self.llm,
-                toolkit=toolkit,
                 role=expert_name,
                 role_description=expert_desc,
+                background_report=background,
+                **self.tree_configs,
             )
             hyp_researchers.append(hyp_researcher)
+    
         
         return hyp_researchers
 
-    async def execute(self, query: str, n_experts: int = 5) -> Response:
+    
+
+    async def execute(self, query: str, n_experts: int = 5) -> List[Response]:
         """Execute the coordinator's research process.
 
         Args:
@@ -153,30 +178,61 @@ class Coordinator(Researcher):
         Returns:
             Response: The final response containing the research results.
         """
-        
+        # reset research reports
+        self.research_reports = []
+
         # Generate background report
-        background_report = await self.generate_background(query)
-        self._background_report = background_report
-        logger.debug("Background report generated.")
-
-        # Generate domain experts
-        experts = await self.generate_domain_experts(query)
-        filtered_experts = await self.filter_domain_experts(query, experts, n_experts)
-        logger.debug(f"Domain experts generated: {len(filtered_experts)} experts found from {len(experts)} generated.")
-
-        # Initialize hypothesis researchers
-        toolkit = self.librarian.toolkit # using librarian's toolkit for hypothesis researchers
-        hyp_researchers = self.initialize_research_forest(filtered_experts, toolkit)
-
-        # Execute hypothesis researchers
-        # TODO: parallelize this, but max like 2 at a time.
-        for hyp_researcher in hyp_researchers:
-            await hyp_researcher.execute(
-                query=query,
-                background=background_report.text,
-            )
-
-        # TODO: group reports by the content of the report/narrative
-        final_report = Response(text="Research completed successfully.")
+        # not resetting background report in case user manually sets it
+        self._background_report = await self.generate_background(query)
+        print("Background report generated.")
         
-        return final_report
+        # Initialize hypothesis researchers
+        hyp_researchers = await self.initialize_research_forest(query, self._background_report, n_experts)
+        self._research_forest = hyp_researchers
+
+        # Execute hypothesis researchers in parallel        
+        async with asyncio.TaskGroup() as tg:
+            for hyp_researcher in hyp_researchers:
+                tg.create_task(hyp_researcher.execute(query=query))
+        
+        # Collect research reports
+        for hyp_researcher in hyp_researchers:
+            reports = hyp_researcher.research_reports
+            self.research_reports.extend(reports)
+
+        # # Execute hypothesis researchers sequentially
+        # for hyp_researcher in hyp_researchers:
+        #     reports = await hyp_researcher.execute(query=query)
+
+        #     self.research_reports.extend(reports)
+        #     print(f"Researcher {hyp_researcher.role} completed with {len(reports)} reports.")
+
+        
+        return self.research_reports
+
+    async def summarize_reports(self) -> Response:
+        """Summarize the research reports.
+
+        Returns:
+            Response: The summary of the research reports.
+        """
+
+        if len(self.research_reports) == 0:
+            logger.warning("No research reports to summarize.")
+            return None
+        
+        # Summarize the research reports
+
+        assert len(set(report.metadata['query'] for report in self.research_reports)) == 1, "All reports must have the same query."
+
+        query = self.research_reports[0].metadata['query']
+        reports_str = "\n----------\n".join(report.text for report in self.research_reports)
+
+        messages = [
+            {"role": "system", "content": SUMMARIZE_REPORTS_SYSTEM},
+            {"role": "user", "content": SUMMARIZE_REPORTS_USER.format(query=query, reports=reports_str)}
+        ]
+
+        summary_response = await self.llm.async_generate(messages)
+
+        return summary_response

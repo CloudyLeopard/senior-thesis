@@ -52,6 +52,10 @@ class ChromaVectorStore(BaseVectorStore):
         self._collection = self.client.get_or_create_collection(self.collection_name)
 
     def insert_documents(self, documents: List[Document]):
+        if len(documents) == 0:
+            logger.warning("No documents to insert into ChromaDB")
+            return []
+        
         data = {
             "ids": [],
             "metadatas": [],
@@ -92,6 +96,10 @@ class ChromaVectorStore(BaseVectorStore):
         return data["ids"]
     
     async def async_insert_documents(self, documents):
+        if len(documents) == 0:
+            logger.warning("No documents to insert into ChromaDB")
+            return []
+        
         embeddings = await self.embedding_model.async_embed(
             [document.text for document in documents]
         )
@@ -122,14 +130,17 @@ class ChromaVectorStore(BaseVectorStore):
             # add text for each document/chunk
             data["documents"].append(document.text)
 
-        # insert data into chromadb       
-        logger.info("Inserting documents into ChromaDB")
-        self._collection.upsert(
-            ids=data["ids"],
-            metadatas=data["metadatas"],
-            documents=data["documents"],
-            embeddings=data["embeddings"],
-        )
+        # insert data into chromadb
+        batches = create_batches(api=self.client, ids=data["ids"], metadatas=data["metadatas"], documents=data["documents"], embeddings=data["embeddings"])
+        for batch in batches:
+            self._collection.upsert(
+                ids=batch[0],
+                documents=batch[3],
+                embeddings=batch[1],
+                metadatas=batch[2],
+            )
+        
+        logger.info("Inserted %d documents/chunks into ChromaDB", len(data["documents"]))
 
         return data["ids"]
 

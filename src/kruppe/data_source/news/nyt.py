@@ -1,7 +1,8 @@
+import json
 import httpx
 from typing import List, Dict, AsyncGenerator, Literal
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pydantic import Field
 import asyncio
@@ -44,7 +45,7 @@ class NewYorkTimesData(NewsSource):
                     query=query,
                     url=data["meta"]["url"],
                     title=data["meta"]["title"],
-                    publication_time=data["meta"]["publication_time"],
+                    publication_time=original_meta.get("pub_date") or data["meta"]["publication_time"],
                     description=original_meta.get("abstract") or original_meta.get("snippet"),
                     section=original_meta.get("section") or original_meta.get("section_name"),
                     document_type=original_meta.get("item_type") or original_meta.get("document_type")
@@ -132,17 +133,26 @@ class NewYorkTimesData(NewsSource):
         self,
         days: int = None, # TODO: not implemented
         max_results: int = 20,
-        filter: Dict = None, # TODO: not implemented
+        keywords: str = None,
         **kwargs
     ) -> AsyncGenerator[Document, None]:
-        sections = ["business", "education", "job market", "technology", "u.s.", "world"]
-        # sections = ["business", "technology"]
+        
+        # use more sections if keywords are provided
+        if keywords:
+            sections = ["business", "education", "job market", "technology", "u.s.", "world"]
+        else:
+            sections = ["business", "technology"]
+
+        # keyword filter
+        keywords_list = [word.strip().lower() for word in keywords.split(",")] if keywords else []
         
         retries = 3
         article_metadata = []
         async with httpx.AsyncClient() as client:
             logger.debug("Fetching links from newsfeed")
-            for section in sections:
+            for i in range(len(sections)):
+                section = sections[i]
+
                 url = f"https://api.nytimes.com/svc/news/v3/content/all/{section}.json?api-key={self.apiKey}&limit={max_results}"
                 try:
                     response = await client.get(url)
@@ -172,11 +182,21 @@ class NewYorkTimesData(NewsSource):
                     break # instead of throwing an error, we just stop fetching more articles
                 
                 if data["num_results"] > 0:
-                    article_metadata.extend(data["results"])
+                    # Filter articles based on keywords
+                    if keywords:
+                        for article in data["results"]:
+                            # check if keyword is in metadata, if so we add it
+                            metadata_str = json.dumps(article).lower()
+                            if any(keyword in metadata_str for keyword in keywords_list):
+                                article_metadata.append(article)
+                    else:
+                        # No keywords provided, add all articles
+                        article_metadata.extend(data["results"])
                 
 
                 # Sleep to avoid hitting the rate limit
-                await nyt_sleep()
+                if i < len(sections) - 1:
+                    await nyt_sleep()
         
         if len(article_metadata) == 0:
             logger.warning("No recent articles found from New York Times")
@@ -193,22 +213,30 @@ class NewYorkTimesData(NewsSource):
         self,
         start_date: str,
         end_date: str,
-        max_results: int = 100, # TODO: not implemented
-        filter: Dict = None, # TODO: not implemented,
+        max_results: int = 100,
+        keywords: str = None,
         **kwargs
     ) -> AsyncGenerator[Document, None]:
-        # section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
-        section_names = ["Business", "Technology"]
+
+        # use more sections if keywords are provided
+        if keywords:
+            section_names = ["Business", "Education", "Job Market", "Technology", "U.S.", "World"]
+        else:
+            section_names = ["Business", "Technology"]
+
+        # keyword filter
+        keywords_list = [word.strip().lower() for word in keywords.split(",")] if keywords else []
+
 
         # Get start and end date
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        start_date_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_date_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
         # Generate all year-month pairs from start_date to today
         year_month_pairs = set()
-        current_date = start_date
+        current_date = start_date_dt
 
-        while current_date <= end_date:
+        while current_date <= end_date_dt:
             year_month_pairs.add((current_date.year, current_date.month))
             # Move to the next month
             if current_date.month == 12:
@@ -226,7 +254,8 @@ class NewYorkTimesData(NewsSource):
         async with httpx.AsyncClient() as client:
             article_metadata = []
 
-            for url in urls:
+            for i in range(len(urls)):
+                url = urls[i]
                 for retry in range(3):  # Retry up to 3 times
                     try:
                         response = await client.get(url)
@@ -256,12 +285,34 @@ class NewYorkTimesData(NewsSource):
                     logger.warning("Failed to fetch more articles from New York Times, returning what we have")
                     break
 
-                article_metadata.extend([doc for doc in data["response"]['docs'] if doc.get("section_name") in section_names])
-                
-                if len(article_metadata) >= max_results:
-                    break
+                for doc in data["response"]['docs']:
+                    
+                    # filters
 
-                await nyt_sleep()
+                    # check doc's section name
+                    if doc.get("section_name") not in section_names:
+                        continue
+
+                    if keywords:
+                        # check if keyword is in metadata, if so we add it
+                        metadata_str = json.dumps(doc).lower()
+                        if not any(keyword in metadata_str for keyword in keywords_list):
+                            continue
+                    
+                    # check if doc is in the date range
+                    publication_date = datetime.strptime(doc["pub_date"], "%Y-%m-%dT%H:%M:%S%z")
+                    if publication_date < start_date_dt or publication_date > end_date_dt:
+                        continue
+
+                    article_metadata.append(doc)
+
+                    # check if we have enough articles
+                    if len(article_metadata) >= max_results:
+                        break
+                
+                if i < len(urls) - 1:
+                    # Sleep to avoid hitting the rate limit
+                    await nyt_sleep()
         
         if len(article_metadata) == 0:
             logger.warning("No articles found from New York Times for the specified date range")
@@ -269,6 +320,7 @@ class NewYorkTimesData(NewsSource):
         
         # hard cap
         article_metadata = article_metadata[:max_results]
+
 
         async for document in self._nyt_scraper_helper(article_metadata):
             yield document

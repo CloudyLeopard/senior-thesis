@@ -1,5 +1,5 @@
 from pydantic import computed_field
-from typing import Any, Dict, List, override
+from typing import Any, Dict, List, Tuple, override
 
 import logging
 
@@ -8,7 +8,8 @@ from kruppe.common.log import log_io
 from kruppe.models import Document, Chunk, Response
 from kruppe.prompts.librarian import (
     REACT_RESEARCH_SYSTEM,
-    REACT_RESEARCH_USER
+    REACT_RESEARCH_USER,
+    REACT_RESEARCH_END_USER
 )
 from kruppe.functional.rag.index.base_index import BaseIndex
 from kruppe.functional.docstore.base_docstore import BaseDocumentStore
@@ -28,22 +29,35 @@ class Librarian(ReActResearcher):
 
     docstore: BaseDocumentStore # NOTE: THIS DOCUMENT STORE NEED TO HAVE A UNIQUE INDEX TO DEAL WITH DUPLICATES
     index: BaseIndex # for retrieve_from_index
-    
-    @computed_field
-    @property
-    def document_count(self) -> int:
-        """Returns the number of documents in the Documentstore.
-
-        Returns:
-            int: number of documents in the Documentstore
-        """
-        return self.docstore.document_count
 
     def _react_system_prompt(self) -> str:
         return REACT_RESEARCH_SYSTEM
     
     def _react_user_prompt(self, query: str) -> str:
         return REACT_RESEARCH_USER.format(query=query)
+    
+    @override
+    async def _parse_reason(
+        self, messages: List[Dict[str, str,]], reason_response: str, step: int
+    ) -> Tuple[List[Dict], Dict[str, Any], bool]:
+        reason_messages, results, done = await super()._parse_reason(messages, reason_response, step)
+
+        if done:
+            final_report_response = await self.llm.async_generate(
+                messages=messages[1:]  # remove the system message
+                + [{"role": "user", "content": REACT_RESEARCH_END_USER}],
+            )
+            final_report = final_report_response.text.strip()
+
+            if final_report.lower().startswith("thought"):
+                # remove the thoughts from final report
+                # NOTE: i am assuming its always just one (and the first) paragraph
+               # could be dangerous
+               final_report = final_report.split("\n\n", 1)[-1].strip()
+            
+            results["answer"] = final_report
+        
+        return reason_messages, results, done
 
     @override
     async def _post_act(self, act_results: Dict[str, Any]) -> Dict[str, Any]:

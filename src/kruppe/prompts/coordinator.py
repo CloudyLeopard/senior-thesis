@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+from matplotlib.dates import SU
+
 
 # this prompt is for the librarian, not directly for GPT
 BACKGROUND_QUERY_LIBRARIAN = dedent(
@@ -93,6 +95,21 @@ CHOOSE_EXPERTS_USER = dedent(
     """
 )
 
+SUMMARIZE_REPORTS_SYSTEM = "You are a meticulous and insightful research analyst that reviews and summarizes reports."
+
+SUMMARIZE_REPORTS_USER = dedent(
+    """\
+    Given a research question and a list of research reports that answers the research question, summarize the key findings and insights from each report. You should group similar ideas together, and highlight any conflicting or contradictory information. Your summary should be clear, concise, and easy to understand.
+
+    Research question:
+    {query}
+
+    Research reports:
+    {reports}
+
+    Identify all the different answers from the reports, and summarize the key findings and insights from each report;
+    """
+)
 
 # ===== DEFUNCT PROMPTS =====
 

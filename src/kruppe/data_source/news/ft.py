@@ -189,12 +189,17 @@ class FinancialTimesData(NewsSource):
             await client.aclose()
 
     async def news_recent(
-        self, days: int = 365, max_results: int = 20, filter: Dict = None, **kwargs
+        self, 
+        days: int = 365,
+        max_results: int = 20,
+        keywords: str = None, # NOTE: doesn't do anything
+        **kwargs
     ) -> AsyncGenerator[Document, None]:
         links = []
         url = "https://www.ft.com/news-feed"
         pages = 1
         end = False
+
 
         def parse_datetime(datetime_str):
             # Check if the string ends with 'Z' (UTC format)
@@ -294,7 +299,7 @@ class FinancialTimesData(NewsSource):
         start_date: str,
         end_date: str,
         max_results: int = 100,
-        filter: Dict = None,  # TODO: not implemented
+        keywords: str = None,
         **kwargs,
     ) -> AsyncGenerator[Document, None]:
         raise NotImplementedError

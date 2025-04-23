@@ -54,7 +54,7 @@ class NewsHub(BaseTool):
         self,
         days: int = 0,
         max_results: int = 10,
-        filter: Dict = None,  # TODO: not implemented
+        keywords="",
         **kwargs,
     ) -> Tuple[pd.DataFrame, List[Document]]:
         # collect async gens
@@ -64,7 +64,7 @@ class NewsHub(BaseTool):
                 continue
                 
             async_gens.append(news_source.news_recent(
-                days, max_results, filter, **kwargs
+                days, max_results, keywords, **kwargs
             ))
         
         df, docs = await self._gen_result_helper(async_gens)
@@ -72,7 +72,7 @@ class NewsHub(BaseTool):
 
 
     async def news_archive(
-        self, start_date, end_date, max_results=10, filter=None, **kwargs
+        self, start_date, end_date, max_results=10, keywords="", **kwargs
     ) -> Tuple[pd.DataFrame, List[Document]]:
         # collect async gens
         async_gens = []
@@ -81,7 +81,7 @@ class NewsHub(BaseTool):
                 continue
                 
             async_gens.append(news_source.news_archive(
-                start_date, end_date, max_results, filter, **kwargs
+                start_date, end_date, max_results, keywords, **kwargs
             ))
         
         df, docs = await self._gen_result_helper(async_gens)
@@ -165,7 +165,7 @@ class NewsHub(BaseTool):
         return {
             "type": "function",
             "function": {
-                "name": "news_search",
+                "name": "news_recent",
                 "description": NEWS_RECENT_TOOL_DESCRIPTION,
                 "strict": True,
                 "parameters": {
@@ -173,6 +173,7 @@ class NewsHub(BaseTool):
                     "required": [
                         "days",
                         "max_results",
+                        "keywords"
                     ],
                     "properties": {
                         "days": {
@@ -183,6 +184,10 @@ class NewsHub(BaseTool):
                             "type": "number",
                             "description": "The maximum number of results to return (default is 10)."
                         },
+                         "keywords": {
+                            "type": ["string", "null"],
+                            "description": "List of keywords separated by commas (e.g. 'keyword1, keyword2'). Will return articles that contain any of the keywords. Leave empty if you want an unfiltered search and return all articles to get a general overview"
+                        }
                     },
                     "additionalProperties": False
                 }
@@ -196,7 +201,7 @@ class NewsHub(BaseTool):
         return {
             "type": "function",
             "function": {
-                "name": "news_search",
+                "name": "news_archive",
                 "description": NEWS_ARCHIVE_TOOL_DESCRIPTION,
                 "strict": True,
                 "parameters": {
@@ -205,6 +210,7 @@ class NewsHub(BaseTool):
                         "start_date",
                         "end_date",
                         "max_results",
+                        "keywords"
                     ],
                     "properties": {
                         "start_date": {
@@ -219,6 +225,10 @@ class NewsHub(BaseTool):
                             "type": "number",
                             "description": "The maximum number of results to return (default is 10)."
                         },
+                        "keywords": {
+                            "type": "string",
+                            "description": "Keywords to filter the news articles, separated by commas (e.g. 'keyword1, keyword2')."
+                        }
                     },
                     "additionalProperties": False
                 }

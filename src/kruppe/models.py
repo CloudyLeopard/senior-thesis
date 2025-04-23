@@ -79,6 +79,7 @@ class Query(Embeddable):
 
 class Response(Embeddable):
     sources: List[Document] = Field(default_factory=list)
+    metadata: Dict[Any, Any] = Field(default_factory=dict) # optional
 
     def __str__(self):
         return self.text

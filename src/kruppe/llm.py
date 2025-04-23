@@ -302,11 +302,8 @@ class OpenAILLM(BaseLLM):
 
         # log llm output
         if logger.isEnabledFor(logging.DEBUG):
-            # only print out input messages if debug is on
-            log_messages = [
-                f"[{message['role']}] {message['content']}" for message in messages
-            ]
-            logger.debug("%s\n%s", completion.id, "".join(log_messages))
+            # only print out last input message if debug is on
+            logger.debug("%s\n[%s] %s", completion.id, messages[-1]['role'], messages[-1]['content'])
         
         # get tools; if tool_choice = "none", the following var should all remain None
         tool_id = None
@@ -461,6 +458,10 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
     # TODO: work on "retry" when encountered error
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
+        
+        if len(text) == 0:
+            return []
+
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
 
@@ -476,6 +477,10 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
     async def async_embed(
         self, text: List[str] | List[Embeddable]
     ) -> List[List[float]]:
+        
+        if len(text) == 0:
+            return []
+        
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
 
@@ -502,6 +507,10 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
     async def async_embed(
         self, text: List[str] | List[Embeddable]
     ) -> List[List[float]]:
+        
+        if len(text) == 0:
+            return []
+
         if isinstance(text[0], Embeddable):
             text = [x.text for x in text]
 

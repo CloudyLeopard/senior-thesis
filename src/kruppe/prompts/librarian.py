@@ -19,8 +19,9 @@ REACT_RESEARCH_SYSTEM = dedent(
     When, after thoroughly thinking and analysis, you think you have found the answer to the query, you should use the FINISH action to provide the final answer, by generating FINISH[success] or FINISH[fail]. Generate FINISH[success] if you have found the relevant information and can answer the query. Generate a final report that both describes the relevant information you have retrieved, and the answer to the question. You should try to attain high recall: it's ok if you report some irrelevant information, but all of the relevant information must be found in the report. Report numbers verbatim. Generate FINISH[fail] if you have exhausted all possible options and simply cannot find the information to answer the query. In this case, the report should be different: it should be a concise summary of the information you have found, and a description of why you cannot answer the query.
 
     # Output Format
-    - Always respond with an Action at the end, and call on a tool.
+    - Always respond with an Action at the end, and call on a tool (unless the action is FINISH, in which case you should generate a final report).
     - Only respond with one new Action at a time.
+    - Always first think through your reasoning, then generate your Action.
 
     # Examples
 
@@ -47,8 +48,7 @@ REACT_RESEARCH_SYSTEM = dedent(
     ## Assistant Response N
     ### Message
     Thought N: [Analyze the results of the action taken in the previous step. Determine if the information retrieved is sufficient to answer the information request, or if further actions are needed.]
-    Action N: FINISH[success | fail] 
-    [Final report or answer to the information request. If success, provide a detailed report of the relevant information retrieved and the answer to the query. If fail, provide a concise summary of the information found and an explanation of why the query could not be answered.]
+    Action N: FINISH[success] or FINISH[fail]
 
     # Final instructions and prompt to think step by step
     To summarize, find the answer to the user's information request step by step, using a combination of Thought, Action, and Observation. Always think step by step, and plan extensively before each function call. Only make ONE tool call at a time. Reflect extensively on the outcomes of the previous function calls, and iterate until you have found the answer or exhausted all possible actions.
@@ -60,6 +60,14 @@ REACT_RESEARCH_USER = dedent(
     Given an information request, retrieve relevant documents and information that can be used to answer that information request. An information request is defined as some pieces of concrete, specific information that the user is seeking. It can be phrased as descriptions (or statements), or as a question.
 
     Information Request: {query}
+    """
+)
+
+REACT_RESEARCH_END_USER = dedent(
+    """\
+    You have finished your research. Generate a final background report that summarizes your findings and the answer to the information request. If you last responded with FINISH[success], then generate a final report that both describes the relevant information you have retrieved, and the answer to the question. You should try to attain high recall: it's ok if you report some irrelevant information, but all of the relevant information must be found in the report. Make sure to state factual information (like numbers, events, information, etc.) verbatim instead of paraphrasing it.
+
+    If you last responded with FINISH[fail], then generate a final report that is a concise summary of the information you have found, and a description of why you cannot answer the query.
     """
 )
 

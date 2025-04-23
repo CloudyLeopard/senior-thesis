@@ -97,9 +97,9 @@ class NewsAPIData(NewsSource):
 
     async def news_recent(
         self,
-        days: int = 0,
+        days: int = 0, # NOTE: doesnt do anything cuz newsapi is limited anyway
         max_results: int = 20,
-        filter: Dict = None,  # TODO: not implemented
+        keywords: str = None,
         **kwargs,
     ) -> AsyncGenerator[Document, None]:
         params = {"apiKey": self.apiKey}
@@ -107,7 +107,13 @@ class NewsAPIData(NewsSource):
         params["page"] = 1 # newsapi developer account can only do 100 results per request (no page > 1)
         params["pageSize"] = 100 # newsapi developer account has a limit of 100 results per request
 
-        categories = ["business", "technology"]
+        # use more categories if keywords is supplied
+        if keywords:
+            categories = ["business", "technology", "science", "general"]
+        else:
+            categories = ["business", "technology"]
+            
+        keywords_list = [word.strip().lower() for word in keywords.split(",")] if keywords else []
 
         articles = []
         async with httpx.AsyncClient() as client:
@@ -120,7 +126,7 @@ class NewsAPIData(NewsSource):
                     response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
                     response.raise_for_status()
                     data = response.json()
-                    articles.extend(data.get("articles", []))
+                    
                 except httpx.HTTPStatusError as e:
                     msg = e.response.text
                     if e.response.status_code == 429:
@@ -134,6 +140,19 @@ class NewsAPIData(NewsSource):
                 except httpx.RequestError as e:
                     logger.error("NewsAPI Failed to fetch documents: %s", e)
                     raise RequestSourceException(e)
+                
+                for article in data.get("articles", []):
+                    # filter by keywords
+                    if keywords:
+                        title = article.get("title") or ""
+                        description = article.get("description") or ""
+                        content = article.get("content") or ""
+                        if not any(keyword in title.lower() for keyword in keywords_list) and \
+                           not any(keyword in description.lower() for keyword in keywords_list) and \
+                           not any(keyword in content.lower() for keyword in keywords_list):
+                            continue
+                        
+                    articles.append(article)
             
             articles.sort(key = lambda x: x.get("publishedAt", ""), reverse=True)
             articles = articles[:max_results]

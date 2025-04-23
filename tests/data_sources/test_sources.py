@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
     params=[
         NewYorkTimesData(headers_path=".nyt-headers.json"),
         FinancialTimesData(headers_path=".ft-headers.json"),
-        # NewsAPIData(),
+        NewsAPIData(),
     ],
     ids=lambda data: data.shorthand
 )
@@ -69,7 +69,7 @@ async def test_news_recent(source: NewsSource, caplog):
     start_time = time.time()
 
     size = 0    
-    async for document in source.news_recent(days=1, max_results=20):
+    async for document in source.news_recent(days=1, max_results=10):
         size += 1
         assert isinstance(document, Document)
         assert len(document.text) > 0
@@ -78,7 +78,7 @@ async def test_news_recent(source: NewsSource, caplog):
         assert "description" in document.metadata
         assert document.id and isinstance(document.id, UUID)
     
-    assert size > 0
+    assert 0 < size <= 10
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -97,14 +97,14 @@ async def test_news_archive(source: NewsSource, caplog):
     start_time = time.time()
 
     size = 0
-    async for document in source.news_archive(start_date="2024-01-01", end_date="2024-01-02", max_results=20):
+    async for document in source.news_archive(start_date="2024-01-01", end_date="2024-01-15", max_results=10):
         size += 1
         assert isinstance(document, Document)
         assert len(document.text) > 0
         assert len(document.metadata) > 0
         assert document.id and isinstance(document.id, UUID)
     
-    assert size > 0
+    assert 0 < size <= 10
 
     end_time = time.time()
     elapsed_time = end_time - start_time

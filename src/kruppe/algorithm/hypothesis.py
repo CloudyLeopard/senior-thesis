@@ -1,6 +1,6 @@
 import re
 from pydantic import BaseModel, Field, computed_field
-from typing import List, Dict, Tuple, Any, override
+from typing import List, Dict, Tuple, Any, final, override
 import logging
 from enum import Enum
 import asyncio
@@ -19,6 +19,7 @@ from kruppe.prompts.hypothesis import (
     REACT_HYPOTHESIS_REJECT_MAX_STEPS_USER,
     RANK_REASONS_SYSTEM,
     RANK_REASONS_USER,
+    REACT_HYPOTHESIS_REJECT_COMBINE_USER
 )
 from kruppe.models import Document, Response
 
@@ -32,6 +33,7 @@ class Status(Enum):
 
 
 class Node(BaseModel):
+    tree_id: int = None
     step: int
     messages: List[Dict[str, Any]] = Field(exclude=True)
     act_queued: bool
@@ -55,7 +57,7 @@ class Node(BaseModel):
 
     def __str__(self):
         return (
-            f"Node(step={self.step}, is_leaf={self.is_leaf},"
+            f"Node(tree_id={self.tree_id}, step={self.step}, is_leaf={self.is_leaf},"
             f" d_time={self.d_time}, f_time={self.f_time})"
         )
 
@@ -69,10 +71,11 @@ class HypothesisResearcher(ReActResearcher):
     role: str = "Financial Analyst"
     role_description: str = "You are a financial analyst who is has great insight into financial markets, standard business practices, and financial statement analysis."
     max_degree: int = 3  # maximum number of children per node. linear if degree = 1
+    background_report: Response = None  # optional background report
     docstore: BaseDocumentStore = None # optional for if i want to save documents
     index: BaseIndex = None # optional for if i want to save documents
     root_nodes: List[Node] = []
-    leaf_nodes: List[Node] = []
+    leaf_nodes: Dict[int, List[Node]] = {}
     research_reports: List[Response] = []
 
     def _react_system_prompt(self):
@@ -98,35 +101,55 @@ class HypothesisResearcher(ReActResearcher):
         )
         match = pattern.search(reason_response.strip())
 
-        if not match:
-            logger.error(
-                "LLM did not return a valid response for the reasoning step. "
-                "Make sure the LLM is set up correctly and the prompt is correct."
-            )
-
-            # assuming one line each (except for thought)
-            reason_response_lines = [
-                line for line in reason_response.strip().splitlines() if line
-            ]
-
-            thought = "\n".join(reason_response_lines[:-3])
-            hypothesis = reason_response_lines[-3]
-            research_direction = reason_response_lines[-2]
-            action = reason_response_lines[-1]
-
-            results = {
-                "thought": thought.split(":", 1)[-1].strip(),
-                "hypothesis": hypothesis.split(":", 1)[-1].strip(),
-                "research_direction": research_direction.split(":", 1)[-1].strip(),
-                "action": action.split(":", 1)[-1].strip(),
-            }
-        else:
+        if match:
             results = {
                 "thought": match.group("thought").strip(),
                 "hypothesis": match.group("hypothesis").strip(),
                 "research_direction": match.group("research_direction").strip(),
                 "action": match.group("action").strip(),
             }
+        else:
+            reason_response_lines = [
+                line for line in reason_response.strip().splitlines() if line
+            ]
+
+            # assuming each line is a different field, except for thought
+            # checking one line at a time, from the bottom
+            if reason_response_lines[-1].lower().startswith("action"):
+                action = reason_response_lines.pop(-1)
+                action = action.split(":", 1)[-1].strip()
+            else:
+                action = ""
+            
+            if reason_response_lines[-1].lower().startswith("research direction"):
+                research_direction = reason_response_lines.pop(-1)
+                research_direction = research_direction.split(":", 1)[-1].strip()
+            else:
+                research_direction = ""
+
+            if reason_response_lines[-1].lower().startswith("hypothesis"):
+                hypothesis = reason_response_lines.pop(-1)
+                hypothesis = hypothesis.split(":", 1)[-1].strip()
+            else:
+                hypothesis = ""
+            
+            thought = "\n".join(reason_response_lines)
+            thought = thought.split(":", 1)[-1].strip()
+
+            results = {
+                "thought": thought,
+                "hypothesis": hypothesis,
+                "research_direction": research_direction,
+                "action": action,
+            }
+
+            logger.error(
+                "LLM did not return a valid response for the reasoning step. " \
+                f"Missing fields: {', '.join([k for k, v in results.items() if not v])}"
+            )
+
+            
+            
 
         # evaluate action
         done = False
@@ -228,16 +251,17 @@ class HypothesisResearcher(ReActResearcher):
 
 
     @override
-    async def execute(self, query: str, background: str) -> List[Response]:
+    async def execute(self, query: str) -> List[Response]:
         # reset variables
         self.root_nodes = []
-        self.leaf_nodes = []
+        self.leaf_nodes = {}
         self.research_reports = []
 
         # initialize root nodes: each root node should have a starting claim
         async with asyncio.TaskGroup() as tg:
             initial_node_tasks = [
-                tg.create_task(self.init_starting_node(query, background=background))
+                tg.create_task(self.init_starting_node(
+                    query, background=self.background_report.text))
                 for i in range(self.max_degree)
             ]
 
@@ -251,21 +275,26 @@ class HypothesisResearcher(ReActResearcher):
 
         # conduct dfs search over each node
         # TODO: parallelize this
-        for i in range(len(self.root_nodes)):
-            if self.verbose:
-                print(f"Conducting research on root node {i + 1}/{len(self.root_nodes)}")
-            
-            # conduct dfs search
-            report = await self.dfs_research(self.root_nodes[i], query)
-            self.research_reports.append(report)
 
-            if self.verbose:
-                print(f"Finished research on root node {i + 1}/{len(self.root_nodes)}")
-                print("=" * 20)
+        async with asyncio.TaskGroup() as tg:
+            tasks = []
+            for i in range(len(self.root_nodes)):
+                # set the tree id for the root node
+                self.root_nodes[i].tree_id = i
+                
+                # conduct dfs search
+                task = tg.create_task(self.dfs_research(self.root_nodes[i], query))
+                tasks.append(task)
+
+        # collect the results
+        for task in tasks:
+            # collect the final report from each leaf node
+            self.research_reports.append(task.result())
+
 
         return self.research_reports
 
-    async def init_starting_node(self, query: str, background: str) -> Node:
+    async def init_starting_node(self, query: str, background: str = "") -> Node:
         """Generate the initial claim node for the given query."""
         messages = [
             {
@@ -363,6 +392,11 @@ class HypothesisResearcher(ReActResearcher):
     async def rank_child_nodes(self, children: List[Node], query: str) -> List[Node]:
         """Rank the children nodes based on their reason results. If they are similar, merge them"""
 
+        if len(children) == 0:
+            return []
+        if len(children) == 1:
+            return children
+
         # reason output should be the last message in `node.messages`
         reason_contents = [
             f'[{i + 1}] "{children[i].messages[-1]["content"]}"'
@@ -424,6 +458,9 @@ class HypothesisResearcher(ReActResearcher):
             _type_: _description_
         """
 
+        if self.verbose:
+            print(f"Starting research on tree {start.tree_id}")
+
         stack = [start]
         time = 0
         while stack:
@@ -438,7 +475,12 @@ class HypothesisResearcher(ReActResearcher):
                     print(f"Discovering node: {node}")
 
                 if node.is_leaf:
-                    self.leaf_nodes.append(node)
+                    if node.tree_id in self.leaf_nodes:
+                        self.leaf_nodes[node.tree_id].append(node)
+                    else:
+                        self.leaf_nodes[node.tree_id] = [node]
+                    
+                    # node is a leaf node, so we need to check if we can accept the hypothesis
 
                     # case 1: ACCEPT - we found our hypothesis, return
                     if node.reason_results["accept_hypothesis"]:
@@ -449,8 +491,17 @@ class HypothesisResearcher(ReActResearcher):
                             all_sources.extend(curr.act_results.get("sources", []))
                             curr = curr.parent
 
+                        if self.verbose:
+                            print(f"Finished research on tree {node.tree_id}")
+
                         return Response(
-                            text=node.reason_results["answer"], sources=all_sources
+                            text=node.reason_results["answer"],
+                            sources=all_sources,
+                            metadata = {
+                                "expert": self.role,
+                                "expert_description": self.role_description,
+                                "query": query
+                            }
                         )
                     else:  # case 2: REJECT hypothesis or MAX_STEP reached - we need to backtrack
                         # done with this node, so just not do anything.
@@ -480,6 +531,7 @@ class HypothesisResearcher(ReActResearcher):
                     )
 
                     child_node = Node(
+                        tree_id=node.tree_id,
                         step=node.step + 1,
                         messages=node.messages + reason_messages,  # shallow copy
                         act_queued=True,
@@ -514,3 +566,35 @@ class HypothesisResearcher(ReActResearcher):
 
                 if self.verbose:
                     print(f"Visiting a finished node: {node}")
+        
+        # dfs failed to find a hypothesis
+        if self.verbose:
+            print(f"Finished research on tree {start.tree_id} without accepting a hypothesis")
+        
+        # combine all the final reports from the leaf nodes
+        final_reports = [node.reason_results["answer"] for node in self.leaf_nodes[start.tree_id]]
+
+        messages = [
+            {"role": "system", "content": REACT_HYPOTHESIS_SYSTEM},
+            {
+                "role": "user",
+                "content": REACT_HYPOTHESIS_REJECT_COMBINE_USER.format(
+                    query=query,
+                    final_reports="\n----------\n".join(final_reports),
+                ),
+            },
+        ]
+
+        final_report = await self.llm.async_generate(messages)
+        final_report = final_report.text.strip()
+        
+        return Response(
+            text=final_report,
+            sources=[],
+            metadata = {
+                "expert": self.role,
+                "expert_description": self.role_description,
+                "query": query
+            })
+
+

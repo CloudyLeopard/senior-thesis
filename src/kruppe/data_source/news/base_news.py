@@ -20,7 +20,7 @@ class NewsSource(DataSource):
         self,
         days: int = 0,
         max_results: int = 20,
-        filter: Dict = None,  # TODO: not implemented
+        keywords: str = None,
         **kwargs,
     ) -> AsyncGenerator[Document, None]: ...
 
@@ -30,6 +30,6 @@ class NewsSource(DataSource):
         start_date: str,
         end_date: str,
         max_results: int = 20,
-        filter: Dict = None,  # TODO: not implemented
+        keywords: str = None,
         **kwargs,
     ) -> AsyncGenerator[Document, None]: ...
