@@ -2,11 +2,14 @@ import heapq
 from typing import Callable, List, Literal, Dict, Any
 import asyncio
 import re
+import logging
 
 from kruppe.llm import BaseLLM
 from kruppe.functional.rag.retriever.base_retriever import BaseRetriever
 from kruppe.models import Chunk, Query, Document
 from kruppe.prompts.rag import FUSION_GENERATE_QUERIES_USER, FUSION_GENERATE_QUERIES_SYSTEM
+
+logger = logging.getLogger(__name__)
 
 
 class QueryFusionRetriever(BaseRetriever):
@@ -36,7 +39,8 @@ class QueryFusionRetriever(BaseRetriever):
         llm_response = self.llm.generate(messages)
         queries = re.split(r'\n+', llm_response.text.strip())
 
-        assert len(queries) == self.num_queries
+        if len(queries) != self.num_queries:
+            logger.warning("Expected %d queries, but got %d", self.num_queries, len(queries))
 
         # retrieve chunks (list of list of chunks)
         retrieved_chunks = [
@@ -58,7 +62,8 @@ class QueryFusionRetriever(BaseRetriever):
         llm_response = await self.llm.async_generate(messages)
         queries = re.split(r'\n+', llm_response.text.strip())
 
-        assert len(queries) == self.num_queries
+        if len(queries) != self.num_queries:
+            logger.warning("Expected %d queries, but got %d", self.num_queries, len(queries))
 
         # retrieve documents
         async with asyncio.TaskGroup() as tg:

@@ -19,8 +19,8 @@ with gr.Blocks() as demo:
     with gr.Tabs():
         with gr.Tab("Librarian"):
             librarian_block.render()
-        with gr.Tab("Background Research"):
-            background_block.render()
+        # with gr.Tab("Background Research"):
+        #     background_block.render()
         with gr.Tab("Coordinator"):
             overseer_block.render()
         with gr.Tab("Hypothesis Research"):

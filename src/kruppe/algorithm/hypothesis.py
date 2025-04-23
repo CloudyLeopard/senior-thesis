@@ -507,9 +507,8 @@ class HypothesisResearcher(ReActResearcher):
                         # done with this node, so just not do anything.
 
                         feedback = node.reason_results["answer"]
-
-                        # TODO: add feedback to somewhere that can be used later
                         
+                        # NOTE: this is not used here. its used at the end
 
                         continue
 
@@ -587,14 +586,12 @@ class HypothesisResearcher(ReActResearcher):
 
         final_report = await self.llm.async_generate(messages)
         final_report = final_report.text.strip()
+        final_report.metadata = {
+            "expert": self.role,
+            "expert_description": self.role_description,
+            "query": query
+        }
         
-        return Response(
-            text=final_report,
-            sources=[],
-            metadata = {
-                "expert": self.role,
-                "expert_description": self.role_description,
-                "query": query
-            })
+        return final_report
 
 
