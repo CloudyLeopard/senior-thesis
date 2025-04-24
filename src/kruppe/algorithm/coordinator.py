@@ -39,6 +39,20 @@ class Coordinator(Researcher):
     _background_report: Response = PrivateAttr(default=None)
     _research_forest: List[HypothesisResearcher] = PrivateAttr(default=None)
 
+    def reports_to_dict(self) -> Dict[str, Any]:
+        """Convert research reports to dictionaries.
+        """
+
+        research_report_dicts = [
+            report.model_dump() for report in self.research_reports
+        ]
+
+        return {
+            "research_reports": research_report_dicts,
+            "background_report": self._background_report.model_dump() if self._background_report else None,
+        }
+
+
 
     async def generate_background(self, query: str) -> Response:
         """Generate a background report using the librarian.

@@ -98,6 +98,10 @@ class HypothesisResearcher(ReActResearcher):
         return REACT_HYPOTHESIS_USER.format(
             query=query, hypothesis=hypothesis, direction=direction
         )
+    
+    def reports_to_dict(self) -> List[Dict[str, Any]]:
+        """Convert the research report to a list of dictionary."""
+        return [report.model_dump() for report in self.research_reports]
 
     @override
     async def _parse_reason(

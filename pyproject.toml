@@ -42,6 +42,7 @@ jupyter = [
 gradio = [
     "gradio>=5.8.0"
 ]
+
 ml = [
     "torch==2.5.1",
     "transformers",
@@ -64,7 +65,7 @@ path = "src/kruppe/__about__.py"
 [tool.hatch.envs.experimental]
 features = [
     'jupyter',
-    'gradio'
+    'gradio',
     # 'ml'
 ]
 

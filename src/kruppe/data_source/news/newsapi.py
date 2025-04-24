@@ -3,6 +3,7 @@ import httpx
 from pydantic import Field, field_validator
 from typing import AsyncGenerator, Dict, Literal
 import logging
+import stamina
 
 from kruppe.data_source.news.base_news import NewsSource
 from kruppe.data_source.scraper import WebScraper, HTTPX_CONNECTION_LIMITS, RequestSourceException
@@ -10,6 +11,23 @@ from kruppe.common.utils import not_ready
 from kruppe.models import Document
 
 logger = logging.getLogger(__name__)
+
+
+
+def retry_error_handler(exc: Exception) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        if exc.response.status_code >= 500:
+            logger.warning(f"RETRY ON HTTP ERROR {exc.response.status_code}")
+            return True  # Retry on 429 and 5xx errors
+        if exc.response.status_code == 429:
+            logger.warning(f"NewsAPI Query Limit Reached {exc.response.status_code}")
+            return False
+    if isinstance(exc, httpx.HTTPError):
+        logger.warning(f"RETRY ON HTTP ERROR {repr(exc)}")
+        return True  # Retry on HTTP errors
+    
+    logger.error(f"ERROR {repr(exc)}")
+    return False
 
 class NewsAPIData(NewsSource):
     source: str = "NewsAPI"
@@ -28,6 +46,10 @@ class NewsAPIData(NewsSource):
     ) -> AsyncGenerator[Document, None]:
         """Internal method to parse the response from NewsAPI and yield Document objects."""
         logger.info("Fetched %d documents from NewsAPI API... Attempting to scrape.", len(articles))
+
+        if not articles:
+            logger.warning("NewsAPI Request no articles found.")
+            return
     
         # scrape list of links
         logger.debug("Scraping documents from links")
@@ -72,25 +94,14 @@ class NewsAPIData(NewsSource):
         async with httpx.AsyncClient(timeout=10.0, limits=HTTPX_CONNECTION_LIMITS) as client:
             logger.debug("Fetching documents from NewsAPI API")
 
-            try:
-                response = await client.get("https://newsapi.org/v2/everything", params=params)
-                response.raise_for_status()
-                data = response.json()
-                articles = data.get("articles", [])[:max_results]  # Limit to max_results
-            except httpx.HTTPStatusError as e:
-                msg = e.response.text
-                if e.response.status_code == 429:
-                    msg = "NewsAPI query limit reached"
-                logger.error(
-                    "NewsAPI HTTP Error %d: %s",
-                    e.response.status_code,
-                    msg,
-                )
-                raise RequestSourceException(msg)
-            except httpx.RequestError as e:
-                logger.error("NewsAPI Failed to fetch documents: %s", e)
-                raise RequestSourceException(e)
-            
+            data = {}
+            for attempt in stamina.retry_context(on=retry_error_handler, attempts=3):
+                with attempt:
+                    response = await client.get("https://newsapi.org/v2/everything", params=params)
+                    response.raise_for_status()
+                    data = response.json()
+
+            articles = data.get("articles", [])[:max_results]  # Limit to max_results
             generator = self._parse_newsapi_response(articles, client, query)
             async for doc in generator:
                 yield doc
@@ -122,24 +133,14 @@ class NewsAPIData(NewsSource):
             for category in categories:
                 params["category"] = category
 
-                try:
-                    response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
-                    response.raise_for_status()
-                    data = response.json()
+                data = {}
+
+                for attempt in stamina.retry_context(on=retry_error_handler, attempts=3):
+                    with attempt:
+                        response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
+                        response.raise_for_status()
+                        data = response.json()
                     
-                except httpx.HTTPStatusError as e:
-                    msg = e.response.text
-                    if e.response.status_code == 429:
-                        msg = "NewsAPI query limit reached"
-                    logger.error(
-                        "NewsAPI HTTP Error %d: %s",
-                        e.response.status_code,
-                        msg,
-                    )
-                    raise RequestSourceException(msg)
-                except httpx.RequestError as e:
-                    logger.error("NewsAPI Failed to fetch documents: %s", e)
-                    raise RequestSourceException(e)
                 
                 for article in data.get("articles", []):
                     # filter by keywords

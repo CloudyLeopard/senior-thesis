@@ -1,31 +1,21 @@
 import gradio as gr
+from components.coordinator import create_coordinator_interface
+from components.hypothesis import create_hypothesis_interface
+from components.librarian import create_librarian_interface
 
-from block_librarian import create_librarian_block
-from block_background import create_background_block
-from block_coordinator import create_coordinator_block
-from block_hypothesis import create_hypothesis_block
-from stream_logs import create_log_interface
+coordinator_interface = create_coordinator_interface()
+hypothesis_interface = create_hypothesis_interface()
+librarian_interface = create_librarian_interface()
 
-librarian_block = create_librarian_block()
-background_block = create_background_block()
-overseer_block = create_coordinator_block()
-hypothesis_block = create_hypothesis_block()
-log_iface = create_log_interface()
-
-with gr.Blocks() as demo:
-    with gr.Sidebar(position="right", width=400):
-        log_iface.render()
-
+with gr.Blocks(title="Research Assistant") as demo:
     with gr.Tabs():
-        with gr.Tab("Research Forest"):
-            overseer_block.render()
-        with gr.Tab("Research Tree"):
-            librarian_block.render()
-        # with gr.Tab("Background Research"):
-        #     background_block.render()
-        with gr.Tab("Research Chain"):
-            hypothesis_block.render()
-        # with gr.Tab("Log"):
-    
+        with gr.Tab("Coordinator"):
+            coordinator_interface.render()
+        
+        with gr.Tab("Hypothesis Researcher"):
+            hypothesis_interface.render()
+        
+        with gr.Tab("Librarian"):
+            librarian_interface.render()
 
 demo.launch()

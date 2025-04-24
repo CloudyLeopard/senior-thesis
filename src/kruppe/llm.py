@@ -50,7 +50,7 @@ class BaseNYUModel(BaseModel):
 
 class BaseLLM(ABC, BaseModel):
     """Custom generator interface"""
-
+    model: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
     _session_token_usage: int = PrivateAttr(default=0)
     _input_token_usage: int = PrivateAttr(default=0)
@@ -166,9 +166,9 @@ class OpenAILLM(BaseLLM):
         "gpt-4.1-mini",
         "gpt-4.1-nano",
         "gpt-4.5-preview",
-        "o1",
-        "o3",
-        "o4-mini"
+        # "o1",
+        # "o3",
+        # "o4-mini"
     ] = "gpt-4.1-mini"
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"), exclude=True)
     params: Dict[str, Any] = Field(default={}, description="OpenAI parameters") # can be overridden by method call
