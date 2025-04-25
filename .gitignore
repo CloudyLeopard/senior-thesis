@@ -19,3 +19,5 @@ exports/
 
 experiments/**/*.pdf
 experiments/**/*.txt
+experiments/**/*.html
+experiments/**/*.json
