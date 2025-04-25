@@ -9,7 +9,7 @@ GENERATE_QUESTION_SYSTEM = dedent(
 GENERATE_QUESTION_USER = dedent(
     """\
     -Instruction-
-    Given a document, identify the main, high-level question that the document seeks to answer or address. Answer only with the question.
+    Given a document, identify the main, high-level question that the document seeks to answer or address. Answer only with the question. Keep the question grounded to the main topic of the document, but be general enough to so that it does not refer to any extremely specific details or examples in the document.
 
     -Input-
     <document>

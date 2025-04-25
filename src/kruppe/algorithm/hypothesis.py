@@ -1,9 +1,10 @@
 import re
 from pydantic import BaseModel, Field, computed_field
-from typing import List, Dict, Tuple, Any, final, override
+from typing import List, Dict, Tuple, Any, override
 import logging
 from enum import Enum
 import asyncio
+from uuid import uuid4, UUID
 
 from kruppe.algorithm.agents import ReActResearcher
 
@@ -77,6 +78,7 @@ class HypothesisResearcher(ReActResearcher):
     root_nodes: List[Node] = []
     leaf_nodes: Dict[int, List[Node]] = {}
     research_reports: List[Response] = []
+    uuid: UUID = Field(default_factory=uuid4, exclude=True)
 
     @computed_field
     @property
@@ -101,7 +103,7 @@ class HypothesisResearcher(ReActResearcher):
     
     def reports_to_dict(self) -> List[Dict[str, Any]]:
         """Convert the research report to a list of dictionary."""
-        return [report.model_dump() for report in self.research_reports]
+        return [report.model_dump(mode='json') for report in self.research_reports]
 
     @override
     async def _parse_reason(
@@ -173,9 +175,7 @@ class HypothesisResearcher(ReActResearcher):
         if action.lower().startswith("finish["):
             done = True
 
-            # final report is in action
-            action, answer = action.split("]", 1)
-            action = action[len("finish[") :].strip().lower()
+            action = action[len("finish["): action.find("]")].strip().lower()
 
             results["action"] = f"FINISH[{action}]"
 
@@ -268,7 +268,7 @@ class HypothesisResearcher(ReActResearcher):
             logger.debug("Added %d documents to index and docstore (out of %d total documents)", len(saved_docs), len(sources))
             
             if self.verbose:
-                print(f"Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
+                print(f"{self.uuid}: Added {len(saved_docs)} documents to index and docstore (out of {len(sources)} total documents)")
         
         return act_results
 
@@ -294,7 +294,7 @@ class HypothesisResearcher(ReActResearcher):
         self.root_nodes = initial_nodes
 
         if self.verbose:
-            print(f"Initialized {len(self.root_nodes)} root nodes.")
+            print(f"{self.uuid}: Initialized {len(self.root_nodes)} root nodes.")
 
         # conduct dfs search over each node
         # TODO: parallelize this
@@ -482,7 +482,7 @@ class HypothesisResearcher(ReActResearcher):
         """
 
         if self.verbose:
-            print(f"Starting research on tree {start.tree_id}")
+            print(f"{self.uuid}: Starting research on tree {start.tree_id}")
 
         stack = [start]
         time = 0
@@ -495,7 +495,7 @@ class HypothesisResearcher(ReActResearcher):
                 node.d_time = time
 
                 if self.verbose:
-                    print(f"Discovering node: {node}")
+                    print(f"{self.uuid}: Discovering node: {node}")
 
                 if node.is_leaf:
                     if node.tree_id in self.leaf_nodes:
@@ -515,7 +515,7 @@ class HypothesisResearcher(ReActResearcher):
                             curr = curr.parent
 
                         if self.verbose:
-                            print(f"Finished research on tree {node.tree_id}")
+                            print(f"{self.uuid}: Finished research on tree {node.tree_id}")
 
                         return Response(
                             text=node.reason_results["answer"],
@@ -580,18 +580,18 @@ class HypothesisResearcher(ReActResearcher):
                 stack.pop()
 
                 if self.verbose:
-                    print(f"Finishing node: {node}")
+                    print(f"{self.uuid}: Finishing node: {node}")
             else:
                 # node is already finished, pop it from the stack
                 # shouldn't happen here cuz i don't have backward edges, but maybe in the future
                 stack.pop()
 
                 if self.verbose:
-                    print(f"Visiting a finished node: {node}")
+                    print(f"{self.uuid}: Visiting a finished node: {node}")
         
         # dfs failed to find a hypothesis
         if self.verbose:
-            print(f"Finished research on tree {start.tree_id} without accepting a hypothesis")
+            print(f"{self.uuid}: Finished research on tree {start.tree_id} without accepting a hypothesis")
         
         # combine all the final reports from the leaf nodes
         final_reports = [node.reason_results["answer"] for node in self.leaf_nodes[start.tree_id]]

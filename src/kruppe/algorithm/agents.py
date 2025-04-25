@@ -105,7 +105,7 @@ class ReActResearcher(Researcher):
             Tuple[str, List[Document]]: string result of the tool call, and a list of documents (sources) returned by the tool.
         """
         if tool_name not in self._tools:
-            raise ValueError(f"Tool {tool_name} not found in available tools.")
+            return f"Tool {tool_name} not found in available tools.", []
 
         logger.debug("Calling tool %s with arguments: %s", tool_name, tool_args)
 
@@ -189,11 +189,17 @@ class ReActResearcher(Researcher):
         else:
             logger.error(
                 "LLM did not return a valid response for the reasoning step. "
-                "Expected format: Thought {step}: [thought] Action {step}: [action]"
+                f"Expected format: Thought {step}: [thought] Action {step}: [action]. "
+                f"Received {reason_response.strip()}."
             )
 
             # assume one line for action, the rest is thought
-            thought, action = reason_response.strip().rsplit("\n", 1)
+            try:
+                thought, action = reason_response.strip().rsplit("\n", 1)
+            except ValueError:
+                thought = reason_response.strip()
+                action = ""
+
             results = {
                 "thought": thought.split(":", 1)[-1].strip(),
                 "action": action.split(":", 1)[-1].strip(),
@@ -213,8 +219,12 @@ class ReActResearcher(Researcher):
             done = True
 
             # final report is in action
-            action, answer = action.split("]", 1)
-            action = f"{action}]"
+            try:
+                action, answer = action.split("]", 1)
+                action = f"{action}]"
+            except ValueError:
+                action = action
+                answer = ""
 
             results["action"] = action
             results["answer"] = answer  # this gets replaced later actually
@@ -248,7 +258,8 @@ class ReActResearcher(Researcher):
         )
 
         if self.verbose:
-            print(f"Tool call: {tool_name} ({tool_args_str})")
+            # print(f"Tool call: {tool_name} ({tool_args_str})")
+            ...
 
         tool_args = json.loads(tool_args_str)
 
@@ -306,7 +317,7 @@ class ReActResearcher(Researcher):
         done = False
 
         # initialize the messages with the system prompt
-        self._messages = [
+        messages = [
             {"role": "system", "content": self._react_system_prompt()},
             {"role": "user", "content": self._react_user_prompt(query)},
         ]
@@ -317,8 +328,8 @@ class ReActResearcher(Researcher):
                 print(f"Thinking (step {i})")
 
             # reason step
-            reason_messages, reason_results, done = await self.reason(self._messages, i)
-            self._messages.extend(reason_messages)
+            reason_messages, reason_results, done = await self.reason(messages, i)
+            messages.extend(reason_messages)
 
             if done:
                 ans = reason_results["answer"]
@@ -328,9 +339,11 @@ class ReActResearcher(Researcher):
                 break
 
             # act step
-            tool_call_messages, act_results = await self.act(self._messages, i)
-            self._messages.extend(tool_call_messages)
+            tool_call_messages, act_results = await self.act(messages, i)
+            messages.extend(tool_call_messages)
             all_sources.extend(act_results["sources"])
+
+        self._messages = messages
 
         if not done:
             logger.warning("Reached max steps without finishing the research task.")

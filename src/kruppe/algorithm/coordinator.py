@@ -44,12 +44,12 @@ class Coordinator(Researcher):
         """
 
         research_report_dicts = [
-            report.model_dump() for report in self.research_reports
+            report.model_dump(mode='json') for report in self.research_reports
         ]
 
         return {
             "research_reports": research_report_dicts,
-            "background_report": self._background_report.model_dump() if self._background_report else None,
+            "background_report": self._background_report.model_dump(mode='json') if self._background_report else None,
         }
 
 
@@ -198,21 +198,23 @@ class Coordinator(Researcher):
         # Generate background report
         # not resetting background report in case user manually sets it
         self._background_report = await self.generate_background(query)
-        print("Background report generated.")
+        print("Background report generated for query:", query)
         
         # Initialize hypothesis researchers
         hyp_researchers = await self.initialize_research_forest(query, self._background_report, n_experts)
         self._research_forest = hyp_researchers
 
-        # Execute hypothesis researchers in parallel        
+        # Execute hypothesis researchers in parallel
+        async def execute_hypothesis_researcher(hyp_researcher: HypothesisResearcher, query: str):
+            responses = await hyp_researcher.execute(query=query)
+            self.research_reports.extend(responses)
+            print(f"Researcher {hyp_researcher.uuid} completed with {len(responses)} reports.")
+        
         async with asyncio.TaskGroup() as tg:
             for hyp_researcher in hyp_researchers:
-                tg.create_task(hyp_researcher.execute(query=query))
+                tg.create_task(execute_hypothesis_researcher(hyp_researcher, query))
         
-        # Collect research reports
-        for hyp_researcher in hyp_researchers:
-            reports = hyp_researcher.research_reports
-            self.research_reports.extend(reports)
+        print(f"Completed {len(self.research_reports)} research reports for query: {query}.")
 
         # # Execute hypothesis researchers sequentially
         # for hyp_researcher in hyp_researchers:
@@ -250,3 +252,120 @@ class Coordinator(Researcher):
         summary_response = await self.llm.async_generate(messages)
 
         return summary_response
+
+    def visualize_research_forest(self):
+        """
+        Generates an HTML visualization of the research forest structure.
+        Each HypothesisResearcher is a root, with its root nodes and their children forming a tree.
+        """
+
+        if not self._research_forest:
+            return "<div>No research forest available yet.</div>"
+        
+        html = """
+        <style>
+            .tree {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                color: black;
+            }
+            .tree ul {
+                list-style-type: none;
+                padding-left: 20px;
+                position: relative;
+            }
+            .tree ul:before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                border-left: 1px solid #ccc;
+                height: 100%;
+            }
+            .tree li {
+                position: relative;
+                padding: 5px 0;
+            }
+            .tree li:before {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: -20px;
+                border-top: 1px solid #ccc;
+                width: 20px;
+            }
+            .node {
+                padding: 5px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #f8f9fa;
+                display: inline-block;
+            }
+            .researcher {
+                background: #e3f2fd;
+                font-weight: bold;
+            }
+            .root-node {
+                background: #f3e5f5;
+            }
+            .child-node {
+                background: #f1f8e9;
+            }
+            .leaf_node {
+                background: #fff3e0;
+            }
+        </style>
+        <div class="tree">
+        """
+        
+        for i, researcher in enumerate(self._research_forest):
+            html += f"""
+            <ul>
+                <li>
+                    <div class="node researcher">Hypothesis Researcher {i+1}</div>
+                    <ul>
+            """
+            
+            # Add root nodes
+            for root_node in researcher.root_nodes:
+                html += f"""
+                        <li>
+                            <div class="node root-node">Root Node: step={root_node.step}, d_time={root_node.d_time}</div>
+                            <ul>
+                """
+                
+                # Add children recursively
+                def add_children(node):
+                    html = ""
+                    for child in node.children:
+                        if child.is_leaf:
+                            html += f"""
+                                <li>
+                                    <div class="node leaf_node">Leaf Node: step={child.step}, d_time={child.d_time}</div>
+                            """
+                        else:
+                            html += f"""
+                                    <li>
+                                        <div class="node child-node">Internal Node: step={child.step}, d_time={child.d_time}</div>
+                            """
+                        if child.children:
+                            html += "<ul>"
+                            html += add_children(child)
+                            html += "</ul>"
+                        html += "</li>"
+                    return html
+                
+                html += add_children(root_node)
+                html += """
+                            </ul>
+                        </li>
+                """
+            
+            html += """
+                    </ul>
+                </li>
+            </ul>
+            """
+        
+        html += "</div>"
+        return html 

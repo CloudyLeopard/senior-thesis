@@ -95,11 +95,14 @@ class NewsAPIData(NewsSource):
             logger.debug("Fetching documents from NewsAPI API")
 
             data = {}
-            for attempt in stamina.retry_context(on=retry_error_handler, attempts=3):
-                with attempt:
-                    response = await client.get("https://newsapi.org/v2/everything", params=params)
-                    response.raise_for_status()
-                    data = response.json()
+            try:
+                for attempt in stamina.retry_context(on=retry_error_handler, attempts=5):
+                    with attempt:
+                        response = await client.get("https://newsapi.org/v2/everything", params=params)
+                        response.raise_for_status()
+                        data = response.json()
+            except httpx.HTTPError as e:
+                logger.error(f"Error searching news from NewsAPI: {e}")
 
             articles = data.get("articles", [])[:max_results]  # Limit to max_results
             generator = self._parse_newsapi_response(articles, client, query)
@@ -134,12 +137,14 @@ class NewsAPIData(NewsSource):
                 params["category"] = category
 
                 data = {}
-
-                for attempt in stamina.retry_context(on=retry_error_handler, attempts=3):
-                    with attempt:
-                        response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
-                        response.raise_for_status()
-                        data = response.json()
+                try:
+                    for attempt in stamina.retry_context(on=retry_error_handler, attempts=5):
+                        with attempt:
+                            response = await client.get("https://newsapi.org/v2/top-headlines", params=params)
+                            response.raise_for_status()
+                            data = response.json()
+                except httpx.HTTPError as e:
+                    logger.error(f"Error finding recent news from NewsAPI: {e}")
                     
                 
                 for article in data.get("articles", []):

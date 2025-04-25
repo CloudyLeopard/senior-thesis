@@ -96,7 +96,6 @@ class NewYorkTimesData(NewsSource):
                     
                     logger.warning("Failed to fetch more articles from New York Times, returning what we have")
                     break # instead of throwing an error, we just stop fetching more articles
-                    
 
                 except httpx.RequestError as e:
                     logger.error("New York Times Failed to fetch documents (%d / %d tries): %s", 4-retries, 3, repr(e))

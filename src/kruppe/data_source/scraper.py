@@ -235,6 +235,11 @@ class WebScraper:
                 html = self._scrape_with_selenium(driver, url, **kwargs)
             else:
                 return None
+        except Exception as exc:
+            # NOTE: this is a catch-all for any other exceptions that may occur
+            # could be dangerous
+            logger.error("[httpx] Unexpected error while scraping %s: %s", url, repr(exc))
+            return None
         finally:
             # close async client
             if self.async_client is None:

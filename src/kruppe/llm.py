@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
+import time
 from typing import Any, List, Dict, Literal, Tuple
 import os
 import asyncio
+import openai
 from openai import OpenAI, AsyncOpenAI
 import logging
 from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, computed_field
 import httpx
+import stamina
 
 from kruppe.models import Embeddable, Response
 from kruppe.common.log import log_io
@@ -27,7 +30,42 @@ def init_httpx_client() -> httpx.AsyncClient:
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+
+
+def retry_on_openai_error(exc: Exception) -> bool:
+    """Retry on OpenAI API errors"""
+    if isinstance (exc, openai.APITimeoutError):
+        logger.warning("OpenAI API timeout error. Waiting for 3 seconds")
+        time.sleep(3)
+        return True
+    elif isinstance(exc, openai.AuthenticationError):
+        logger.error("OpenAI API authentication error. Please check your API key")
+        return False        
+    elif isinstance(exc, openai.BadRequestError):
+        logger.warning("OpenAI API bad request error. Please check your request")
+        return False
+    elif isinstance(exc, openai.InternalServerError):
+        logger.warning("OpenAI API internal server error. Waiting for 10 seconds")
+        time.sleep(10)
+        return True
+    elif isinstance(exc, openai.RateLimitError):
+        logger.warning("OpenAI API rate limit error. Waiting for 60 seconds")
+        time.sleep(60)
+        return True
+    elif isinstance(exc, openai.APIConnectionError):
+        logger.warning("OpenAI API connection error. Trying again")
+        return False
+    
+    if isinstance(exc, httpx.TimeoutException):
+        logger.warning("OpenAI HTTPX timeout error. Waiting for 10 seconds")
+        time.sleep(10)
+        return True
+    elif isinstance(exc, httpx.HTTPStatusError):
+        if exc.response.status_code in [429, 500, 502, 503, 504]:
+            return True
+        return False
+    logger.error(f"OpenAI API error: {exc}")
+    return False
 
 
 class BaseNYUModel(BaseModel):
@@ -101,14 +139,26 @@ class BaseLLM(ABC, BaseModel):
     def price(self):
         if self.model == "gpt-4o":
             return (
-                self._input_token_usage * 2.5 + self._output_token_usage * 10
+                self._input_token_usage * 2.5
+                  + self._output_token_usage * 10
             ) / 1_000_000
         elif self.model == "gpt-4o-mini":
             return (
-                self._input_token_usage * 0.15 + self._output_token_usage * 0.075
+                self._input_token_usage * 0.15
+                 + self._output_token_usage * 0.6
+            ) / 1_000_000
+        elif self.model == "gpt-4.1":
+            return (
+                self._input_token_usage * 2
+                + self._output_token_usage * 8
+            ) / 1_000_000
+        elif self.model == "gpt-4.1-mini":
+            return (
+                self._input_token_usage * 0.40
+                + self._output_token_usage * 1.60
             ) / 1_000_000
         else:
-            return 0
+            return 
 
 class FakeLLM(BaseLLM):
     def generate(self, messages: List[Dict], **kwargs) -> Response:
@@ -179,7 +229,7 @@ class OpenAILLM(BaseLLM):
         default_factory=lambda: AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     )
 
-    @log_io
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     def generate(self, messages: List[Dict], **kwargs) -> Response:
         """returns openai response based on given messages"""
 
@@ -217,7 +267,7 @@ class OpenAILLM(BaseLLM):
 
         return Response(text=content)
 
-    @log_io
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_generate(
         self, messages: List[Dict], **kwargs
     ) -> Response:
@@ -257,6 +307,7 @@ class OpenAILLM(BaseLLM):
 
         return Response(text=content)
 
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="auto", **kwargs
     ) -> Tuple[str, str, str, str]: 
@@ -333,7 +384,7 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
 
 
     # TODO: rewrite this with stamina retry
-    @log_io
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_generate(
         self,
         messages: List[Dict],
@@ -412,9 +463,11 @@ class NYUOpenAILLM(BaseLLM, BaseNYUModel):
             if self._httpx_client is None:
                 await client.aclose()
 
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     def generate(self, messages, **kwargs):
         return asyncio.run(self.async_generate(messages, **kwargs))
     
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_generate_with_tools(
         self, messages: List[Dict], tools: List[Dict], tool_choice="required", **kwargs
     ) -> Tuple[str, str, Dict[str, Any]]:
@@ -457,6 +510,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
             self.async_client = AsyncOpenAI(api_key=self.api_key)
 
     # TODO: work on "retry" when encountered error
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
         
         if len(text) == 0:
@@ -474,6 +528,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
         return embeddings
 
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_embed(
         self, text: List[str] | List[Embeddable]
     ) -> List[List[float]]:
@@ -504,6 +559,7 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
         default_factory=lambda: os.getenv("NYU_ENDPOINT_URL_EMBEDDING")
     )
 
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     async def async_embed(
         self, text: List[str] | List[Embeddable]
     ) -> List[List[float]]:
@@ -568,5 +624,6 @@ class NYUOpenAIEmbeddingModel(BaseEmbeddingModel, BaseNYUModel):
             if self._httpx_client is None:
                 await client.aclose()
 
+    @stamina.retry(on=retry_on_openai_error, attempts=10, wait_max=20)
     def embed(self, text: List[str] | List[Embeddable]) -> List[List[float]]:
         return asyncio.run(self.async_embed(text))
