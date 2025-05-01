@@ -54,15 +54,15 @@ VANILLA_QA_SYSTEM = dedent(
 EVALUATE_REPORT_SYSTEM = dedent(
     """\
     -Role-
-    You are an expert taked with evaluating two reports that seek to answer the same question based on five criteria: comprehensiveness, diversity, empowerment, and cohesiveness.
+    You are an expert tasked with evaluating two reports that seek to answer the same question based on five criteria: comprehensiveness, diversity, empowerment, and cohesiveness.
 
     -Goal-
-    You will evaluate two answers to the same question based on four criteria: comprehensiveness, diversity, empowerment, and cohesiveness.
+    You will evaluate two answers to the same question based on four criteria: comprehensiveness, diversity, empowerment, and cohesiveness. Focus on the analysis and overall story of the answer, rather than the length and the specific details. Just because an answer is longer or contains a more information, does not necessary mean it is better.
 
-    - Comprehensiveness: How much detail does the answer provide to cover all aspects and details of the question?
-    - Diversity: How varied and rich is the answer in providing different perspectives and insights on the question?
     - Empowerment: How well does the answer help the reader understand and make informed judgements about the topic?
     - Cohesiveness: How well does the answer flow and connect different parts of the information together? Does the answer follow one central narrative?
+    - Comprehensiveness: How much detail does the answer provide to cover all aspects and details of the question?
+    - Diversity: How varied and rich is the answer in providing different perspectives and insights on the question?
 
     For each criterion, choose the better answer (either Answer 1 or Answer 2) and explain why. Then, select an overall winner based on these three categories.
     """
@@ -86,19 +86,19 @@ EVALUATE_REPORT_USER = dedent(
     Output your evaluation in the following JSON format (but in string form):
 
     {{
-        "Comprehensiveness": {{ 
-            "Winner": "[Answer 1 or Answer 2]", 
-            "Explanation": "[Provide explanation here]" 
-        }},
-        "Diversity": {{ 
-            "Winner": "[Answer 1 or Answer 2]", 
-            "Explanation": "[Provide explanation here]" 
-        }},
         "Empowerment": {{ 
             "Winner": "[Answer 1 or Answer 2]", 
             "Explanation": "[Provide explanation here]" 
         }},
         "Cohesiveness": {{ 
+            "Winner": "[Answer 1 or Answer 2]", 
+            "Explanation": "[Provide explanation here]" 
+        }},
+        "Comprehensiveness": {{ 
+            "Winner": "[Answer 1 or Answer 2]", 
+            "Explanation": "[Provide explanation here]" 
+        }},
+        "Diversity": {{ 
             "Winner": "[Answer 1 or Answer 2]", 
             "Explanation": "[Provide explanation here]" 
         }},

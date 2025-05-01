@@ -122,7 +122,7 @@ def create_hypothesis_interface():
             with gr.Row():
                 with gr.Column():
                     # Model Configuration
-                    gr.Markdown("### Model")
+                    gr.Markdown("### Model Configuration")
                     model_name = gr.Dropdown(
                         choices=[
                             "gpt-4o",
@@ -138,7 +138,7 @@ def create_hypothesis_interface():
                     )
                     
                     # Max Steps Configuration
-                    gr.Markdown("### Max Steps")
+                    gr.Markdown("### Execution Configuration")
                     max_steps = gr.Number(
                         value=20,
                         label="Maximum Steps",
@@ -148,7 +148,6 @@ def create_hypothesis_interface():
                     )
                     
                     # Max Degree Configuration
-                    gr.Markdown("### Max Degree")
                     max_degree = gr.Number(
                         value=2,
                         label="Maximum Degree",
@@ -157,22 +156,7 @@ def create_hypothesis_interface():
                         step=1
                     )
                     
-                    # Role Configuration
-                    gr.Markdown("### Role")
-                    role = gr.Textbox(
-                        value="Financial Analyst",
-                        label="Role",
-                        interactive=True
-                    )
-                    
-                    # Role Description
-                    gr.Markdown("### Role Description")
-                    role_description = gr.Textbox(
-                        value="A financial analyst is someone who is great at analyzing finance stuff",
-                        label="Role Description",
-                        lines=3,
-                        interactive=True
-                    )
+
 
                      # Toolkit Configuration
                     gr.Markdown("### Available Tools")
@@ -186,29 +170,46 @@ def create_hypothesis_interface():
                             )
                         )
                     
-                    # Background Report
-                    gr.Markdown("### Background Report")
-                    background_report = gr.Textbox(
-                        value="",
-                        label="Background Report",
-                        lines=5,
-                        placeholder="Enter any background information or context for the research...",
-                        interactive=True
-                    )
-                    
                     # Update Button
                     update_btn = gr.Button("Update Configuration", variant="primary")
                     update_status = gr.Textbox(label="Update Status", interactive=False)
         
         # Main Query Interface
-        query_input = gr.Textbox(
-            label="Query",
-            placeholder="Enter your query here...",
-            lines=1,
-            submit_btn=True
-        )
+        with gr.Row():
+            with gr.Column():
+                gr.Markdown("### Role Configuration")
+                # Role Configuration
+                role = gr.Textbox(
+                    value="Financial Analyst",
+                    label="Role",
+                    interactive=True
+                )
+                
+                # Role Description
+                role_description = gr.Textbox(
+                    value="A financial analyst is someone who is great at analyzing finance stuff",
+                    label="Role Description",
+                    lines=3,
+                    interactive=True
+                )
+                # Background Report
+                background_report = gr.Textbox(
+                    value="",
+                    label="Background Report",
+                    lines=5,
+                    placeholder="Enter any background information or context for the research...",
+                    interactive=True
+                )
+            with gr.Column():
+                gr.Markdown("### Query Input")
+                query_input = gr.Textbox(
+                    label="Query",
+                    placeholder="Enter your query here...",
+                    lines=1,
+                    submit_btn=True
+                )
 
-        gr.Markdown("### Research Report")
+        gr.Markdown("## Research Report")
 
         report_dropdown = gr.Dropdown(
             choices=[],

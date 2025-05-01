@@ -138,13 +138,13 @@ class HypothesisResearcher(ReActResearcher):
             else:
                 action = ""
             
-            if reason_response_lines[-1].lower().startswith("research direction"):
+            if len(reason_response_lines) > 0 and reason_response_lines[-1].lower().startswith("research direction"):
                 research_direction = reason_response_lines.pop(-1)
                 research_direction = research_direction.split(":", 1)[-1].strip()
             else:
                 research_direction = ""
 
-            if reason_response_lines[-1].lower().startswith("hypothesis"):
+            if len(reason_response_lines) > 0 and reason_response_lines[-1].lower().startswith("hypothesis"):
                 hypothesis = reason_response_lines.pop(-1)
                 hypothesis = hypothesis.split(":", 1)[-1].strip()
             else:
@@ -304,6 +304,7 @@ class HypothesisResearcher(ReActResearcher):
             for i in range(len(self.root_nodes)):
                 # set the tree id for the root node
                 self.root_nodes[i].tree_id = i
+                self.leaf_nodes[i] = []
                 
                 # conduct dfs search
                 task = tg.create_task(self.dfs_research(self.root_nodes[i], query))
@@ -498,10 +499,7 @@ class HypothesisResearcher(ReActResearcher):
                     print(f"{self.uuid}: Discovering node: {node}")
 
                 if node.is_leaf:
-                    if node.tree_id in self.leaf_nodes:
-                        self.leaf_nodes[node.tree_id].append(node)
-                    else:
-                        self.leaf_nodes[node.tree_id] = [node]
+                    self.leaf_nodes[node.tree_id].append(node)
                     
                     # node is a leaf node, so we need to check if we can accept the hypothesis
 

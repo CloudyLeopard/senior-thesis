@@ -2,10 +2,12 @@ import gradio as gr
 from components.coordinator import create_coordinator_interface
 from components.hypothesis import create_hypothesis_interface
 from components.librarian import create_librarian_interface
+from components.reports import create_report_interface
 
 coordinator_interface = create_coordinator_interface()
 hypothesis_interface = create_hypothesis_interface()
 librarian_interface = create_librarian_interface()
+report_interface = create_report_interface()
 
 with gr.Blocks(title="Research Assistant") as demo:
     with gr.Tabs():
@@ -17,5 +19,8 @@ with gr.Blocks(title="Research Assistant") as demo:
         
         with gr.Tab("Librarian"):
             librarian_interface.render()
+        
+        with gr.Tab("Reports"):
+            report_interface.render()
 
 demo.launch()

@@ -148,7 +148,7 @@ class Coordinator(Researcher):
         choose_str = choose_response.text
 
         # Parse the chosen experts
-        experts_str = choose_str.strip().split("Selected Experts:")[1].strip()
+        experts_str = re.split(r"selected experts:", choose_str, flags=re.IGNORECASE)[1].strip()
         selected_experts_titles = [title.strip() for title in experts_str.split(',') if title.strip()]
         selected_experts = {title: experts[title] for title in selected_experts_titles if title in experts}
 

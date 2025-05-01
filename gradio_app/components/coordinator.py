@@ -130,7 +130,7 @@ def create_coordinator_interface():
             with gr.Row():
                 with gr.Column():
                     # Model Configuration
-                    gr.Markdown("### Model")
+                    gr.Markdown("### Model Configuration")
                     model_name = gr.Dropdown(
                         choices=[
                             "gpt-4o",
@@ -146,7 +146,7 @@ def create_coordinator_interface():
                     )
                     
                     # Max Steps Configuration
-                    gr.Markdown("### Max Steps")
+                    gr.Markdown("### Execution Configuration")
                     max_steps = gr.Number(
                         value=20,
                         label="Maximum Steps",
@@ -156,7 +156,6 @@ def create_coordinator_interface():
                     )
                     
                     # Max Degree Configuration
-                    gr.Markdown("### Max Degree")
                     max_degree = gr.Number(
                         value=2,
                         label="Maximum Degree",
@@ -184,6 +183,7 @@ def create_coordinator_interface():
         # Main Query Interface
         with gr.Row():
             with gr.Column(scale=1):
+                gr.Markdown("### Query Configuration")
                 n_experts_input = gr.Number(
                     value=3,
                     label="N Expert Perspectives to Generate",
@@ -192,6 +192,7 @@ def create_coordinator_interface():
                     step=1
                 )
             with gr.Column(scale=3):
+                gr.Markdown("### Query Input")
                 query_input = gr.Textbox(
                     label="Query",
                     placeholder="Enter your query here...",
@@ -199,7 +200,7 @@ def create_coordinator_interface():
                     submit_btn=True
                 )
 
-        gr.Markdown("### Research Report")
+        gr.Markdown("## Research Report")
 
         report_dropdown = gr.Dropdown(
             choices=[],

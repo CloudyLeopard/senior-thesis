@@ -89,7 +89,7 @@ def create_librarian_interface():
             with gr.Row():
                 with gr.Column():
                     # Model Configuration
-                    gr.Markdown("### Model")
+                    gr.Markdown("### Model Configuration")
                     model_name = gr.Dropdown(
                         choices=[
                             "gpt-4o",
@@ -104,7 +104,7 @@ def create_librarian_interface():
                         interactive=True
                     )
                     # Max Steps Configuration
-                    gr.Markdown("### Max Steps")
+                    gr.Markdown("### Execution Configuration")
                     max_steps = gr.Number(
                         value=20,
                         label="Maximum Steps",

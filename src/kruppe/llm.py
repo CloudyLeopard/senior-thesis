@@ -157,6 +157,16 @@ class BaseLLM(ABC, BaseModel):
                 self._input_token_usage * 0.40
                 + self._output_token_usage * 1.60
             ) / 1_000_000
+        elif self.model == "gpt-4.1-nano":
+            return (
+                self._input_token_usage * 0.10
+                + self._output_token_usage * 0.40
+            ) / 1_000_000
+        elif self.model == "o3":
+            return (
+                self._input_token_usage * 10
+                + self._output_token_usage * 40
+            ) / 1_000_000
         else:
             return 
 
@@ -216,8 +226,9 @@ class OpenAILLM(BaseLLM):
         "gpt-4.1-mini",
         "gpt-4.1-nano",
         "gpt-4.5-preview",
+        "gpt-4o-search-preview",
         # "o1",
-        # "o3",
+        "o3",
         # "o4-mini"
     ] = "gpt-4.1-mini"
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"), exclude=True)
