@@ -1,4 +1,4 @@
-# KRUPPE n
+# KRUPPE
 
 KRUPPE: Knowledge-based Research Using Pathway and Procedural Engine
 

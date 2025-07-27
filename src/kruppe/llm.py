@@ -227,6 +227,7 @@ class OpenAILLM(BaseLLM):
         "gpt-4.1-nano",
         "gpt-4.5-preview",
         "gpt-4o-search-preview",
+        "gpt-4o-mini-search-preview",
         # "o1",
         "o3",
         # "o4-mini"
